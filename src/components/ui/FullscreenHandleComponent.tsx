@@ -9,7 +9,7 @@ export default function FullscreenHandleComponent({
 }) {
   return (
     <motion.div
-      className="absolute top-4 right-4 z-50 cursor-pointer appearance-none p-0.5 text-sky-50"
+      className="absolute top-6 right-6 z-50 h-8 w-8 cursor-pointer appearance-none p-0.5"
       animate={{
         backgroundColor: "var(--color-zinc-950-60)",
       }}
@@ -21,7 +21,7 @@ export default function FullscreenHandleComponent({
       role="button"
       tabIndex={0}
     >
-      <MdFullscreen className="h-6 w-6" />
+      <MdFullscreen className="h-full w-full" />
     </motion.div>
   );
 }
