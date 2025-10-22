@@ -50,54 +50,56 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="fixed top-0 left-0 h-full w-full">
-      <motion.aside
-        id="sidebar-backdrop-overlay"
-        className="fixed top-0 left-0 z-10 h-full w-full bg-black/20"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
-        onClick={() => {
-          if (sidebarOpen) {
-            handleOnClick(false);
-          }
-        }}
-      />
+    <>
       <AnimatePresence>
         {sidebarOpen && (
-          <motion.nav
-            key="sidebar"
-            className="fixed top-0 left-0 z-20 h-full w-80 overflow-y-scroll border-r border-zinc-800 bg-zinc-900/95 p-2"
-            initial={{ x: -320 }}
-            animate={{ x: 0 }}
-            exit={{ x: -320 }}
-            transition={{
-              type: "spring",
-              stiffness: 300,
-              damping: 30,
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <motion.div
-              className="flex h-full flex-col justify-center gap-1"
-              transition={{
-                delayChildren: stagger(0.05, {
-                  from: sidebarOpen ? "first" : "last",
-                }),
+          <>
+            <motion.aside
+              key="sidebar-backdrop-overlay"
+              className="fixed top-0 left-0 z-10 h-full w-full bg-black/20"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => {
+                if (sidebarOpen) {
+                  handleOnClick(false);
+                }
               }}
+            />
+            <motion.nav
+              key="sidebar"
+              className="fixed top-0 left-0 z-20 h-full w-80 overflow-y-scroll border-r border-zinc-800 bg-zinc-900/95 p-2"
+              initial={{ x: -320 }}
+              animate={{ x: 0 }}
+              exit={{ x: -320 }}
+              transition={{
+                type: "spring",
+                stiffness: 300,
+                damping: 30,
+              }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <AnimatePresence propagate>
-                {CLOCK_NAMES.map((name) => (
-                  <SidebarClockNameItem
-                    key={name}
-                    name={name}
-                    currentClockName={currentClockName}
-                  />
-                ))}
-              </AnimatePresence>
-            </motion.div>
-          </motion.nav>
+              <motion.div
+                className="flex h-full flex-col justify-center gap-1"
+                transition={{
+                  delayChildren: stagger(0.05, {
+                    from: sidebarOpen ? "first" : "last",
+                  }),
+                }}
+              >
+                <AnimatePresence propagate>
+                  {CLOCK_NAMES.map((name) => (
+                    <SidebarClockNameItem
+                      key={name}
+                      name={name}
+                      currentClockName={currentClockName}
+                    />
+                  ))}
+                </AnimatePresence>
+              </motion.div>
+            </motion.nav>
+          </>
         )}
       </AnimatePresence>
       <motion.div
@@ -120,6 +122,6 @@ export default function Sidebar() {
           </motion.div>
         </motion.div>
       </motion.div>
-    </div>
+    </>
   );
 }
