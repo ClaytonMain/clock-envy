@@ -1,7 +1,7 @@
 // Remember to keep this list sorted.
 export const CLOCK_NAMES = [
   "Flip",
-  "Neon Pie",
+  "Archduke Von Orben",
   "Nixie",
   "Word",
   "Lorem",

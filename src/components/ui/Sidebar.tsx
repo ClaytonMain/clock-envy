@@ -17,7 +17,7 @@ function SidebarClockNameItem({
 
   function handleOnClick() {
     useAppStore.setState({ currentClockName: name });
-    navigate(`/${name}`);
+    navigate(`/${name.replace(/\s+/g, "")}`);
   }
 
   useEffect(() => {

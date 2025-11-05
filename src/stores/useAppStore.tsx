@@ -10,6 +10,7 @@ interface AppStore {
   sidebarOpen: boolean;
   currentClockName: (typeof CLOCK_NAMES)[number];
   interactionState: "active" | "inactive";
+  formatHours24: boolean;
 }
 
 const persistOmit: (keyof AppStore)[] = [];
@@ -20,8 +21,9 @@ const useAppStore = create<AppStore>()(
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       (_set) => ({
         sidebarOpen: false,
-        currentClockName: "Neon Pie",
+        currentClockName: "Archduke Von Orben",
         interactionState: "active",
+        formatHours24: true,
       }),
       {
         name: "app-store",
