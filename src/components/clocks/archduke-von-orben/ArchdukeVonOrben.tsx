@@ -10,6 +10,7 @@ import { useControls } from "leva";
 import { Suspense } from "react";
 import useAppStore from "../../../stores/useAppStore";
 import Hand from "./Hand";
+import Orb from "./Orb";
 
 function ArchdukeVonOrben() {
   const formatHours24 = useAppStore((state) => state.formatHours24);
@@ -32,6 +33,9 @@ function ArchdukeVonOrben() {
     <>
       <Icosahedron args={[2, 2]} position={[0, 0.0, -2.3]} receiveShadow>
         <MeshReflectorMaterial
+          onBeforeCompile={(shader) =>
+            console.log(shader.vertexShader, shader.fragmentShader)
+          }
           blur={[800, 800]}
           resolution={2048}
           mixBlur={1}
@@ -45,7 +49,8 @@ function ArchdukeVonOrben() {
           flatShading
         />
       </Icosahedron>
-      <Hand
+      {/* <Orb /> */}
+      {/* <Hand
         hms="s"
         radius={1.3}
         color="#2cff05"
@@ -65,7 +70,7 @@ function ArchdukeVonOrben() {
         color="#84E6F8"
         formatHours24={formatHours24}
         materialProps={materialProps}
-      />
+      /> */}
     </>
   );
 }
