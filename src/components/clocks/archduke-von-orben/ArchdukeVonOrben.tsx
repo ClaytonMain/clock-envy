@@ -1,4 +1,5 @@
 import {
+  CubeCamera,
   Environment,
   Icosahedron,
   MeshReflectorMaterial,
@@ -7,12 +8,16 @@ import {
 } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { useControls } from "leva";
-import { Suspense } from "react";
+import { Suspense, useRef } from "react";
+import * as THREE from "three";
+import { MeshPhysicalMaterial } from "three";
+import { Reflector } from "three/examples/jsm/objects/Reflector.js";
 import useAppStore from "../../../stores/useAppStore";
 import Hand from "./Hand";
 import Orb from "./Orb";
 
 function ArchdukeVonOrben() {
+  const orbRef = useRef(null!);
   const formatHours24 = useAppStore((state) => state.formatHours24);
   const materialProps = useControls({
     roughness: { value: 0.1, min: 0, max: 1, step: 0.01 },
@@ -29,28 +34,69 @@ function ArchdukeVonOrben() {
     specularIntensity: { value: 1.0, min: 0, max: 1, step: 0.01 },
     specularColor: { value: "#fff" },
   });
+  const orbGeometry = new THREE.IcosahedronGeometry(2, 2);
+  const mirror = new Reflector(orbGeometry, {
+    textureWidth: 1024,
+    textureHeight: 1024,
+  });
   return (
     <>
-      <Icosahedron args={[2, 2]} position={[0, 0.0, -2.3]} receiveShadow>
-        <MeshReflectorMaterial
-          onBeforeCompile={(shader) =>
-            console.log(shader.vertexShader, shader.fragmentShader)
-          }
-          blur={[800, 800]}
-          resolution={2048}
-          mixBlur={1}
-          mixStrength={80}
-          depthScale={1.2}
-          minDepthThreshold={0}
-          maxDepthThreshold={1.4}
-          roughness={1}
-          metalness={0.5}
-          color="#050505"
-          flatShading
-        />
-      </Icosahedron>
+      <primitive
+        ref={orbRef}
+        onClick={() => console.log(orbRef.current)}
+        object={mirror}
+        position={[0, 0, -2.3]}
+        rotation={[0, 0, 0]}
+      />
+      {/* <Suspense fallback={null}>
+        <Icosahedron
+          ref={orbRef}
+          args={[2, 2]}
+          position={[0, 0.0, -2.3]}
+          receiveShadow
+          onClick={() => console.log(orbRef.current.material)}
+        >
+          <MeshReflectorMaterial
+            blur={[800, 800]}
+            // onBeforeCompile={(shader) => console.log(shader)}
+            resolution={2048}
+            mixBlur={1}
+            mixStrength={80}
+            depthScale={1.2}
+            minDepthThreshold={0}
+            maxDepthThreshold={1.4}
+            roughness={1}
+            metalness={0.5}
+            color="#050505"
+            flatShading
+          />
+        </Icosahedron>
+      </Suspense> */}
+      {/* <CubeCamera
+        position={[0, 0.0, -0.6]}
+        resolution={1028}
+        near={0.1}
+        far={30}
+      >
+        {(texture) => (
+          <Icosahedron
+            ref={orbRef}
+            args={[2, 2]}
+            receiveShadow
+            onClick={() => console.log(orbRef.current)}
+            position={[0, 0.0, -1.7]}
+          >
+            <meshPhysicalMaterial
+              envMap={texture}
+              color="#050505"
+              reflectivity={0.9}
+              roughness={0.1}
+            />
+          </Icosahedron>
+        )}
+      </CubeCamera> */}
       {/* <Orb /> */}
-      {/* <Hand
+      <Hand
         hms="s"
         radius={1.3}
         color="#2cff05"
@@ -70,7 +116,7 @@ function ArchdukeVonOrben() {
         color="#84E6F8"
         formatHours24={formatHours24}
         materialProps={materialProps}
-      /> */}
+      />
     </>
   );
 }
