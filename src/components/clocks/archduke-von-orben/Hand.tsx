@@ -66,6 +66,9 @@ export default function Hand({
   const uArcLengthPercentRef = useRef<THREE.Uniform>(new THREE.Uniform(1.0));
 
   useFrame(() => {
+    if (!innerGroupRef.current.layers.isEnabled(1)) {
+      innerGroupRef.current.layers.enable(1);
+    }
     const currentTimeLengthPercent = getTimeLengthPercent(hms, formatHours24);
     if (currentTimeLengthPercent !== lastFrameTimeLengthPercentRef.current) {
       lastFrameTimeLengthPercentRef.current = currentTimeLengthPercent;

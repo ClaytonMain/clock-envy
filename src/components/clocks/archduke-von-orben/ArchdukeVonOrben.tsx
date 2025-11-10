@@ -41,13 +41,13 @@ function ArchdukeVonOrben() {
   });
   return (
     <>
-      <primitive
+      {/* <primitive
         ref={orbRef}
-        onClick={() => console.log(orbRef.current)}
+        onClick={() => console.log(orbRef.current, mirror)}
         object={mirror}
         position={[0, 0, -2.3]}
         rotation={[0, 0, 0]}
-      />
+      /> */}
       {/* <Suspense fallback={null}>
         <Icosahedron
           ref={orbRef}
@@ -95,7 +95,7 @@ function ArchdukeVonOrben() {
           </Icosahedron>
         )}
       </CubeCamera> */}
-      {/* <Orb /> */}
+      <Orb />
       <Hand
         hms="s"
         radius={1.3}
