@@ -1,7 +1,7 @@
 import { Sphere, Torus } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { springValue } from "motion/react";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
 
 function getTimeLengthPercent(hms: "h" | "m" | "s", formatHours24: boolean) {
@@ -46,6 +46,7 @@ export default function Hand({
     specularIntensity: 1.0,
     specularColor: new THREE.Color("#fff"),
   },
+  layers,
 }: {
   hms: "h" | "m" | "s";
   radius?: number;
@@ -58,6 +59,7 @@ export default function Hand({
   color?: string;
   formatHours24?: boolean;
   materialProps?: THREE.MeshPhysicalMaterialParameters;
+  layers?: THREE.Layers;
 }) {
   const innerGroupRef = useRef<THREE.Group>(null!);
   const movingOrbRef = useRef<THREE.Mesh>(null!);
@@ -65,10 +67,16 @@ export default function Hand({
   const timeLengthPercent = springValue<number>(1.0);
   const uArcLengthPercentRef = useRef<THREE.Uniform>(new THREE.Uniform(1.0));
 
-  useFrame(() => {
-    if (!innerGroupRef.current.layers.isEnabled(1)) {
-      innerGroupRef.current.layers.enable(1);
+  const handLayers = useMemo(() => {
+    if (layers) {
+      return layers;
     }
+    const newLayers = new THREE.Layers();
+    newLayers.enable(1);
+    return newLayers;
+  }, [layers]);
+
+  useFrame(() => {
     const currentTimeLengthPercent = getTimeLengthPercent(hms, formatHours24);
     if (currentTimeLengthPercent !== lastFrameTimeLengthPercentRef.current) {
       lastFrameTimeLengthPercentRef.current = currentTimeLengthPercent;
@@ -91,6 +99,7 @@ export default function Hand({
         <Torus
           args={[radius, tube, radialSegments, tubularSegments, arc]}
           castShadow
+          layers={handLayers}
         >
           <meshPhysicalMaterial
             attach="material"
@@ -145,6 +154,7 @@ export default function Hand({
           position={[radius, 0, 0]}
           rotation={[0, 0, Math.PI]}
           castShadow
+          layers={handLayers}
         >
           <meshPhysicalMaterial color={color} {...materialProps} />
         </Sphere>
@@ -157,6 +167,7 @@ export default function Hand({
             0,
           ]}
           castShadow
+          layers={handLayers}
         >
           <meshPhysicalMaterial color={color} {...materialProps} />
         </Sphere>

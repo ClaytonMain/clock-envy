@@ -9,9 +9,9 @@ void main() {
     vec4(
       csm_Position, // XYZ
       0.0 // W
-    ) * 0.3
+    ) * 2.0
   );
-  csm_Position += wobble * normal;
+  csm_Position += wobble * normal * 0.2;
 
   vUv = uTextureMatrix * vec4(csm_Position, 1.0);
 }

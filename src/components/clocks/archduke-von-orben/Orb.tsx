@@ -1,8 +1,3 @@
-import {
-  CubeCamera,
-  MeshReflectorMaterial,
-  shaderMaterial,
-} from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
@@ -13,12 +8,13 @@ import orbFragmentShader from "./shaders/orb/orb.frag";
 import orbVertexShader from "./shaders/orb/orb.vert";
 
 export default function Orb({
-  position = [0, 0, -2.3],
+  position = [0, 0, 0],
 }: {
   position?: [number, number, number];
 }) {
   const reflectorRef = useRef<THREE.Mesh>(null!);
   const csmRef = useRef(null!);
+
   const orbGeometry = useMemo(() => {
     const geometry = mergeVertices(new THREE.IcosahedronGeometry(2, 50));
     geometry.computeTangents();
@@ -32,40 +28,51 @@ export default function Orb({
     reflector.forceUpdate = true;
     return reflector;
   }, [orbGeometry]);
+  const orbLayers = useMemo(() => {
+    const layers = new THREE.Layers();
+    layers.set(1);
+    return layers;
+  }, []);
+  const reflectorLayers = useMemo(() => {
+    const layers = new THREE.Layers();
+    return layers;
+  }, []);
 
-  useFrame(() => {
+  useFrame(({ gl, camera, scene }) => {
+    camera.layers = reflectorLayers;
+    gl.render(scene, camera);
+
     if (reflectorRef.current && csmRef.current) {
+      // @ts-expect-error It's fine, don't worry about it.
       csmRef.current.uniforms.uTextureMatrix.value =
+        // @ts-expect-error It's fine, don't worry about it.
         reflectorRef.current.material.uniforms["textureMatrix"].value;
+      // @ts-expect-error It's fine, don't worry about it.
       csmRef.current.uniforms.uTDiffuse.value =
+        // @ts-expect-error It's fine, don't worry about it.
         reflectorRef.current.material.uniforms["tDiffuse"].value;
+    } else {
+      console.log("no reflectorRef or csmRef");
     }
+
+    camera.layers = orbLayers;
+    // gl.render(scene, camera);
   });
 
   return (
-    <group position={position}>
+    <>
       <primitive
         ref={reflectorRef}
-        position={[0, 0, 0]}
+        position={position}
         object={mirror}
-        layers={new THREE.Layers().set(1)}
+        layers={reflectorLayers}
       />
-      <mesh geometry={orbGeometry} position={[0, 0, 0]} castShadow>
-        {/* <MeshReflectorMaterial
-          attach="material"
-          onBeforeCompile={(shader) => console.log(shader.vertexShader)}
-          blur={[800, 800]}
-          resolution={2048}
-          mixBlur={1}
-          mixStrength={80}
-          depthScale={1.2}
-          minDepthThreshold={0}
-          maxDepthThreshold={1.4}
-          roughness={1}
-          metalness={0.5}
-          color="#050505"
-          flatShading
-        /> */}
+      <mesh
+        geometry={orbGeometry}
+        position={position}
+        castShadow
+        layers={orbLayers}
+      >
         <CustomShaderMaterial
           ref={csmRef}
           baseMaterial={THREE.MeshPhysicalMaterial}
@@ -76,8 +83,10 @@ export default function Orb({
             uTDiffuse: new THREE.Uniform(new THREE.Texture()),
           }}
           color="#050505"
+          clearcoat={0.5}
+          clearcoatRoughness={0.7}
         />
       </mesh>
-    </group>
+    </>
   );
 }
