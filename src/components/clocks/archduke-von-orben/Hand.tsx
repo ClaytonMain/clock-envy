@@ -3,6 +3,23 @@ import { useFrame } from "@react-three/fiber";
 import { springValue } from "motion/react";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
+import useArchdukeVonOrbenStore from "../../../stores/useArchdukeVonOrbenStore";
+
+const springConfigs = {
+  shared: {
+    damping: 5.0,
+    stiffness: 100.0,
+  },
+  h: {
+    mass: 4.0,
+  },
+  m: {
+    mass: 2.0,
+  },
+  s: {
+    mass: 1.0,
+  },
+};
 
 function getTimeLengthPercent(hms: "h" | "m" | "s", formatHours24: boolean) {
   const now = new Date();
@@ -32,19 +49,9 @@ export default function Hand({
   formatHours24 = true,
   color = "#2cff05",
   materialProps = {
-    roughness: 1.0,
+    roughness: 0.1,
     metalness: 0.0,
-    ior: 1.5,
-    reflectivity: 0.5,
-    iridescence: 0.0,
-    iridescenceIOR: 1.3,
-    sheen: 0.0,
-    sheenRoughness: 1.0,
-    sheenColor: new THREE.Color("#000"),
-    clearcoat: 0.0,
-    clearcoatRoughness: 0.0,
-    specularIntensity: 1.0,
-    specularColor: new THREE.Color("#fff"),
+    clearcoat: 0.9,
   },
   layers,
 }: {
@@ -63,9 +70,20 @@ export default function Hand({
 }) {
   const innerGroupRef = useRef<THREE.Group>(null!);
   const movingOrbRef = useRef<THREE.Mesh>(null!);
-  const lastFrameTimeLengthPercentRef = useRef(9001.0);
-  const timeLengthPercent = springValue<number>(1.0);
-  const uArcLengthPercentRef = useRef<THREE.Uniform>(new THREE.Uniform(1.0));
+  const lastFrameTimeLengthPercentRef = useRef(
+    getTimeLengthPercent(hms, formatHours24),
+  );
+  const timeLengthPercent = springValue<number>(
+    getTimeLengthPercent(hms, formatHours24),
+    {
+      restDelta: 0.0001,
+      ...springConfigs.shared,
+      ...springConfigs[hms],
+    },
+  );
+  const uArcLengthPercentRef = useRef<THREE.Uniform>(
+    new THREE.Uniform(getTimeLengthPercent(hms, formatHours24)),
+  );
 
   const handLayers = useMemo(() => {
     if (layers) {
@@ -91,6 +109,19 @@ export default function Hand({
     );
     movingOrbRef.current.rotation.set(0, 0, Math.max(0, currentSpring) * arc);
     innerGroupRef.current.rotation.set(0, 0, Math.min(0, currentSpring) * arc);
+    if (hms === "h") {
+      useArchdukeVonOrbenStore.setState({
+        uHSpringVelocity: timeLengthPercent.getVelocity(),
+      });
+    } else if (hms === "m") {
+      useArchdukeVonOrbenStore.setState({
+        uMSpringVelocity: timeLengthPercent.getVelocity(),
+      });
+    } else if (hms === "s") {
+      useArchdukeVonOrbenStore.setState({
+        uSSpringVelocity: timeLengthPercent.getVelocity(),
+      });
+    }
   });
 
   return (
@@ -99,6 +130,7 @@ export default function Hand({
         <Torus
           args={[radius, tube, radialSegments, tubularSegments, arc]}
           castShadow
+          receiveShadow
           layers={handLayers}
         >
           <meshPhysicalMaterial
@@ -148,12 +180,50 @@ export default function Hand({
               );
             }}
           />
+          <meshDepthMaterial
+            attach="customDepthMaterial"
+            depthPacking={THREE.RGBADepthPacking}
+            onBeforeCompile={(shader) => {
+              shader.uniforms.uArcLengthPercent = uArcLengthPercentRef.current;
+              shader.vertexShader = shader.vertexShader.replace(
+                "#include <common>",
+                /* glsl */ `
+                #include <common>
+                uniform float uArcLengthPercent;
+
+                mat3 rotZ(float angle) {
+                  float s = sin(angle);
+                  float c = cos(angle);
+                  return mat3(
+                    c, -s, 0.0,
+                    s,  c, 0.0,
+                    0.0, 0.0, 1.0
+                  );
+                }
+                `,
+              );
+              shader.vertexShader = shader.vertexShader.replace(
+                "#include <begin_vertex>",
+                /* glsl */ `
+                float baseAngle = atan(-position.y - 0.0001, -position.x - 0.0001) + PI;
+                float angle = baseAngle * (1.0 - uArcLengthPercent);
+                mat3 rotationMatrix = rotZ(angle);
+
+                vec3 transformed = vec3(rotationMatrix * position);
+                #ifdef USE_ALPHAHASH
+                  vPosition = vec3(rotationMatrix * position);
+                #endif
+              `,
+              );
+            }}
+          />
         </Torus>
         <Sphere
           args={[tube, radialSegments, 8, 0, Math.PI * 2, 0, Math.PI / 2 + 0.1]}
           position={[radius, 0, 0]}
           rotation={[0, 0, Math.PI]}
           castShadow
+          receiveShadow
           layers={handLayers}
         >
           <meshPhysicalMaterial color={color} {...materialProps} />
@@ -167,6 +237,7 @@ export default function Hand({
             0,
           ]}
           castShadow
+          receiveShadow
           layers={handLayers}
         >
           <meshPhysicalMaterial color={color} {...materialProps} />

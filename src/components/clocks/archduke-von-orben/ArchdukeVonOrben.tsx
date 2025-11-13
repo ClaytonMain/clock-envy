@@ -1,6 +1,5 @@
 import { Environment, OrbitControls, Stats } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { useControls } from "leva";
 import { Suspense, useMemo } from "react";
 import * as THREE from "three";
 import useAppStore from "../../../stores/useAppStore";
@@ -9,21 +8,6 @@ import Orb from "./Orb";
 
 function ArchdukeVonOrben() {
   const formatHours24 = useAppStore((state) => state.formatHours24);
-  const materialProps = useControls({
-    roughness: { value: 0.1, min: 0, max: 1, step: 0.01 },
-    metalness: { value: 0.0, min: 0, max: 1, step: 0.01 },
-    ior: { value: 1.5, min: 1, max: 2.5, step: 0.01 },
-    reflectivity: { value: 0.5, min: 0, max: 1, step: 0.01 },
-    iridescence: { value: 0.0, min: 0, max: 1, step: 0.01 },
-    iridescenceIOR: { value: 1.3, min: 1, max: 2.5, step: 0.01 },
-    sheen: { value: 0.0, min: 0, max: 1, step: 0.01 },
-    sheenRoughness: { value: 1.0, min: 0, max: 1, step: 0.01 },
-    sheenColor: { value: "#000" },
-    clearcoat: { value: 0.9, min: 0, max: 1, step: 0.01 },
-    clearcoatRoughness: { value: 0.0, min: 0, max: 1, step: 0.01 },
-    specularIntensity: { value: 1.0, min: 0, max: 1, step: 0.01 },
-    specularColor: { value: "#fff" },
-  });
   return (
     <>
       <Orb position={[0, 0, -2.3]} />
@@ -32,21 +16,18 @@ function ArchdukeVonOrben() {
         radius={1.3}
         color="#2cff05"
         formatHours24={formatHours24}
-        materialProps={materialProps}
       />
       <Hand
         hms="m"
         radius={1.0}
         color="#EB5160"
         formatHours24={formatHours24}
-        materialProps={materialProps}
       />
       <Hand
         hms="h"
         radius={0.7}
         color="#84E6F8"
         formatHours24={formatHours24}
-        materialProps={materialProps}
       />
     </>
   );
@@ -66,7 +47,6 @@ export default function ArchdukeVonOrbenScene() {
 
   return (
     <Canvas
-      flat
       shadows
       dpr={1}
       camera={{
@@ -79,8 +59,23 @@ export default function ArchdukeVonOrbenScene() {
       {/* <fog attach="fog" args={["#17171b", 30, 40]} /> */}
       <Stats />
       <Suspense fallback={null}>
-        <Environment preset="city" />
-        <ambientLight intensity={1.5} layers={allLayers} />
+        <Environment preset="city" resolution={2048} />
+        <ambientLight intensity={0.5} layers={allLayers} />
+        <directionalLight
+          position={[0.25, 4, 4.25]}
+          intensity={1.0}
+          color={"#fff"}
+          layers={allLayers}
+          castShadow
+          shadow-camera-far={15}
+          shadow-mapSize-width={2048}
+          shadow-mapSize-height={2048}
+          shadow-camera-left={-10}
+          shadow-camera-right={10}
+          shadow-camera-top={10}
+          shadow-camera-bottom={-10}
+          shadow-normalBias={0.05}
+        />
         <OrbitControls makeDefault />
         <ArchdukeVonOrben />
       </Suspense>
