@@ -34,27 +34,28 @@ attribute vec4 tangent;
 #include ../../../../../shaders/includes/simplexNoise4d.glsl
 
 float getWobble(vec3 position) {
+  vec3 adjustedPosition = position + vec3(0.0, 0.0, uTime * 0.015);
   float wobble = simplexNoise4d(
     vec4(
-      position * uBasePosFreq, // XYZ
+      adjustedPosition * uBasePosFreq, // XYZ
       uTime * uBaseTimeFreq // W
     )
   ) * uBaseStrength;
   float hWobble = simplexNoise4d(
     vec4(
-      position * uHBasePosFreq, // XYZ
+      adjustedPosition * uHBasePosFreq, // XYZ
       uHTime * uHBaseTimeFreq // W
     )
   ) * uHBaseStrength;
   float mWobble = simplexNoise4d(
     vec4(
-      position * uMBasePosFreq, // XYZ
+      adjustedPosition * uMBasePosFreq, // XYZ
       uMTime * uMBaseTimeFreq // W
     )
   ) * uMBaseStrength;
   float sWobble = simplexNoise4d(
     vec4(
-      position * uSBasePosFreq, // XYZ
+      adjustedPosition * uSBasePosFreq, // XYZ
       uSTime * uSBaseTimeFreq // W
     )
   ) * uSBaseStrength;

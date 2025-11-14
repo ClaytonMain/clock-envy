@@ -192,15 +192,28 @@ export default function Orb({
   const uMTimeRef = useRef(0);
   const uSTimeRef = useRef(0);
 
+  const velocityRef = useRef(0);
+
   useFrame(({ gl, camera, scene }, delta) => {
-    // Uniform updates.
+    // General.
     deltaRef.current = Math.max(delta, 0.016);
 
     // orbRef.current.rotation.y += deltaRef.current * 0.001;
     // orbRef.current.rotation.x += deltaRef.current * 0.005;
     // orbRef.current.rotation.z += deltaRef.current * 0.002;
 
-    uTimeRef.current += deltaRef.current;
+    velocityRef.current +=
+      deltaRef.current *
+      (Math.abs(uHSpringVelocityRef.current) * 40 +
+        Math.abs(uMSpringVelocityRef.current) * 20 +
+        Math.abs(uSSpringVelocityRef.current) * 10);
+    velocityRef.current = Math.max(
+      velocityRef.current - deltaRef.current * 5,
+      0,
+    );
+
+    // Uniform updates.
+    uTimeRef.current += deltaRef.current * (1 + velocityRef.current);
     uHTimeRef.current +=
       deltaRef.current * Math.abs(uHSpringVelocityRef.current);
     uMTimeRef.current +=
@@ -251,46 +264,52 @@ export default function Orb({
   });
 
   return (
-    <group position={position}>
-      <primitive ref={reflectorRef} object={mirror} layers={reflectorLayers} />
-      <mesh
-        ref={orbRef}
-        geometry={orbGeometry}
-        castShadow
-        receiveShadow
-        layers={orbLayers}
-      >
-        <CustomShaderMaterial
-          attach="material"
-          ref={csmRef}
-          baseMaterial={THREE.MeshPhysicalMaterial}
-          vertexShader={orbVertexShader}
-          fragmentShader={orbFragmentShader}
-          uniforms={{
-            uTextureMatrix: new THREE.Uniform(new THREE.Matrix4()),
-            uTDiffuse: new THREE.Uniform(new THREE.Texture()),
+    <>
+      <group position={position}>
+        <primitive
+          ref={reflectorRef}
+          object={mirror}
+          layers={reflectorLayers}
+        />
+        <mesh
+          ref={orbRef}
+          geometry={orbGeometry}
+          castShadow
+          receiveShadow
+          layers={orbLayers}
+        >
+          <CustomShaderMaterial
+            attach="material"
+            ref={csmRef}
+            baseMaterial={THREE.MeshPhysicalMaterial}
+            vertexShader={orbVertexShader}
+            fragmentShader={orbFragmentShader}
+            uniforms={{
+              uTextureMatrix: new THREE.Uniform(new THREE.Matrix4()),
+              uTDiffuse: new THREE.Uniform(new THREE.Texture()),
 
-            ...uniforms,
-          }}
-          color="#000"
-          // color="#fff"
-          roughness={0.1}
-          metalness={0.7}
-          reflectivity={0.2}
-          clearcoat={0.3}
-          clearcoatRoughness={0.01}
-        />
-        <CustomShaderMaterial
-          attach="customDepthMaterial"
-          ref={csmDepthRef}
-          uniforms={{
-            ...uniforms,
-          }}
-          baseMaterial={THREE.MeshDepthMaterial}
-          vertexShader={orbVertexShader}
-          depthPacking={THREE.RGBADepthPacking}
-        />
-      </mesh>
-    </group>
+              ...uniforms,
+            }}
+            color="#000"
+            // color="#fff"
+            roughness={0.1}
+            metalness={0.7}
+            reflectivity={0.2}
+            clearcoat={0.3}
+            clearcoatRoughness={0.01}
+          />
+          <CustomShaderMaterial
+            attach="customDepthMaterial"
+            ref={csmDepthRef}
+            uniforms={{
+              ...uniforms,
+            }}
+            baseMaterial={THREE.MeshDepthMaterial}
+            vertexShader={orbVertexShader}
+            depthPacking={THREE.RGBADepthPacking}
+          />
+        </mesh>
+      </group>
+    </>
   );
 }
