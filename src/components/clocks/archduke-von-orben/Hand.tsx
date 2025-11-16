@@ -94,13 +94,20 @@ export default function Hand({
     return newLayers;
   }, [layers]);
 
-  useFrame(() => {
+  const deltaRef = useRef(0);
+  const prevVelocityRef = useRef(0);
+
+  useFrame((_, delta) => {
+    deltaRef.current = Math.max(delta, 0.016);
+
     const currentTimeLengthPercent = getTimeLengthPercent(hms, formatHours24);
     if (currentTimeLengthPercent !== lastFrameTimeLengthPercentRef.current) {
       lastFrameTimeLengthPercentRef.current = currentTimeLengthPercent;
       timeLengthPercent.set(currentTimeLengthPercent);
     }
+
     const currentSpring = timeLengthPercent.get();
+
     uArcLengthPercentRef.current.value = Math.max(0, currentSpring);
     movingOrbRef.current.position.set(
       Math.cos(Math.max(0, currentSpring) * arc) * radius,
@@ -109,19 +116,36 @@ export default function Hand({
     );
     movingOrbRef.current.rotation.set(0, 0, Math.max(0, currentSpring) * arc);
     innerGroupRef.current.rotation.set(0, 0, Math.min(0, currentSpring) * arc);
+
+    const currentVelocity = timeLengthPercent.getVelocity();
+
     if (hms === "h") {
       useArchdukeVonOrbenStore.setState({
-        uHSpringVelocity: timeLengthPercent.getVelocity(),
+        uHSpringVelocity: currentVelocity,
+        uHForce:
+          (springConfigs.h.mass *
+            Math.abs(currentVelocity - prevVelocityRef.current)) /
+          deltaRef.current,
       });
     } else if (hms === "m") {
       useArchdukeVonOrbenStore.setState({
-        uMSpringVelocity: timeLengthPercent.getVelocity(),
+        uMSpringVelocity: currentVelocity,
+        uMForce:
+          (springConfigs.m.mass *
+            Math.abs(currentVelocity - prevVelocityRef.current)) /
+          deltaRef.current,
       });
     } else if (hms === "s") {
       useArchdukeVonOrbenStore.setState({
-        uSSpringVelocity: timeLengthPercent.getVelocity(),
+        uSSpringVelocity: currentVelocity,
+        uSForce:
+          (springConfigs.s.mass *
+            Math.abs(currentVelocity - prevVelocityRef.current)) /
+          deltaRef.current,
       });
     }
+
+    prevVelocityRef.current = currentVelocity;
   });
 
   return (

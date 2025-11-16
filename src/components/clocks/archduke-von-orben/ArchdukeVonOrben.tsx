@@ -59,7 +59,7 @@ export default function ArchdukeVonOrbenScene() {
       shadows
       dpr={Math.min(window.devicePixelRatio, 2)}
       camera={{
-        position: [0, -2, 25],
+        position: [0, -2, 35],
         rotation: [0.05, 0, 0],
         fov: 8,
         layers: cameraLayers,
@@ -69,6 +69,7 @@ export default function ArchdukeVonOrbenScene() {
       <Stats />
       <Suspense fallback={null}>
         <Environment preset="city" resolution={2048} />
+        {/* Look for las vegas envmap */}
         <ambientLight intensity={0.5} layers={allLayers} />
         <directionalLight
           position={[0.25, 4, 4.25]}
