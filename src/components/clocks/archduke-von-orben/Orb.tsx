@@ -1,5 +1,5 @@
 import { useFrame } from "@react-three/fiber";
-import { useControls } from "leva";
+import { button, useControls } from "leva";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import CustomShaderMaterial from "three-custom-shader-material";
@@ -132,6 +132,16 @@ export default function Orb({
   }, []);
 
   const controlValues = useControls({
+    // Debug
+    clearMaxVelocityRef: button(() => {
+      maxVelocityRef.current = 0;
+    }),
+    velocityLimit: {
+      value: 1,
+      min: 0,
+      max: 1.5,
+      step: 0.01,
+    },
     // Orb
     orbMass: {
       value: 5000,
@@ -230,19 +240,27 @@ export default function Orb({
   const uSTimeRef = useRef(0);
 
   const velocityRef = useRef(0);
+  const maxVelocityRef = useRef(0);
 
   useFrame(({ gl, camera, scene }, delta) => {
     // General.
     deltaRef.current = Math.max(delta, 0.016);
 
-    velocityRef.current +=
+    const forceToAdd =
       (uHForceRef.current + uMForceRef.current + uSForceRef.current) /
       controlValues.orbMass;
+
+    velocityRef.current += forceToAdd;
     velocityRef.current = Math.max(
       0,
       velocityRef.current *
         (1 - controlValues.orbDecayFactor * deltaRef.current),
     );
+
+    if (velocityRef.current > maxVelocityRef.current) {
+      maxVelocityRef.current = velocityRef.current;
+      console.log("New max velocity:", maxVelocityRef.current.toFixed(4));
+    }
 
     // Uniform updates.
     // uTimeRef.current += velocityRef.current + deltaRef.current;

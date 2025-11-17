@@ -3,6 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { springValue } from "motion/react";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
+import useAppStore from "../../../stores/useAppStore";
 import useArchdukeVonOrbenStore from "../../../stores/useArchdukeVonOrbenStore";
 
 const springConfigs = {
@@ -22,7 +23,7 @@ const springConfigs = {
 };
 
 function getTimeLengthPercent(hms: "h" | "m" | "s", formatHours24: boolean) {
-  const now = new Date();
+  const now = useAppStore.getState().currentTimeValue.toJSDate();
   if (hms === "h") {
     let hours = now.getHours();
     if (!formatHours24) {
