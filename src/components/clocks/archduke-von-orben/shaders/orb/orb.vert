@@ -35,18 +35,30 @@ attribute vec4 tangent;
 
 float getWobble(vec3 position) {
   vec3 adjustedPosition = position + vec3(0.0, 0.0, uTime * 0.015);
-  float wobble = simplexNoise4d(vec4(adjustedPosition * uBasePosFreq, // XYZ
-  uTime * uBaseTimeFreq // W
-  )) * uBaseStrength;
-  float hWobble = simplexNoise4d(vec4(adjustedPosition * uHBasePosFreq, // XYZ
-  uHTime * uHBaseTimeFreq // W
-  )) * uHBaseStrength;
-  float mWobble = simplexNoise4d(vec4(adjustedPosition * uMBasePosFreq, // XYZ
-  uMTime * uMBaseTimeFreq // W
-  )) * uMBaseStrength;
-  float sWobble = simplexNoise4d(vec4(adjustedPosition * uSBasePosFreq, // XYZ
-  uSTime * uSBaseTimeFreq // W
-  )) * uSBaseStrength;
+  float wobble = simplexNoise4d(
+    vec4(
+      adjustedPosition * uBasePosFreq, // XYZ
+      uTime * uBaseTimeFreq // W
+    )
+  ) * uBaseStrength;
+  float hWobble = simplexNoise4d(
+    vec4(
+      (adjustedPosition + vec3(0.0, 0.0, uHTime * 0.0)) * uHBasePosFreq, // XYZ
+      uHTime * uHBaseTimeFreq // W
+    )
+  ) * uHBaseStrength;
+  float mWobble = simplexNoise4d(
+    vec4(
+      (adjustedPosition + vec3(0.0, 0.0, uMTime * 0.0)) * uMBasePosFreq, // XYZ
+      uMTime * uMBaseTimeFreq // W
+    )
+  ) * uMBaseStrength;
+  float sWobble = simplexNoise4d(
+    vec4(
+      (adjustedPosition + vec3(0.0, 0.0, uSTime * 0.0)) * uSBasePosFreq, // XYZ
+      uSTime * uSBaseTimeFreq // W
+    )
+  ) * uSBaseStrength;
   // return (wobble + hWobble + mWobble + sWobble) * smoothstep(0.0, 1.0, pow(dot(normal, vec3(0.0, 0.0, -1.0)) * 0.5 + 0.5, 0.5));
   return wobble + hWobble + mWobble + sWobble;
   // return wobble;

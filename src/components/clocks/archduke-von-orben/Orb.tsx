@@ -1,5 +1,5 @@
 import { useFrame } from "@react-three/fiber";
-import { button, useControls } from "leva";
+import { button, monitor, useControls } from "leva";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import CustomShaderMaterial from "three-custom-shader-material";
@@ -9,6 +9,13 @@ import { Reflector } from "three/examples/jsm/objects/Reflector.js";
 import useArchdukeVonOrbenStore from "../../../stores/useArchdukeVonOrbenStore";
 import orbFragmentShader from "./shaders/orb/orb.frag";
 import orbVertexShader from "./shaders/orb/orb.vert";
+
+function smootherstep(edge0: number, edge1: number, x: number) {
+  // https://en.wikipedia.org/wiki/Smoothstep (sort of)
+  x = Math.min(Math.max((x - edge0) / (edge1 - edge0), 0.0), 1.0);
+
+  return x * x * x * (x * (x * 6 - 15) + 10) * (edge1 - edge0) + edge0;
+}
 
 const uniforms = {
   // Misc.
@@ -74,60 +81,49 @@ export default function Orb({
   const uHSpringVelocityRef = useRef(
     useArchdukeVonOrbenStore.getState().uHSpringVelocity,
   );
-  const uHForceRef = useRef(useArchdukeVonOrbenStore.getState().uHForce);
+  const uHSpringVelocityPrevRef = useRef(
+    useArchdukeVonOrbenStore.getState().uHSpringVelocity,
+  );
+
   const uMSpringVelocityRef = useRef(
     useArchdukeVonOrbenStore.getState().uMSpringVelocity,
   );
-  const uMForceRef = useRef(useArchdukeVonOrbenStore.getState().uMForce);
+  const uMSpringVelocityPrevRef = useRef(
+    useArchdukeVonOrbenStore.getState().uMSpringVelocity,
+  );
+
   const uSSpringVelocityRef = useRef(
     useArchdukeVonOrbenStore.getState().uSSpringVelocity,
   );
-  const uSForceRef = useRef(useArchdukeVonOrbenStore.getState().uSForce);
-
+  const uSSpringVelocityPrevRef = useRef(
+    useArchdukeVonOrbenStore.getState().uSSpringVelocity,
+  );
   useEffect(() => {
     const unsubHVelocity = useArchdukeVonOrbenStore.subscribe(
       (state) => state.uHSpringVelocity,
-      (value) => {
+      (value, previous) => {
         uHSpringVelocityRef.current = value;
-      },
-    );
-    const unsubHForce = useArchdukeVonOrbenStore.subscribe(
-      (state) => state.uHForce,
-      (value) => {
-        uHForceRef.current = value;
+        uHSpringVelocityPrevRef.current = previous;
       },
     );
     const unsubMVelocity = useArchdukeVonOrbenStore.subscribe(
       (state) => state.uMSpringVelocity,
-      (value) => {
+      (value, previous) => {
         uMSpringVelocityRef.current = value;
-      },
-    );
-    const unsubMForce = useArchdukeVonOrbenStore.subscribe(
-      (state) => state.uMForce,
-      (value) => {
-        uMForceRef.current = value;
+        uMSpringVelocityPrevRef.current = previous;
       },
     );
     const unsubSVelocity = useArchdukeVonOrbenStore.subscribe(
       (state) => state.uSSpringVelocity,
-      (value) => {
+      (value, previous) => {
         uSSpringVelocityRef.current = value;
-      },
-    );
-    const unsubSForce = useArchdukeVonOrbenStore.subscribe(
-      (state) => state.uSForce,
-      (value) => {
-        uSForceRef.current = value;
+        uSSpringVelocityPrevRef.current = previous;
       },
     );
     return () => {
       unsubHVelocity();
-      unsubHForce();
       unsubMVelocity();
-      unsubMForce();
       unsubSVelocity();
-      unsubSForce();
     };
   }, []);
 
@@ -136,6 +132,10 @@ export default function Orb({
     clearMaxVelocityRef: button(() => {
       maxVelocityRef.current = 0;
     }),
+    clearMinVelocityRef: button(() => {
+      minVelocityRef.current = 0;
+    }),
+    // Velocity
     velocityLimit: {
       value: 1,
       min: 0,
@@ -231,6 +231,14 @@ export default function Orb({
       max: 5,
       step: 0.01,
     },
+    velocityRef: monitor(() => velocityRef.current, {
+      graph: true,
+      interval: 300,
+    }),
+    sVelocityRef: monitor(() => uSSpringVelocityRef.current, {
+      graph: true,
+      interval: 30,
+    }),
   });
 
   const deltaRef = useRef(0);
@@ -239,16 +247,50 @@ export default function Orb({
   const uMTimeRef = useRef(0);
   const uSTimeRef = useRef(0);
 
-  const velocityRef = useRef(0);
+  const velocityRef = useRef(0.1);
   const maxVelocityRef = useRef(0);
+  const minVelocityRef = useRef(0);
+
+  const masses = {
+    orb: 5000,
+    h: 4,
+    m: 2,
+    s: 1,
+  };
 
   useFrame(({ gl, camera, scene }, delta) => {
     // General.
     deltaRef.current = Math.max(delta, 0.016);
 
-    const forceToAdd =
-      (uHForceRef.current + uMForceRef.current + uSForceRef.current) /
-      controlValues.orbMass;
+    const hForce =
+      (masses.h *
+        Math.max(
+          Math.abs(
+            uHSpringVelocityRef.current - uHSpringVelocityPrevRef.current,
+          ) - velocityRef.current,
+          0,
+        )) /
+      deltaRef.current;
+    const mForce =
+      (masses.m *
+        Math.max(
+          Math.abs(
+            uMSpringVelocityRef.current - uMSpringVelocityPrevRef.current,
+          ) - velocityRef.current,
+          0,
+        )) /
+      deltaRef.current;
+    const sForce =
+      (masses.s *
+        Math.max(
+          Math.abs(
+            uSSpringVelocityRef.current - uSSpringVelocityPrevRef.current,
+          ) - velocityRef.current,
+          0,
+        )) /
+      deltaRef.current;
+
+    const forceToAdd = (hForce + mForce + sForce) / controlValues.orbMass;
 
     velocityRef.current += forceToAdd;
     velocityRef.current = Math.max(
@@ -257,20 +299,34 @@ export default function Orb({
         (1 - controlValues.orbDecayFactor * deltaRef.current),
     );
 
-    if (velocityRef.current > maxVelocityRef.current) {
-      maxVelocityRef.current = velocityRef.current;
+    if (uSSpringVelocityRef.current > maxVelocityRef.current) {
+      maxVelocityRef.current = uSSpringVelocityRef.current;
       console.log("New max velocity:", maxVelocityRef.current.toFixed(4));
     }
+    if (uSSpringVelocityRef.current < minVelocityRef.current) {
+      minVelocityRef.current = uSSpringVelocityRef.current;
+      console.log("New min velocity:", minVelocityRef.current.toFixed(4));
+    }
 
-    // Uniform updates.
     // uTimeRef.current += velocityRef.current + deltaRef.current;
     uTimeRef.current += velocityRef.current;
-    uHTimeRef.current +=
-      deltaRef.current * (1 + Math.max(Math.min(uHForceRef.current, 1) * 1, 0));
-    uMTimeRef.current +=
-      deltaRef.current * (1 + Math.max(Math.min(uMForceRef.current, 1) * 1, 0));
-    uSTimeRef.current +=
-      deltaRef.current * (1 + Math.max(Math.min(uSForceRef.current, 1) * 1, 0));
+    uHTimeRef.current += smootherstep(
+      -0.02,
+      0.02,
+      uHSpringVelocityRef.current * deltaRef.current,
+    );
+    uMTimeRef.current += smootherstep(
+      -0.02,
+      0.02,
+      uMSpringVelocityRef.current * deltaRef.current,
+    );
+    uSTimeRef.current += smootherstep(
+      -0.02,
+      0.02,
+      uSSpringVelocityRef.current * deltaRef.current,
+    );
+
+    // Uniform updates.
     uniforms.uTime.value = uTimeRef.current;
     uniforms.uBasePosFreq.value = controlValues.uBasePosFreq;
     uniforms.uBaseTimeFreq.value = controlValues.uBaseTimeFreq;

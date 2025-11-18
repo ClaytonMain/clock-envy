@@ -123,26 +123,14 @@ export default function Hand({
     if (hms === "h") {
       useArchdukeVonOrbenStore.setState({
         uHSpringVelocity: currentVelocity,
-        uHForce:
-          (springConfigs.h.mass *
-            Math.abs(currentVelocity - prevVelocityRef.current)) /
-          deltaRef.current,
       });
     } else if (hms === "m") {
       useArchdukeVonOrbenStore.setState({
         uMSpringVelocity: currentVelocity,
-        uMForce:
-          (springConfigs.m.mass *
-            Math.abs(currentVelocity - prevVelocityRef.current)) /
-          deltaRef.current,
       });
     } else if (hms === "s") {
       useArchdukeVonOrbenStore.setState({
         uSSpringVelocity: currentVelocity,
-        uSForce:
-          (springConfigs.s.mass *
-            Math.abs(currentVelocity - prevVelocityRef.current)) /
-          deltaRef.current,
       });
     }
 
