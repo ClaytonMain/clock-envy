@@ -4,6 +4,7 @@ import { useControls } from "leva";
 import { Suspense, useMemo } from "react";
 import * as THREE from "three";
 import useAppStore from "../../../stores/useAppStore";
+import Digits from "./Digits";
 import Hand from "./Hand";
 import Orb from "./Orb";
 
@@ -38,6 +39,7 @@ function ArchdukeVonOrben() {
         color={controlValues.hColor}
         formatHours24={formatHours24}
       />
+      <Digits position={[0, 0, 0.1]} />
     </>
   );
 }

@@ -5,22 +5,7 @@ import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import useAppStore from "../../../stores/useAppStore";
 import useArchdukeVonOrbenStore from "../../../stores/useArchdukeVonOrbenStore";
-
-const springConfigs = {
-  shared: {
-    damping: 5.0,
-    stiffness: 100.0,
-  },
-  h: {
-    mass: 4.0,
-  },
-  m: {
-    mass: 2.0,
-  },
-  s: {
-    mass: 1.0,
-  },
-};
+import { SPRING_CONFIGS } from "./constants/constants";
 
 function getTimeLengthPercent(hms: "h" | "m" | "s", formatHours24: boolean) {
   const now = useAppStore.getState().currentTimeValue.toJSDate();
@@ -77,9 +62,8 @@ export default function Hand({
   const timeLengthPercent = springValue<number>(
     getTimeLengthPercent(hms, formatHours24),
     {
-      restDelta: 0.0001,
-      ...springConfigs.shared,
-      ...springConfigs[hms],
+      ...SPRING_CONFIGS.shared,
+      ...SPRING_CONFIGS[hms],
     },
   );
   const uArcLengthPercentRef = useRef<THREE.Uniform>(

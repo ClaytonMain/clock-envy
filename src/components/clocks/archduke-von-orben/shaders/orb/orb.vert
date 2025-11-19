@@ -10,58 +10,65 @@ uniform float uBaseTimeFreq;
 uniform float uBaseStrength;
 
 uniform float uHTime;
-uniform float uHSpringVelocity;
 uniform float uHBasePosFreq;
 uniform float uHBaseTimeFreq;
 uniform float uHBaseStrength;
 
 uniform float uMTime;
-uniform float uMSpringVelocity;
 uniform float uMBasePosFreq;
 uniform float uMBaseTimeFreq;
 uniform float uMBaseStrength;
 
 uniform float uSTime;
-uniform float uSSpringVelocity;
 uniform float uSBasePosFreq;
 uniform float uSBaseTimeFreq;
 uniform float uSBaseStrength;
 
-varying vec4 vUv;
+varying vec4 vUvTextureMatrix;
 
 attribute vec4 tangent;
 
 #include ../../../../../shaders/includes/simplexNoise4d.glsl
 
-float getWobble(vec3 position) {
-  vec3 adjustedPosition = position + vec3(0.0, 0.0, uTime * 0.015);
-  float wobble = simplexNoise4d(
-    vec4(
-      adjustedPosition * uBasePosFreq, // XYZ
-      uTime * uBaseTimeFreq // W
-    )
-  ) * uBaseStrength;
-  float hWobble = simplexNoise4d(
-    vec4(
-      (adjustedPosition + vec3(0.0, 0.0, uHTime * 0.0)) * uHBasePosFreq, // XYZ
-      uHTime * uHBaseTimeFreq // W
-    )
-  ) * uHBaseStrength;
-  float mWobble = simplexNoise4d(
-    vec4(
-      (adjustedPosition + vec3(0.0, 0.0, uMTime * 0.0)) * uMBasePosFreq, // XYZ
-      uMTime * uMBaseTimeFreq // W
-    )
-  ) * uMBaseStrength;
-  float sWobble = simplexNoise4d(
-    vec4(
-      (adjustedPosition + vec3(0.0, 0.0, uSTime * 0.0)) * uSBasePosFreq, // XYZ
-      uSTime * uSBaseTimeFreq // W
-    )
-  ) * uSBaseStrength;
-  // return (wobble + hWobble + mWobble + sWobble) * smoothstep(0.0, 1.0, pow(dot(normal, vec3(0.0, 0.0, -1.0)) * 0.5 + 0.5, 0.5));
-  return wobble + hWobble + mWobble + sWobble;
-  // return wobble;
+float getWobble(vec3 pos, vec3 norm) {
+  vec3 adjustedPos = pos + vec3(0.0, 0.0, uTime * 0.015);
+  float wobble =
+    simplexNoise4d(
+      vec4(
+        adjustedPos * uBasePosFreq, // XYZ
+        uTime * uBaseTimeFreq // W
+      )
+    ) *
+    uBaseStrength;
+  float hWobble =
+    simplexNoise4d(
+      vec4(
+        (adjustedPos + vec3(0.0, 0.0, uHTime * 0.01)) * uHBasePosFreq, // XYZ
+        uHTime * uHBaseTimeFreq // W
+      )
+    ) *
+    uHBaseStrength;
+  float mWobble =
+    simplexNoise4d(
+      vec4(
+        (adjustedPos + vec3(0.0, 0.0, uMTime * 0.01)) * uMBasePosFreq, // XYZ
+        uMTime * uMBaseTimeFreq // W
+      )
+    ) *
+    uMBaseStrength;
+  float sWobble =
+    simplexNoise4d(
+      vec4(
+        (adjustedPos + vec3(0.0, 0.0, uSTime * 0.01)) * uSBasePosFreq, // XYZ
+        uSTime * uSBaseTimeFreq // W
+      )
+    ) *
+    uSBaseStrength;
+
+  float finalWobble = wobble + hWobble + mWobble + sWobble;
+  float towardsCameraAmount = dot(norm, vec3(0.0, 0.0, 1.0)) * 0.5 + 0.5;
+  finalWobble *= (smoothstep(0.98, 0.8, towardsCameraAmount * towardsCameraAmount) * 0.97) + 0.03;
+  return finalWobble;
 }
 
 void main() {
@@ -73,16 +80,15 @@ void main() {
   vec3 positionB = csm_Position + biTangent * shift;
 
   // Wobble
-  float wobble = getWobble(csm_Position);
+  float wobble = getWobble(csm_Position, normal);
   // wobble *= smoothstep(0.0, 1.0, pow(dot(normal, vec3(0.0, 0.0, -1.0)) * 0.5 + 0.5, 0.5));
   csm_Position += wobble * normal;
-  positionA += getWobble(positionA) * normal;
-  positionB += getWobble(positionB) * normal;
-
+  positionA += getWobble(positionA, normal) * normal;
+  positionB += getWobble(positionB, normal) * normal;
   // Compute normal
   vec3 toA = normalize(positionA - csm_Position);
   vec3 toB = normalize(positionB - csm_Position);
   csm_Normal = cross(toA, toB);
 
-  vUv = uTextureMatrix * vec4(csm_Position, 1.0);
+  vUvTextureMatrix = uTextureMatrix * vec4(csm_Position, 1.0);
 }
