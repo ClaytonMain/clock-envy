@@ -1,5 +1,6 @@
 uniform sampler2D uTDiffuse;
 varying vec4 vUvTextureMatrix;
+varying float vSteppedToCameraAmount;
 
 void main() {
   vec4 base = texture2DProj(uTDiffuse, vUvTextureMatrix);
@@ -15,5 +16,15 @@ void main() {
   //   csm_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
   // }
 
-  csm_DiffuseColor = mix(csm_DiffuseColor, base, 0.1);
+  float mixAmount = smoothstep(
+    0.0,
+    0.5,
+    clamp(
+      base.r * base.g * base.b * (1.0 - vSteppedToCameraAmount) * 0.9 + 0.1,
+      0.0,
+      1.0
+    )
+  );
+
+  csm_DiffuseColor = mix(csm_DiffuseColor, base, mixAmount);
 }

@@ -25,12 +25,13 @@ uniform float uSBaseTimeFreq;
 uniform float uSBaseStrength;
 
 varying vec4 vUvTextureMatrix;
+varying float vSteppedToCameraAmount;
 
 attribute vec4 tangent;
 
 #include ../../../../../shaders/includes/simplexNoise4d.glsl
 
-float getWobble(vec3 pos, vec3 norm) {
+float getWobble(vec3 pos, vec3 norm, float steppedToCameraAmount) {
   vec3 adjustedPos = pos + vec3(0.0, 0.0, uTime * 0.015);
   float wobble =
     simplexNoise4d(
@@ -66,8 +67,7 @@ float getWobble(vec3 pos, vec3 norm) {
     uSBaseStrength;
 
   float finalWobble = wobble + hWobble + mWobble + sWobble;
-  float towardsCameraAmount = dot(norm, vec3(0.0, 0.0, 1.0)) * 0.5 + 0.5;
-  finalWobble *= (smoothstep(0.98, 0.8, towardsCameraAmount * towardsCameraAmount) * 0.97) + 0.03;
+  finalWobble *= (steppedToCameraAmount * 0.5) + 0.5;
   return finalWobble;
 }
 
@@ -79,12 +79,16 @@ void main() {
   vec3 positionA = csm_Position + tangent.xyz * shift;
   vec3 positionB = csm_Position + biTangent * shift;
 
+  float toCameraAmount = dot(normal, vec3(0.0, 0.0, 1.0)) * 0.5 + 0.5;
+  float steppedToCameraAmount = smoothstep(0.98, 0.89, toCameraAmount * toCameraAmount);
+  vSteppedToCameraAmount = steppedToCameraAmount;
+
   // Wobble
-  float wobble = getWobble(csm_Position, normal);
+  float wobble = getWobble(csm_Position, normal, steppedToCameraAmount);
   // wobble *= smoothstep(0.0, 1.0, pow(dot(normal, vec3(0.0, 0.0, -1.0)) * 0.5 + 0.5, 0.5));
   csm_Position += wobble * normal;
-  positionA += getWobble(positionA, normal) * normal;
-  positionB += getWobble(positionB, normal) * normal;
+  positionA += getWobble(positionA, normal, steppedToCameraAmount) * normal;
+  positionB += getWobble(positionB, normal, steppedToCameraAmount) * normal;
   // Compute normal
   vec3 toA = normalize(positionA - csm_Position);
   vec3 toB = normalize(positionB - csm_Position);

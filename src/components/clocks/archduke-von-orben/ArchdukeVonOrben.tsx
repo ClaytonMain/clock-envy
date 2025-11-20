@@ -39,7 +39,7 @@ function ArchdukeVonOrben() {
         color={controlValues.hColor}
         formatHours24={formatHours24}
       />
-      <Digits position={[0, 0, 0.1]} />
+      <Digits position={[0, 0.09, 1]} />
     </>
   );
 }
