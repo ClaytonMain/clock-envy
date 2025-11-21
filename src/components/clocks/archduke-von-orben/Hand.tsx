@@ -1,6 +1,6 @@
 import { Sphere, Torus } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { springValue } from "motion/react";
+import { useSpring } from "motion/react";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import useAppStore from "../../../stores/useAppStore";
@@ -59,7 +59,7 @@ export default function Hand({
   const lastFrameTimeLengthPercentRef = useRef(
     getTimeLengthPercent(hms, formatHours24),
   );
-  const timeLengthPercent = springValue<number>(
+  const timeLengthPercent = useSpring(
     getTimeLengthPercent(hms, formatHours24),
     {
       ...SPRING_CONFIGS.shared,

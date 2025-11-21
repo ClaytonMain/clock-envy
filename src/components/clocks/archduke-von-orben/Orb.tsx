@@ -1,6 +1,6 @@
 import { useFrame } from "@react-three/fiber";
 import { monitor, useControls } from "leva";
-import { springValue } from "motion/react";
+import { useSpring } from "motion/react";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import CustomShaderMaterial from "three-custom-shader-material";
@@ -75,15 +75,15 @@ export default function Orb({
   // Sort of mimicking the Hand spring velocities, but without the large
   // jumps when going from full hand length to zero. Helps achieve the
   // tick effect on the orb each time the hand lengths change.
-  const hSpringLocal = springValue<number>(0, {
+  const hSpringLocal = useSpring(0, {
     ...SPRING_CONFIGS.shared,
     ...SPRING_CONFIGS.h,
   });
-  const mSpringLocal = springValue<number>(0, {
+  const mSpringLocal = useSpring(0, {
     ...SPRING_CONFIGS.shared,
     ...SPRING_CONFIGS.m,
   });
-  const sSpringLocal = springValue<number>(0, {
+  const sSpringLocal = useSpring(0, {
     ...SPRING_CONFIGS.shared,
     ...SPRING_CONFIGS.s,
   });
