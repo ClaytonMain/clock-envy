@@ -31,7 +31,7 @@ attribute vec4 tangent;
 
 #include ../../../../../shaders/includes/simplexNoise4d.glsl
 
-float getWobble(vec3 pos, vec3 norm, float steppedToCameraAmount) {
+float getWobble(vec3 pos, float steppedToCameraAmount) {
   vec3 adjustedPos = pos + vec3(0.0, 0.0, uTime * 0.015);
   float wobble =
     simplexNoise4d(
@@ -84,11 +84,11 @@ void main() {
   vSteppedToCameraAmount = steppedToCameraAmount;
 
   // Wobble
-  float wobble = getWobble(csm_Position, normal, steppedToCameraAmount);
+  float wobble = getWobble(csm_Position, steppedToCameraAmount);
   // wobble *= smoothstep(0.0, 1.0, pow(dot(normal, vec3(0.0, 0.0, -1.0)) * 0.5 + 0.5, 0.5));
   csm_Position += wobble * normal;
-  positionA += getWobble(positionA, normal, steppedToCameraAmount) * normal;
-  positionB += getWobble(positionB, normal, steppedToCameraAmount) * normal;
+  positionA += getWobble(positionA, steppedToCameraAmount) * normal;
+  positionB += getWobble(positionB, steppedToCameraAmount) * normal;
   // Compute normal
   vec3 toA = normalize(positionA - csm_Position);
   vec3 toB = normalize(positionB - csm_Position);

@@ -11,9 +11,6 @@ import Orb from "./Orb";
 function ArchdukeVonOrben() {
   const formatHours24 = useAppStore((state) => state.formatHours24);
   const controlValues = useControls({
-    // sColor: { value: "#2cff05" },
-    // mColor: { value: "#EB5160" },
-    // hColor: { value: "#84E6F8" },
     sColor: { value: "#deeadd" },
     mColor: { value: "#deeadd" },
     hColor: { value: "#deeadd" },
@@ -71,7 +68,22 @@ export default function ArchdukeVonOrbenScene() {
       <Stats />
       <Suspense fallback={null}>
         <Environment preset="city" resolution={2048} />
-        {/* Look for las vegas envmap */}
+        {/* <Environment preset="lobby" resolution={2048} /> */}
+        {/* <Environment>
+          <Lightformer
+            form="circle"
+            intensity={1}
+            position={[0, 10, 0]}
+            scale={50}
+          />
+          <Lightformer
+            form="circle"
+            intensity={1}
+            position={[0, 0, -10]}
+            scale={50}
+            target={[0, 0, 0]}
+          />
+        </Environment> */}
         <ambientLight intensity={0.5} layers={allLayers} />
         <directionalLight
           position={[0.25, 4, 4.25]}

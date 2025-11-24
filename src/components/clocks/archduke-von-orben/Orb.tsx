@@ -14,6 +14,9 @@ import orbFragmentShader from "./shaders/orb/orb.frag";
 import orbVertexShader from "./shaders/orb/orb.vert";
 
 const uniforms = {
+  // Orb
+  orbMass: new THREE.Uniform(5000.0),
+  orbDecayFactor: new THREE.Uniform(0.08),
   // Misc.
   uTime: new THREE.Uniform(0.0),
   uBasePosFreq: new THREE.Uniform(3.15),
@@ -48,7 +51,7 @@ export default function Orb({
   const orbRef = useRef<THREE.Mesh>(null!);
 
   const orbGeometry = useMemo(() => {
-    const geometry = mergeVertices(new THREE.IcosahedronGeometry(2, 50));
+    const geometry = mergeVertices(new THREE.IcosahedronGeometry(2, 80));
     geometry.computeTangents();
     return geometry;
   }, []);
@@ -137,13 +140,6 @@ export default function Orb({
   }, [formatHours24, hSpringLocal, mSpringLocal, sSpringLocal]);
 
   const controlValues = useControls({
-    // Velocity
-    velocityLimit: {
-      value: 1,
-      min: 0,
-      max: 1.5,
-      step: 0.01,
-    },
     // Orb
     orbMass: {
       value: 5000,
@@ -292,7 +288,6 @@ export default function Orb({
     uMTimeRef.current += deltaRef.current + mSpringLocal.getVelocity();
     uSTimeRef.current += deltaRef.current + sSpringLocal.getVelocity();
 
-    // Uniform updates.
     uniforms.uTime.value = uTimeRef.current;
     uniforms.uBasePosFreq.value = controlValues.uBasePosFreq;
     uniforms.uBaseTimeFreq.value = controlValues.uBaseTimeFreq;

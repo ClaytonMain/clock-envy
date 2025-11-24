@@ -1,6 +1,5 @@
 import { Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { DateTime } from "luxon";
 import { useSpring } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
@@ -21,32 +20,6 @@ function getDigitSpace(index: number, digitSpace: number, colonSpace: number) {
 // const fontUrl = "./fonts/roboto_mono/static/RobotoMono-Regular.ttf";
 const fontUrl = "./fonts/Six_Caps/SixCaps-Regular.ttf";
 const characters = "0123456789:";
-
-function getPresence(
-  index: number,
-  modTwo: 0 | 1,
-  currentTimeValue?: DateTime,
-  secretThirdOption = false,
-) {
-  if (!currentTimeValue) {
-    currentTimeValue = useAppStore.getState().currentTimeValue;
-  }
-  // This function will never be called for the semicolons.
-  // Can treat all characters as digits.
-  const charAtIndex = currentTimeValue.toFormat("HH:mm:ss").charAt(index);
-  const valueAtIndex = parseInt(charAtIndex);
-  if (index === 0) {
-    if (secretThirdOption) {
-      return valueAtIndex === 2 ? 1 : 0;
-    } else if (modTwo === 0 && valueAtIndex === 0) {
-      return 1;
-    } else if (modTwo === 1 && valueAtIndex === 1) {
-      return 1;
-    }
-    return 0;
-  }
-  return valueAtIndex % 2 === modTwo ? 1 : 0;
-}
 
 function getSpringConfig(index: number) {
   if ([0, 1].includes(index)) {
@@ -71,19 +44,21 @@ function getSpringConfig(index: number) {
 
 function Char({
   index,
-  modTwo,
   distance = 0.15,
   fadeSpeed = 3,
-  secretThirdOption = false,
 }: {
   index: number;
-  modTwo: 0 | 1;
   distance?: number;
   fadeSpeed?: number;
-  secretThirdOption?: boolean;
 }) {
   const isSemicolon = [2, 5].includes(index);
-  const [char, setChar] = useState(
+
+  const groupPosition = useMemo(() => {
+    const x = getDigitSpace(index, 0.2, 0.16);
+    return [x, 0, 0] as [number, number, number];
+  }, [index]);
+
+  const [text00Char, setText00Char] = useState(
     isSemicolon
       ? ":"
       : useAppStore
@@ -91,55 +66,78 @@ function Char({
           .currentTimeValue.toFormat("HH:mm:ss")
           .charAt(index),
   );
-  const presenceRef = useRef<number>(
-    isSemicolon ? 1 : getPresence(index, modTwo, undefined, secretThirdOption),
+  const [text01Char, setText01Char] = useState(
+    isSemicolon
+      ? ":"
+      : useAppStore
+          .getState()
+          .currentTimeValue.toFormat("HH:mm:ss")
+          .charAt(index),
   );
-  const yOffset = useSpring(
-    isSemicolon ? 0 : ((presenceRef.current + 1) % 2) * distance,
-    getSpringConfig(index),
-  );
-  const opacityRef = useRef<number>(presenceRef.current === 1 ? 1 : 0);
-  const presenceStateRef = useRef<
-    "present" | "entering" | "exiting" | "waiting"
-  >(presenceRef.current === 1 ? "present" : "waiting");
 
-  const charRef = useRef<THREE.Mesh>(null!);
-  const materialRef = useRef<THREE.MeshStandardMaterial>(null!);
+  const text00Ref = useRef<THREE.Mesh>(null!);
+  const text01Ref = useRef<THREE.Mesh>(null!);
+
+  const material00Ref = useRef<THREE.MeshStandardMaterial>(null!);
+  const material01Ref = useRef<THREE.MeshStandardMaterial>(null!);
+
+  const displayingRef = useRef<0 | 1>(0);
+
+  const text00YOffset = useSpring(0, getSpringConfig(index));
+  const text01YOffset = useSpring(distance, getSpringConfig(index));
+
+  const opacity00Ref = useRef<number>(1);
+  const opacity01Ref = useRef<number>(0);
+
+  const presence00StateRef = useRef<
+    "present" | "entering" | "exiting" | "waiting"
+  >("present");
+  const presence01StateRef = useRef<
+    "present" | "entering" | "exiting" | "waiting"
+  >("waiting");
+
+  const initializedRef = useRef(false);
 
   useEffect(() => {
     const unsubCurrentTimeValue = useAppStore.subscribe(
       (state) => state.currentTimeValue,
-      (value) => {
-        if (isSemicolon) return;
-        const newPresence = getPresence(
-          index,
-          modTwo,
-          value,
-          secretThirdOption,
+      (value, previousValue) => {
+        if (isSemicolon && initializedRef.current) return;
+
+        const char = value.toFormat("HH:mm:ss").charAt(index);
+        const previousChar = previousValue.toFormat("HH:mm:ss").charAt(index);
+
+        if (char === previousChar && initializedRef.current) return;
+
+        initializedRef.current = true;
+
+        const newDisplaying = ((displayingRef.current + 1) % 2) as 0 | 1;
+        displayingRef.current = newDisplaying;
+
+        setTimeout(
+          () => {
+            if (newDisplaying === 0) {
+              setText00Char(char);
+              presence00StateRef.current = "entering";
+              text00Ref.current.position.z = 0;
+              text00YOffset.set(0);
+
+              presence01StateRef.current = "exiting";
+              text01Ref.current.position.z = 0.01;
+              text01YOffset.set(-distance);
+            } else {
+              setText01Char(char);
+              presence01StateRef.current = "entering";
+              text01Ref.current.position.z = 0;
+              text01YOffset.set(0);
+
+              presence00StateRef.current = "exiting";
+              text00Ref.current.position.z = 0.01;
+              text00YOffset.set(-distance);
+            }
+          },
+          (7 - index) * 100,
         );
-        if (newPresence !== presenceRef.current) {
-          presenceRef.current = newPresence;
-          if (newPresence === 1) {
-            setTimeout(
-              () => {
-                setChar(value.toFormat("HH:mm:ss").charAt(index));
-                presenceStateRef.current = "entering";
-                charRef.current.position.z = 0;
-                yOffset.set(0);
-              },
-              [0, 3, 6].includes(index) ? 100 : 0,
-            );
-          } else {
-            setTimeout(
-              () => {
-                presenceStateRef.current = "exiting";
-                charRef.current.position.z = 0.01;
-                yOffset.set(-distance);
-              },
-              [0, 3, 6].includes(index) ? 100 : 0,
-            );
-          }
-        }
       },
     );
     return () => {
@@ -149,53 +147,82 @@ function Char({
   }, []);
 
   useFrame((_, delta) => {
-    if (presenceStateRef.current === "entering") {
-      opacityRef.current = Math.min(opacityRef.current + delta * fadeSpeed, 1);
-      if (opacityRef.current === 1) {
-        presenceStateRef.current = "present";
+    if (presence00StateRef.current === "entering") {
+      opacity00Ref.current = Math.min(
+        opacity00Ref.current + delta * fadeSpeed,
+        1,
+      );
+      if (opacity00Ref.current === 1) {
+        presence00StateRef.current = "present";
       }
-    } else if (presenceStateRef.current === "exiting") {
-      opacityRef.current = Math.max(
-        opacityRef.current - delta * fadeSpeed * 1.1,
+    } else if (presence00StateRef.current === "exiting") {
+      opacity00Ref.current = Math.max(
+        opacity00Ref.current - delta * fadeSpeed * 1.1,
         0,
       );
-      if (opacityRef.current === 0) {
-        presenceStateRef.current = "waiting";
-        yOffset.jump(distance);
+      if (opacity00Ref.current === 0) {
+        presence00StateRef.current = "waiting";
+        text00YOffset.jump(distance);
       }
     }
 
-    materialRef.current.opacity = opacityRef.current;
-    charRef.current.position.y = yOffset.get();
+    if (presence01StateRef.current === "entering") {
+      opacity01Ref.current = Math.min(
+        opacity01Ref.current + delta * fadeSpeed,
+        1,
+      );
+      if (opacity01Ref.current === 1) {
+        presence01StateRef.current = "present";
+      }
+    } else if (presence01StateRef.current === "exiting") {
+      opacity01Ref.current = Math.max(
+        opacity01Ref.current - delta * fadeSpeed * 1.1,
+        0,
+      );
+      if (opacity01Ref.current === 0) {
+        presence01StateRef.current = "waiting";
+        text01YOffset.jump(distance);
+      }
+    }
+
+    material00Ref.current.opacity = opacity00Ref.current;
+    text00Ref.current.position.y = text00YOffset.get();
+
+    material01Ref.current.opacity = opacity01Ref.current;
+    text01Ref.current.position.y = text01YOffset.get();
   });
-
   return (
-    <Text ref={charRef} font={fontUrl} characters={characters}>
-      {char}
-      <meshStandardMaterial
-        ref={materialRef}
-        color={"#deeadd"}
-        emissive={"#deeadd"}
-        emissiveIntensity={0.5}
-        side={THREE.BackSide}
-      />
-    </Text>
-  );
-}
-
-function ClockPositionCharGroup({ index }: { index: number }) {
-  const position = useMemo(() => {
-    const x = getDigitSpace(index, 0.2, 0.16);
-    return [x, 0, 0] as [number, number, number];
-  }, [index]);
-
-  return (
-    <group position={position}>
-      <Char index={index} modTwo={0} />
-      {![2, 5].includes(index) && <Char index={index} modTwo={1} />}
-      {index === 0 && (
-        <Char index={index} modTwo={0} secretThirdOption={true} />
-      )}
+    <group position={groupPosition}>
+      <Text
+        ref={text00Ref}
+        font={fontUrl}
+        characters={characters}
+        position={[0, 0, 0]}
+      >
+        {text00Char}
+        <meshStandardMaterial
+          ref={material00Ref}
+          color={"#deeadd"}
+          emissive={"#deeadd"}
+          emissiveIntensity={0.5}
+          side={THREE.BackSide}
+        />
+      </Text>
+      <Text
+        ref={text01Ref}
+        font={fontUrl}
+        characters={characters}
+        position={[0, distance, 0.01]}
+      >
+        {text01Char}
+        <meshStandardMaterial
+          ref={material01Ref}
+          color={"#deeadd"}
+          emissive={"#deeadd"}
+          emissiveIntensity={0.5}
+          side={THREE.BackSide}
+        />
+      </Text>
     </group>
   );
 }
@@ -213,7 +240,8 @@ export default function Digits({
   return (
     <group position={position} scale={[0.6, 0.6, 1]} layers={textLayers}>
       {Array.from({ length: 8 }).map((_, index) => {
-        return <ClockPositionCharGroup key={`digit-${index}`} index={index} />;
+        // return <ClockPositionCharGroup key={`digit-${index}`} index={index} />;
+        return <Char key={`digit-${index}`} index={index} />;
       })}
     </group>
   );
