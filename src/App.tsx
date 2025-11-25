@@ -28,12 +28,7 @@ function App() {
               path="/ArchdukeVonOrben"
               element={<ArchdukeVonOrbenScene />}
             />
-            <Route
-              path="*"
-              element={
-                <div className="App">react development is my passion</div>
-              }
-            />
+            <Route path="*" element={<ArchdukeVonOrbenScene />} />
           </Routes>
         </div>
       </FullScreen>

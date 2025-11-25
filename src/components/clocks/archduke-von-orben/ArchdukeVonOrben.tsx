@@ -1,39 +1,34 @@
-import { Environment, OrbitControls, Stats } from "@react-three/drei";
+import { Environment } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { useControls } from "leva";
 import { Suspense, useMemo } from "react";
 import * as THREE from "three";
 import useAppStore from "../../../stores/useAppStore";
+import CustomStatsComponent from "../../misc/CustomStatsComponent";
 import Digits from "./Digits";
 import Hand from "./Hand";
 import Orb from "./Orb";
 
 function ArchdukeVonOrben() {
   const formatHours24 = useAppStore((state) => state.formatHours24);
-  const controlValues = useControls({
-    sColor: { value: "#deeadd" },
-    mColor: { value: "#deeadd" },
-    hColor: { value: "#deeadd" },
-  });
   return (
     <>
       <Orb position={[0, 0, -2.3]} />
       <Hand
         hms="s"
         radius={1.3}
-        color={controlValues.sColor}
+        color={"#deeadd"}
         formatHours24={formatHours24}
       />
       <Hand
         hms="m"
         radius={1.0}
-        color={controlValues.mColor}
+        color={"#deeadd"}
         formatHours24={formatHours24}
       />
       <Hand
         hms="h"
         radius={0.7}
-        color={controlValues.hColor}
+        color={"#deeadd"}
         formatHours24={formatHours24}
       />
       <Digits position={[0, 0.09, 1]} />
@@ -42,6 +37,8 @@ function ArchdukeVonOrben() {
 }
 
 export default function ArchdukeVonOrbenScene() {
+  const interactionState = useAppStore((state) => state.interactionState);
+
   const cameraLayers = useMemo(() => {
     const layers = new THREE.Layers();
     layers.set(1);
@@ -54,55 +51,32 @@ export default function ArchdukeVonOrbenScene() {
   }, []);
 
   return (
-    <Canvas
-      shadows
-      dpr={Math.min(window.devicePixelRatio, 2)}
-      camera={{
-        position: [0, -2, 35],
-        rotation: [0.05, 0, 0],
-        fov: 8,
-        layers: cameraLayers,
-      }}
-    >
-      {/* <fog attach="fog" args={["#17171b", 30, 40]} /> */}
-      <Stats />
-      <Suspense fallback={null}>
-        <Environment preset="city" resolution={2048} />
-        {/* <Environment preset="lobby" resolution={2048} /> */}
-        {/* <Environment>
-          <Lightformer
-            form="circle"
-            intensity={1}
-            position={[0, 10, 0]}
-            scale={50}
+    <>
+      <Canvas
+        shadows
+        dpr={Math.min(window.devicePixelRatio, 2)}
+        camera={{
+          position: [0, -2, 35],
+          rotation: [0.05, 0, 0],
+          fov: 8,
+          layers: cameraLayers,
+        }}
+        style={{
+          touchAction: "none",
+          cursor: interactionState === "active" ? "default" : "none",
+        }}
+      >
+        <CustomStatsComponent />
+        <Suspense fallback={null}>
+          {/* <Environment preset="lobby" resolution={2048} /> */}
+          <Environment
+            files="./environments/warm_reception_dinner_4k.exr"
+            resolution={2048}
           />
-          <Lightformer
-            form="circle"
-            intensity={1}
-            position={[0, 0, -10]}
-            scale={50}
-            target={[0, 0, 0]}
-          />
-        </Environment> */}
-        <ambientLight intensity={0.5} layers={allLayers} />
-        <directionalLight
-          position={[0.25, 4, 4.25]}
-          intensity={1.0}
-          color={"#fff"}
-          layers={allLayers}
-          castShadow
-          shadow-camera-far={15}
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-          shadow-camera-left={-10}
-          shadow-camera-right={10}
-          shadow-camera-top={10}
-          shadow-camera-bottom={-10}
-          shadow-normalBias={0.05}
-        />
-        <OrbitControls makeDefault />
-        <ArchdukeVonOrben />
-      </Suspense>
-    </Canvas>
+          <ambientLight intensity={0.5} layers={allLayers} />
+          <ArchdukeVonOrben />
+        </Suspense>
+      </Canvas>
+    </>
   );
 }

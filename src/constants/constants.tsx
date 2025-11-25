@@ -34,3 +34,6 @@ export const CLOCK_NAMES = [
   //   "02 Magna",
   //   "02 Aliqua",
 ] as const;
+
+export const STATS_CLASS_NAME =
+  "if-it-works-then-it-aint-25783154-7c53-4f0f-bb9c-5b6813dc653e";
