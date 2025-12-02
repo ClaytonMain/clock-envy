@@ -42,6 +42,7 @@ function SidebarClockNameItem({
 }
 
 export default function Sidebar() {
+  const interactionState = useAppStore((state) => state.interactionState);
   const sidebarOpen = useAppStore((state) => state.sidebarOpen);
   const currentClockName = useAppStore((state) => state.currentClockName);
 
@@ -104,7 +105,10 @@ export default function Sidebar() {
       </AnimatePresence>
       <motion.div
         className="absolute top-8 z-30 cursor-pointer"
-        animate={{ left: sidebarOpen ? 320 + 16 : 32 }}
+        animate={{
+          left: sidebarOpen ? 320 + 16 : 32,
+          opacity: interactionState === "active" || sidebarOpen ? 1 : 0,
+        }}
         onClick={() => handleOnClick(!sidebarOpen)}
       >
         <motion.div className="relative" whileTap={{ scale: 0.9 }}>

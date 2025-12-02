@@ -1,6 +1,7 @@
 import { Stats } from "@react-three/drei";
 import { useEffect, useState } from "react";
 import { STATS_CLASS_NAME } from "../../constants/constants";
+import useAppStore from "../../stores/useAppStore";
 import type { StatsPosition } from "../../types/types";
 
 export default function CustomStatsComponent({
@@ -9,6 +10,7 @@ export default function CustomStatsComponent({
   position?: StatsPosition;
 }) {
   const [className, setClassName] = useState("");
+  const interactionState = useAppStore((state) => state.interactionState);
 
   useEffect(() => {
     const tOrB = position.charAt(0) === "t" ? "top-0" : "bottom-0";
@@ -30,7 +32,9 @@ export default function CustomStatsComponent({
       }
     }, 1000);
     return () => clearInterval(intervalId);
-  }, []);
+  }, [interactionState]);
 
-  return <Stats className={className} />;
+  return (
+    <>{interactionState === "active" && <Stats className={className} />}</>
+  );
 }

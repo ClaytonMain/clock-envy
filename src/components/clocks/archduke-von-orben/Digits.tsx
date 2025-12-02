@@ -17,9 +17,9 @@ function getDigitSpace(index: number, digitSpace: number, colonSpace: number) {
   );
 }
 
-// const fontUrl = "./fonts/roboto_mono/static/RobotoMono-Regular.ttf";
-const fontUrl = "./fonts/Six_Caps/SixCaps-Regular.ttf";
-const characters = "0123456789:";
+// const fontUrl = "./fonts/Roboto_Mono/static/RobotoMono-Regular.ttf";
+const FONT_URL = "./fonts/Six_Caps/SixCaps-Regular.ttf";
+const CHARACTERS = "0123456789:";
 
 function getSpringConfig(index: number) {
   if ([0, 1].includes(index)) {
@@ -195,8 +195,8 @@ function Char({
     <group position={groupPosition}>
       <Text
         ref={text00Ref}
-        font={fontUrl}
-        characters={characters}
+        font={FONT_URL}
+        characters={CHARACTERS}
         position={[0, 0, 0]}
       >
         {text00Char}
@@ -210,8 +210,8 @@ function Char({
       </Text>
       <Text
         ref={text01Ref}
-        font={fontUrl}
-        characters={characters}
+        font={FONT_URL}
+        characters={CHARACTERS}
         position={[0, distance, 0.01]}
       >
         {text01Char}
