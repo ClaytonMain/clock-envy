@@ -1,14 +1,17 @@
-import { Cylinder, Text } from "@react-three/drei";
-import { useMemo } from "react";
+import { Cylinder, Text, type TextProps } from "@react-three/drei";
+import { useFrame } from "@react-three/fiber";
+import { useControls } from "leva";
+import { useSpring } from "motion/react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
+import useAppStore from "../../../stores/useAppStore";
 
 // https://gm1sxx.blogspot.com/2020/07/the-anatomy-of-nixie-tube.html
 
 const FONT_URL_THIN = "./fonts/Roboto_Mono/static/RobotoMono-Thin.ttf";
-const FONT_URL_EXTRA_LIGHT =
-  "./fonts/Roboto_Mono/static/RobotoMono-ExtraLight.ttf";
 const DIGIT_Z_ORDER = [4, 9, 8, 0, 3, 5, 2, 7, 1, 6];
+// const DIGIT_Z_ORDER = [4];
 
 function Glass() {
   const glassGeometry = useMemo(() => {
@@ -64,6 +67,21 @@ function Glass() {
   );
 }
 
+const ACTIVE_VALUES = {
+  outlineBlur: 0.03,
+  outlineColor: "#ff6741",
+  outlineOpacity: 1,
+  outlineWidth: 0.03,
+};
+
+function getIsActiveCharacter(displayIndex: number, character: string) {
+  const currentChar = useAppStore
+    .getState()
+    .currentTimeValue.toFormat("HH:mm:ss")
+    .charAt(displayIndex);
+  return currentChar === character;
+}
+
 function Digit({
   displayIndex,
   character,
@@ -73,26 +91,54 @@ function Digit({
   character: string;
   zPosition: number;
 }) {
+  const textRef = useRef<TextProps>(null!);
+  const activeRef = useRef(getIsActiveCharacter(displayIndex, character));
+  const outlineOpacity = useSpring(
+    activeRef.current ? ACTIVE_VALUES.outlineOpacity : 0,
+    { stiffness: 500, damping: 40 },
+  );
+
+  useEffect(() => {
+    const unsubCurrentTimeValue = useAppStore.subscribe(
+      (state) => state.currentTimeValue,
+      (value, previous) => {
+        const formattedValue = value.toFormat("HH:mm:ss");
+        const formattedPrevious = previous.toFormat("HH:mm:ss");
+        if (formattedValue === formattedPrevious) return;
+        if (formattedValue.charAt(displayIndex) === character) {
+          activeRef.current = true;
+          outlineOpacity.set(ACTIVE_VALUES.outlineOpacity);
+        } else {
+          activeRef.current = false;
+          outlineOpacity.set(0);
+        }
+      },
+    );
+    return () => {
+      unsubCurrentTimeValue();
+    };
+  }, [character, displayIndex, outlineOpacity]);
+
+  useFrame(() => {
+    textRef.current!.outlineOpacity = outlineOpacity.get();
+  });
+
   return (
     <>
       <Text
+        ref={textRef}
+        onClick={() => console.log(textRef.current)}
         font={FONT_URL_THIN}
         position={[0, 0, zPosition]}
         characters={character}
         fontSize={0.55}
+        outlineBlur={ACTIVE_VALUES.outlineBlur}
+        outlineColor={ACTIVE_VALUES.outlineColor}
+        outlineOpacity={outlineOpacity.get()}
+        outlineWidth={ACTIVE_VALUES.outlineWidth}
       >
         {character}
-        <meshStandardMaterial color={"#333"} metalness={0.7} roughness={0.7} />
-      </Text>
-      <Text
-        font={FONT_URL_EXTRA_LIGHT}
-        position={[0, 0, zPosition - 0.001]}
-        characters={character}
-        fontSize={0.57}
-        lineHeight={0.98}
-      >
-        {character}
-        <meshBasicMaterial color={"#ffaa00"} />
+        <meshStandardMaterial color={"#888"} />
       </Text>
     </>
   );
