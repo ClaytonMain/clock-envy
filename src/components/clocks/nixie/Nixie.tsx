@@ -8,7 +8,12 @@ import Tube from "./Tube";
 function Nixie() {
   return (
     <>
-      <Tube displayIndex={7} />
+      <Tube displayIndex={0} position={[-1.4, 0, 0]} />
+      <Tube displayIndex={1} position={[-0.9, 0, 0]} />
+      <Tube displayIndex={3} position={[-0.25, 0, 0]} />
+      <Tube displayIndex={4} position={[0.25, 0, 0]} />
+      <Tube displayIndex={6} position={[0.9, 0, 0]} />
+      <Tube displayIndex={7} position={[1.4, 0, 0]} />
     </>
   );
 }
@@ -33,7 +38,11 @@ export default function NixieScene() {
       >
         <CustomStatsComponent />
         <Suspense fallback={null}>
-          <Environment preset="city" resolution={2048} />
+          {/* <Environment preset="city" resolution={2048} /> */}
+          <Environment
+            files="./environments/golden_bay_4k.exr"
+            resolution={2048}
+          />
           <ambientLight intensity={0.5} />
           <Nixie />
           <OrbitControls makeDefault />

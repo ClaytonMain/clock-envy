@@ -1,9 +1,9 @@
 import { Cylinder, Text, type TextProps } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useControls } from "leva";
 import { useSpring } from "motion/react";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+// import { RectAreaLightHelper } from "three/addons/helpers/RectAreaLightHelper.js";
 import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 import useAppStore from "../../../stores/useAppStore";
 
@@ -11,6 +11,7 @@ import useAppStore from "../../../stores/useAppStore";
 
 const FONT_URL_THIN = "./fonts/Roboto_Mono/static/RobotoMono-Thin.ttf";
 const DIGIT_Z_ORDER = [4, 9, 8, 0, 3, 5, 2, 7, 1, 6];
+const DIGIT_Z_SPACE = 0.02;
 // const DIGIT_Z_ORDER = [4];
 
 function Glass() {
@@ -92,6 +93,8 @@ function Digit({
   zPosition: number;
 }) {
   const textRef = useRef<TextProps>(null!);
+  const light01Ref = useRef<THREE.RectAreaLight>(null!);
+  const light02Ref = useRef<THREE.RectAreaLight>(null!);
   const activeRef = useRef(getIsActiveCharacter(displayIndex, character));
   const outlineOpacity = useSpring(
     activeRef.current ? ACTIVE_VALUES.outlineOpacity : 0,
@@ -109,7 +112,6 @@ function Digit({
           activeRef.current = true;
           outlineOpacity.set(ACTIVE_VALUES.outlineOpacity);
         } else {
-          activeRef.current = false;
           outlineOpacity.set(0);
         }
       },
@@ -121,6 +123,27 @@ function Digit({
 
   useFrame(() => {
     textRef.current!.outlineOpacity = outlineOpacity.get();
+    if (
+      outlineOpacity.get() < 0.01 &&
+      (outlineOpacity.getPrevious() || 0) >= 0.01 &&
+      activeRef.current
+    ) {
+      activeRef.current = false;
+
+      // light01Ref.current.intensity = 0;
+      // light02Ref.current.intensity = 0;
+
+      // light01Ref.current.visible = false;
+      // light02Ref.current.visible = false;
+    }
+    if (activeRef.current) {
+      // if (!light01Ref.current.visible || !light02Ref.current.visible) {
+      //   light01Ref.current.visible = true;
+      //   light02Ref.current.visible = true;
+      // }
+      // light01Ref.current.intensity = 1 * outlineOpacity.get();
+      // light02Ref.current.intensity = 1 * outlineOpacity.get();
+    }
   });
 
   return (
@@ -138,8 +161,25 @@ function Digit({
         outlineWidth={ACTIVE_VALUES.outlineWidth}
       >
         {character}
-        <meshStandardMaterial color={"#888"} />
+        <meshStandardMaterial color={"#333"} />
       </Text>
+      {/* <rectAreaLight
+        ref={light01Ref}
+        visible={false}
+        intensity={0}
+        position={[0, -0.01, zPosition + DIGIT_Z_SPACE / 4]}
+        width={0.35}
+        height={0.5}
+      />
+      <rectAreaLight
+        ref={light02Ref}
+        visible={false}
+        intensity={0}
+        position={[0, -0.01, zPosition + DIGIT_Z_SPACE / 4]}
+        rotation={[0, Math.PI, 0]}
+        width={0.35}
+        height={0.5}
+      /> */}
     </>
   );
 }
@@ -152,7 +192,7 @@ function Digits({ displayIndex }: { displayIndex: number }) {
           key={digit}
           displayIndex={displayIndex}
           character={digit.toString()}
-          zPosition={(zIndex - 4) * 0.02}
+          zPosition={(zIndex - 4) * DIGIT_Z_SPACE}
         />
       ))}
     </group>
