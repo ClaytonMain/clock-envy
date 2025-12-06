@@ -1,79 +1,56 @@
-import { Cylinder, Text, type TextProps } from "@react-three/drei";
+import {
+  Cylinder,
+  MeshTransmissionMaterial,
+  Text,
+  type TextProps,
+} from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useSpring } from "motion/react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import * as THREE from "three";
-// import { RectAreaLightHelper } from "three/addons/helpers/RectAreaLightHelper.js";
-import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 import useAppStore from "../../../stores/useAppStore";
 
 // https://gm1sxx.blogspot.com/2020/07/the-anatomy-of-nixie-tube.html
 
 const FONT_URL_THIN = "./fonts/Roboto_Mono/static/RobotoMono-Thin.ttf";
 const DIGIT_Z_ORDER = [4, 9, 8, 0, 3, 5, 2, 7, 1, 6];
-const DIGIT_Z_SPACE = 0.02;
+const DIGIT_Z_SPACE = 0.01;
 // const DIGIT_Z_ORDER = [4];
 
-function Glass() {
-  const glassGeometry = useMemo(() => {
-    const points = [];
-    // points.push(new THREE.Vector2(0.0, 1.0));
-    // points.push(new THREE.Vector2(0.009, 0.998));
-    // points.push(new THREE.Vector2(0.0197, 0.989));
-    // points.push(new THREE.Vector2(0.022, 0.98));
-    // points.push(new THREE.Vector2(0.0245, 0.97));
-    // points.push(new THREE.Vector2(0.028, 0.948));
-    // points.push(new THREE.Vector2(0.035, 0.94));
-    // points.push(new THREE.Vector2(0.05, 0.934));
-    // points.push(new THREE.Vector2(0.072, 0.928));
-    // points.push(new THREE.Vector2(0.1, 0.92));
-    // points.push(new THREE.Vector2(0.15, 0.9));
-    // points.push(new THREE.Vector2(0.195, 0.87));
-    // points.push(new THREE.Vector2(0.24, 0.82));
-    // points.push(new THREE.Vector2(0.26, 0.77));
-    // points.push(new THREE.Vector2(0.26, 0.6));
-    // points.push(new THREE.Vector2(0.26, 0.5));
-    // points.push(new THREE.Vector2(0.26, 0.5));
-    // points.push(new THREE.Vector2(0.26, 0.4));
-    // points.push(new THREE.Vector2(0.26, 0.3));
-    // points.push(new THREE.Vector2(0.26, 0.2));
-    // points.push(new THREE.Vector2(0.26, 0.1));
-    // points.push(new THREE.Vector2(0.26, 0.0));
-    // Return
-    points.push(new THREE.Vector2(0.22, 0.0));
-    points.push(new THREE.Vector2(0.22, 0.1));
-    points.push(new THREE.Vector2(0.22, 0.2));
-    points.push(new THREE.Vector2(0.22, 0.3));
-    points.push(new THREE.Vector2(0.22, 0.4));
-    points.push(new THREE.Vector2(0.22, 0.5));
-    points.push(new THREE.Vector2(0.22, 0.6));
-    points.push(new THREE.Vector2(0.22, 0.7));
-    points.push(new THREE.Vector2(0.22, 0.77));
-    points.push(new THREE.Vector2(0.21, 0.795));
-    points.push(new THREE.Vector2(0.195, 0.82));
-    points.push(new THREE.Vector2(0.175, 0.84));
-    points.push(new THREE.Vector2(0.13, 0.866));
-    points.push(new THREE.Vector2(0.07, 0.89));
-    points.push(new THREE.Vector2(0, 0.897));
-    points.reverse();
-    const geometry = new THREE.LatheGeometry(points, 32);
-    return mergeVertices(geometry);
-  }, []);
-
-  return (
-    <mesh geometry={glassGeometry}>
-      {/* <meshStandardMaterial color="white" /> */}
-      <meshNormalMaterial />
-    </mesh>
-  );
-}
+const MAX_LIGHT_INTENSITY = 1;
 
 const ACTIVE_VALUES = {
   outlineBlur: 0.03,
   outlineColor: "#ff6741",
   outlineOpacity: 1,
-  outlineWidth: 0.03,
+  outlineWidth: 0.02,
 };
+
+const SPRING_CONFIGS = {
+  shared: {
+    stiffness: 500,
+    damping: 40,
+  },
+};
+
+function Glass({ glassGeometry }: { glassGeometry: THREE.BufferGeometry }) {
+  return (
+    <mesh geometry={glassGeometry}>
+      {/* <meshStandardMaterial color="white" /> */}
+      {/* <meshNormalMaterial /> */}
+      <MeshTransmissionMaterial
+        // clearcoatRoughness={0.6}
+        // clearcoat={0.6}
+        reflectivity={0.2}
+        roughness={0.1}
+        // distortion={10}
+        // distortionScale={1000}
+        // anisotropicBlur={1}
+        // transmissionSampler
+      />
+    </mesh>
+  );
+}
 
 function getIsActiveCharacter(displayIndex: number, character: string) {
   const currentChar = useAppStore
@@ -93,13 +70,17 @@ function Digit({
   zPosition: number;
 }) {
   const textRef = useRef<TextProps>(null!);
-  const light01Ref = useRef<THREE.RectAreaLight>(null!);
-  const light02Ref = useRef<THREE.RectAreaLight>(null!);
-  const activeRef = useRef(getIsActiveCharacter(displayIndex, character));
+  // const materialRef = useRef<THREE.MeshBasicMaterial>(null!);
   const outlineOpacity = useSpring(
-    activeRef.current ? ACTIVE_VALUES.outlineOpacity : 0,
-    { stiffness: 500, damping: 40 },
+    getIsActiveCharacter(displayIndex, character)
+      ? ACTIVE_VALUES.outlineOpacity
+      : 0,
+    SPRING_CONFIGS.shared,
   );
+  // const textColor = useSpring(
+  //   getIsActiveCharacter(displayIndex, character) ? "#ff6741" : "#333",
+  //   SPRING_CONFIGS.shared,
+  // );
 
   useEffect(() => {
     const unsubCurrentTimeValue = useAppStore.subscribe(
@@ -109,10 +90,13 @@ function Digit({
         const formattedPrevious = previous.toFormat("HH:mm:ss");
         if (formattedValue === formattedPrevious) return;
         if (formattedValue.charAt(displayIndex) === character) {
-          activeRef.current = true;
           outlineOpacity.set(ACTIVE_VALUES.outlineOpacity);
+          // materialRef.current.color.set("#ff6741");
+          // textColor.set("#ff6741");
         } else {
           outlineOpacity.set(0);
+          // materialRef.current.color.set("#333");
+          // textColor.set("#333");
         }
       },
     );
@@ -123,27 +107,6 @@ function Digit({
 
   useFrame(() => {
     textRef.current!.outlineOpacity = outlineOpacity.get();
-    if (
-      outlineOpacity.get() < 0.01 &&
-      (outlineOpacity.getPrevious() || 0) >= 0.01 &&
-      activeRef.current
-    ) {
-      activeRef.current = false;
-
-      // light01Ref.current.intensity = 0;
-      // light02Ref.current.intensity = 0;
-
-      // light01Ref.current.visible = false;
-      // light02Ref.current.visible = false;
-    }
-    if (activeRef.current) {
-      // if (!light01Ref.current.visible || !light02Ref.current.visible) {
-      //   light01Ref.current.visible = true;
-      //   light02Ref.current.visible = true;
-      // }
-      // light01Ref.current.intensity = 1 * outlineOpacity.get();
-      // light02Ref.current.intensity = 1 * outlineOpacity.get();
-    }
   });
 
   return (
@@ -161,25 +124,21 @@ function Digit({
         outlineWidth={ACTIVE_VALUES.outlineWidth}
       >
         {character}
-        <meshStandardMaterial color={"#333"} />
+        {/* <meshBasicMaterial ref={materialRef} color={"#333"} /> */}
+        <meshStandardMaterial
+          color={"#333"}
+          opacity={0.8}
+          // transparent={false}
+          emissive={"#ff6741"}
+          emissiveIntensity={0.02}
+        />
+        {/* <MeshTransmissionMaterial
+          color={"#333"}
+          emissive={"#ff6741"}
+          emissiveIntensity={0.9}
+          transmissionSampler
+        /> */}
       </Text>
-      {/* <rectAreaLight
-        ref={light01Ref}
-        visible={false}
-        intensity={0}
-        position={[0, -0.01, zPosition + DIGIT_Z_SPACE / 4]}
-        width={0.35}
-        height={0.5}
-      />
-      <rectAreaLight
-        ref={light02Ref}
-        visible={false}
-        intensity={0}
-        position={[0, -0.01, zPosition + DIGIT_Z_SPACE / 4]}
-        rotation={[0, Math.PI, 0]}
-        width={0.35}
-        height={0.5}
-      /> */}
     </>
   );
 }
@@ -200,7 +159,8 @@ function Digits({ displayIndex }: { displayIndex: number }) {
 }
 
 function Plate() {
-  return <Cylinder args={[0.21, 0.21, 0.005, 32, 1]} position={[0, 0.13, 0]} />;
+  // return <Cylinder args={[0.21, 0.21, 0.005, 32, 1]} position={[0, 0.13, 0]} />;
+  return null;
 }
 
 function Posts() {
@@ -215,21 +175,144 @@ function Screen() {
   return null;
 }
 
+function Lights({ displayIndex }: { displayIndex: number }) {
+  const lightGroup00Ref = useRef<THREE.Group>(null!);
+  const lightGroup01Ref = useRef<THREE.Group>(null!);
+
+  const light0000Ref = useRef<THREE.PointLight>(null!);
+  // const light0001Ref = useRef<THREE.RectAreaLight>(null!);
+  const light0100Ref = useRef<THREE.PointLight>(null!);
+  // const light0101Ref = useRef<THREE.RectAreaLight>(null!);
+
+  const light00Intensity = useSpring(0, SPRING_CONFIGS.shared);
+  const light01Intensity = useSpring(0, SPRING_CONFIGS.shared);
+
+  const displayingRef = useRef<0 | 1>(0);
+
+  const initializedRef = useRef(false);
+
+  useEffect(() => {
+    const unsubCurrentTimeValue = useAppStore.subscribe(
+      (state) => state.currentTimeValue,
+      (value, previousValue) => {
+        const char = value.toFormat("HH:mm:ss").charAt(displayIndex);
+        const previousChar = previousValue
+          .toFormat("HH:mm:ss")
+          .charAt(displayIndex);
+
+        if (char === previousChar && initializedRef.current) return;
+
+        if (!initializedRef.current) initializedRef.current = true;
+
+        const newDisplaying = ((displayingRef.current + 1) % 2) as 0 | 1;
+        displayingRef.current = newDisplaying;
+
+        if (newDisplaying === 0) {
+          lightGroup00Ref.current.position.z =
+            (DIGIT_Z_ORDER[parseInt(char)] - 4) * DIGIT_Z_SPACE;
+          light00Intensity.set(MAX_LIGHT_INTENSITY);
+
+          light01Intensity.set(0);
+        } else {
+          lightGroup01Ref.current.position.z =
+            (DIGIT_Z_ORDER[parseInt(char)] - 4) * DIGIT_Z_SPACE;
+          light01Intensity.set(MAX_LIGHT_INTENSITY);
+
+          light00Intensity.set(0);
+        }
+      },
+    );
+    return () => {
+      unsubCurrentTimeValue();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useFrame(() => {
+    light0000Ref.current.intensity = light00Intensity.get();
+    // light0001Ref.current.intensity = light00Intensity.get();
+    light0100Ref.current.intensity = light01Intensity.get();
+    // light0101Ref.current.intensity = light01Intensity.get();
+    if (light00Intensity.get() < 0.01) {
+      light0000Ref.current.visible = false;
+      // light0001Ref.current.visible = false;
+    } else {
+      light0000Ref.current.visible = true;
+      // light0001Ref.current.visible = true;
+    }
+    if (light01Intensity.get() < 0.01) {
+      light0100Ref.current.visible = false;
+      // light0101Ref.current.visible = false;
+    } else {
+      light0100Ref.current.visible = true;
+      // light0101Ref.current.visible = true;
+    }
+  });
+
+  return (
+    <>
+      <group ref={lightGroup00Ref} position={[0, 0.4, 0]}>
+        <pointLight
+          ref={light0000Ref}
+          color={"#ff6741"}
+          intensity={MAX_LIGHT_INTENSITY}
+          visible={true}
+          position={[0, -0.01, DIGIT_Z_SPACE / 2]}
+          // width={0.35}
+          // height={0.5}
+        />
+        {/* <rectAreaLight
+          ref={light0001Ref}
+          intensity={MAX_LIGHT_INTENSITY}
+          visible={true}
+          position={[0, -0.01, -DIGIT_Z_SPACE / 4]}
+          rotation={[0, Math.PI, 0]}
+          width={0.35}
+          height={0.5}
+        /> */}
+      </group>
+      <group ref={lightGroup01Ref} position={[0, 0.4, 0]}>
+        <pointLight
+          ref={light0100Ref}
+          color={"#ff6741"}
+          intensity={0}
+          visible={false}
+          position={[0, -0.01, DIGIT_Z_SPACE / 2]}
+          // width={0.35}
+          // height={0.5}
+        />
+        {/* <rectAreaLight
+          ref={light0101Ref}
+          intensity={0}
+          visible={false}
+          position={[0, -0.01, -DIGIT_Z_SPACE / 4]}
+          rotation={[0, Math.PI, 0]}
+          width={0.35}
+          height={0.5}
+        /> */}
+      </group>
+    </>
+  );
+}
+
 export default function Tube({
   displayIndex,
   position = [0, 0, 0],
+  glassGeometry,
 }: {
   displayIndex: number;
   position?: [number, number, number];
+  glassGeometry: THREE.BufferGeometry;
 }) {
   return (
     <group position={position}>
-      <Glass />
+      <Glass glassGeometry={glassGeometry} />
       <Digits displayIndex={displayIndex} />
       <Plate />
       <Posts />
       <Backing />
       <Screen />
+      <Lights displayIndex={displayIndex} />
     </group>
   );
 }
