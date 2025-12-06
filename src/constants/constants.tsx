@@ -3,7 +3,12 @@ export const CLOCK_NAMES = [
   "Archduke Von Orben",
   "Flip",
   "Fourier",
+  "Game of Life",
+  "Hex",
+  "Hollow",
   "Nixie",
+  "Shadow Box",
+  "Viva",
   "Word",
 ] as const;
 

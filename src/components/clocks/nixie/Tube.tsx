@@ -1,5 +1,4 @@
 import {
-  Cylinder,
   MeshTransmissionMaterial,
   Text,
   type TextProps,

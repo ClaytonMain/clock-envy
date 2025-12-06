@@ -1,4 +1,9 @@
-import { Environment, OrbitControls, RoundedBox } from "@react-three/drei";
+import {
+  Environment,
+  Loader,
+  OrbitControls,
+  RoundedBox,
+} from "@react-three/drei";
 import { Canvas, useLoader } from "@react-three/fiber";
 import { Suspense, useMemo } from "react";
 import * as THREE from "three";
@@ -150,6 +155,12 @@ export default function NixieScene() {
           <OrbitControls makeDefault />
         </Suspense>
       </Canvas>
+      <Loader />
+      <div className="fixed top-0 left-0 flex h-full w-full">
+        <div className="pointer-events-none m-auto text-center text-9xl text-white select-none">
+          WORK IN PROGRESS I AM NOT PLEASED WITH THIS YET
+        </div>
+      </div>
     </>
   );
 }

@@ -1,4 +1,4 @@
-import { Environment } from "@react-three/drei";
+import { Environment, Loader } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { Suspense, useMemo } from "react";
 import * as THREE from "three";
@@ -77,6 +77,7 @@ export default function ArchdukeVonOrbenScene() {
           <ArchdukeVonOrben />
         </Suspense>
       </Canvas>
+      <Loader />
     </>
   );
 }
