@@ -17,9 +17,9 @@ function getDigitSpace(index: number, digitSpace: number, colonSpace: number) {
   );
 }
 
-// const fontUrl = "./fonts/roboto_mono/static/RobotoMono-Regular.ttf";
-const fontUrl = "./fonts/Six_Caps/SixCaps-Regular.ttf";
-const characters = "0123456789:";
+// const fontUrl = "./fonts/Roboto_Mono/static/RobotoMono-Regular.ttf";
+const FONT_URL = "./fonts/Six_Caps/SixCaps-Regular.ttf";
+const CHARACTERS = "0123456789:";
 
 function getSpringConfig(index: number) {
   if ([0, 1].includes(index)) {
@@ -109,7 +109,7 @@ function Char({
 
         if (char === previousChar && initializedRef.current) return;
 
-        initializedRef.current = true;
+        if (!initializedRef.current) initializedRef.current = true;
 
         const newDisplaying = ((displayingRef.current + 1) % 2) as 0 | 1;
         displayingRef.current = newDisplaying;
@@ -146,10 +146,13 @@ function Char({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const deltaRef = useRef(0);
   useFrame((_, delta) => {
+    deltaRef.current = Math.min(delta, 0.01);
+
     if (presence00StateRef.current === "entering") {
       opacity00Ref.current = Math.min(
-        opacity00Ref.current + delta * fadeSpeed,
+        opacity00Ref.current + deltaRef.current * fadeSpeed,
         1,
       );
       if (opacity00Ref.current === 1) {
@@ -157,7 +160,7 @@ function Char({
       }
     } else if (presence00StateRef.current === "exiting") {
       opacity00Ref.current = Math.max(
-        opacity00Ref.current - delta * fadeSpeed * 1.1,
+        opacity00Ref.current - deltaRef.current * fadeSpeed * 1.1,
         0,
       );
       if (opacity00Ref.current === 0) {
@@ -168,7 +171,7 @@ function Char({
 
     if (presence01StateRef.current === "entering") {
       opacity01Ref.current = Math.min(
-        opacity01Ref.current + delta * fadeSpeed,
+        opacity01Ref.current + deltaRef.current * fadeSpeed,
         1,
       );
       if (opacity01Ref.current === 1) {
@@ -176,7 +179,7 @@ function Char({
       }
     } else if (presence01StateRef.current === "exiting") {
       opacity01Ref.current = Math.max(
-        opacity01Ref.current - delta * fadeSpeed * 1.1,
+        opacity01Ref.current - deltaRef.current * fadeSpeed * 1.1,
         0,
       );
       if (opacity01Ref.current === 0) {
@@ -195,8 +198,8 @@ function Char({
     <group position={groupPosition}>
       <Text
         ref={text00Ref}
-        font={fontUrl}
-        characters={characters}
+        font={FONT_URL}
+        characters={CHARACTERS}
         position={[0, 0, 0]}
       >
         {text00Char}
@@ -210,8 +213,8 @@ function Char({
       </Text>
       <Text
         ref={text01Ref}
-        font={fontUrl}
-        characters={characters}
+        font={FONT_URL}
+        characters={CHARACTERS}
         position={[0, distance, 0.01]}
       >
         {text01Char}
