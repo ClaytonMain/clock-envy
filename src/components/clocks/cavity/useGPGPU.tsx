@@ -8,11 +8,13 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { GPUComputationRenderer } from "three/examples/jsm/misc/GPUComputationRenderer.js";
 import {
-  CUBES_PER_SIDE,
+  CUBE_COUNT_X,
+  CUBE_COUNT_Y,
+  CUBE_COUNT_Z,
   CUBE_SIZE,
   TEXTURE_SIZE,
   TOTAL_CUBES,
-} from "./constants";
+} from "./constants/constants";
 import gpgpuShader from "./shaders/gpgpu/gpgpu.glsl";
 
 export default function useGPGPU() {
@@ -59,7 +61,9 @@ export default function useGPGPU() {
     sizeVariable.material.uniforms.uTextureDefaultSize = {
       value: textureDefaultSize,
     };
-    sizeVariable.material.uniforms.cubesPerSide = { value: CUBES_PER_SIDE };
+    sizeVariable.material.uniforms.uCubeCountX = { value: CUBE_COUNT_X };
+    sizeVariable.material.uniforms.uCubeCountY = { value: CUBE_COUNT_Y };
+    sizeVariable.material.uniforms.uCubeCountZ = { value: CUBE_COUNT_Z };
 
     return {
       computation,

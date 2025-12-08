@@ -1,3 +1,10 @@
+export const CUBE_COUNT_X = 100;
+export const CUBE_COUNT_Y = 100;
+export const CUBE_COUNT_Z = 11;
+export const CUBE_SIZE = 0.2;
+export const TOTAL_CUBES = CUBE_COUNT_X * CUBE_COUNT_Y * CUBE_COUNT_Z;
+export const TEXTURE_SIZE = Math.ceil(Math.sqrt(TOTAL_CUBES));
+
 export const SPRING_CONFIGS = {
   shared: {
     restDelta: 0.0001,

@@ -43,7 +43,7 @@ function getSpringConfig(index: number) {
 
 function Char({
   index,
-  distance = 0.15,
+  distance = 0,
   fadeSpeed = 3,
 }: {
   index: number;
@@ -200,6 +200,9 @@ function Char({
         font={FONT_URL}
         characters={CHARACTERS}
         position={[0, 0, 0]}
+        outlineBlur={0.07}
+        outlineWidth={0.04}
+        outlineColor={"#fff"}
       >
         {text00Char}
         <meshBasicMaterial ref={material00Ref} color={"#fff"} />
@@ -209,6 +212,9 @@ function Char({
         font={FONT_URL}
         characters={CHARACTERS}
         position={[0, distance, 0.01]}
+        outlineBlur={0.07}
+        outlineWidth={0.04}
+        outlineColor={"#fff"}
       >
         {text01Char}
         <meshBasicMaterial ref={material01Ref} color={"#fff"} />
