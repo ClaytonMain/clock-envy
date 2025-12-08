@@ -30,7 +30,7 @@ export default function CustomStatsComponent({
       ) {
         statsElement.removeAttribute("style");
       }
-    }, 1000);
+    }, 100);
     return () => clearInterval(intervalId);
   }, [interactionState]);
 

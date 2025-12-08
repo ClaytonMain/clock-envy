@@ -1,11 +1,11 @@
 // Remember to keep this list sorted.
 export const CLOCK_NAMES = [
   "Archduke Von Orben",
+  "Cavity",
   "Flip",
   "Fourier",
   "Game of Life",
   "Hex",
-  "Hollow",
   "Nixie",
   "Shadow Box",
   "Viva",

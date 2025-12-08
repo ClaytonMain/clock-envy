@@ -2,6 +2,7 @@ import { FullScreen, useFullScreenHandle } from "react-full-screen";
 import { Route, Routes } from "react-router";
 import "./App.css";
 import ArchdukeVonOrbenScene from "./components/clocks/archduke-von-orben/ArchdukeVonOrben";
+import CavityScene from "./components/clocks/cavity/Cavity";
 import NixieScene from "./components/clocks/nixie/Nixie";
 import Timekeeper from "./components/misc/Timekeeper";
 import FullscreenHandleComponent from "./components/ui/FullscreenHandleComponent";
@@ -30,6 +31,7 @@ function App() {
               element={<ArchdukeVonOrbenScene />}
             />
             <Route path="/Nixie" element={<NixieScene />} />
+            <Route path="/Cavity" element={<CavityScene />} />
             <Route path="*" element={<ArchdukeVonOrbenScene />} />
           </Routes>
         </div>
