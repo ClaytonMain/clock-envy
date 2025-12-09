@@ -1,12 +1,6 @@
-import {
-  Environment,
-  Loader,
-  OrbitControls,
-  Plane,
-  useFBO,
-} from "@react-three/drei";
+import { Loader, OrbitControls, Plane, useFBO } from "@react-three/drei";
 import { Canvas, createPortal, useFrame } from "@react-three/fiber";
-import { Suspense, useEffect, useMemo, useRef } from "react";
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import useAppStore from "../../../stores/useAppStore";
 import CustomStatsComponent from "../../misc/CustomStatsComponent";
@@ -39,8 +33,8 @@ const cubeUniforms = {
 function Cavity() {
   const { gpgpuTexture } = useGPGPU();
 
-  const instancedMeshRef = useRef<THREE.InstancedMesh>(null!);
-  const instancedMeshRef02 = useRef<THREE.InstancedMesh>(null!);
+  const instancedMeshRef00 = useRef<THREE.InstancedMesh>(null!);
+  const instancedMeshRef01 = useRef<THREE.InstancedMesh>(null!);
 
   const gpgpuDisplayPlaneRef = useRef<THREE.Mesh>(null!);
   const clockDisplayPlaneRef = useRef<THREE.Mesh>(null!);
@@ -49,10 +43,10 @@ function Cavity() {
   const clockCamera = useMemo(
     () =>
       new THREE.OrthographicCamera(
-        -window.innerWidth / 2,
-        window.innerWidth / 2,
-        window.innerHeight / 2,
-        -window.innerHeight / 2,
+        -256 / 2,
+        256 / 2,
+        256 / 2,
+        -256 / 2,
         1 / Math.pow(2, 53),
         1,
       ),
@@ -68,7 +62,10 @@ function Cavity() {
     type: THREE.UnsignedByteType,
   });
 
-  const cubesGeometry = useMemo(() => {
+  const cubesGeometry00 = useMemo(() => {
+    // const geometry =
+    //   new RoundedBoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE, 1, 0.05)
+
     const geometry = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
     const gpgpuUvs = new Float32Array(TOTAL_CUBES * 2);
     const cubePositions = new Float32Array(TOTAL_CUBES * 3);
@@ -112,38 +109,84 @@ function Cavity() {
     return geometry;
   }, []);
 
-  useEffect(() => {
-    if (!instancedMeshRef.current) return;
+  const cubesGeometry01 = useMemo(() => {
+    const geometry = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
+    const gpgpuUvs = new Float32Array(TOTAL_CUBES * 2);
+    const cubePositions = new Float32Array(TOTAL_CUBES * 3);
+    const normalizedCubePositions = new Float32Array(TOTAL_CUBES * 3);
+
     for (let i = 0; i < TOTAL_CUBES; i++) {
-      instancedMeshRef.current.setMatrixAt(
-        i,
-        new THREE.Matrix4().setPosition(
-          ((i % CUBE_COUNT_X) - CUBE_COUNT_X / 2) * CUBE_SIZE,
-          (Math.floor(i / (CUBE_COUNT_X * CUBE_COUNT_Z)) - CUBE_COUNT_Y / 2) *
-            CUBE_SIZE,
-          ((Math.floor(i / CUBE_COUNT_X) % CUBE_COUNT_Z) - CUBE_COUNT_Z / 2) *
-            CUBE_SIZE,
-        ),
-      );
+      const i2 = i * 2;
+      const i3 = i * 3;
+
+      gpgpuUvs[i2 + 0] = (i % TEXTURE_SIZE) / (TEXTURE_SIZE - 1);
+      gpgpuUvs[i2 + 1] = ~~(i / TEXTURE_SIZE) / (TEXTURE_SIZE - 1);
+
+      cubePositions[i3 + 0] =
+        ((i % CUBE_COUNT_X) - (CUBE_COUNT_X - 1) / 2) * CUBE_SIZE;
+      cubePositions[i3 + 1] =
+        (Math.floor(i / (CUBE_COUNT_X * CUBE_COUNT_Z)) -
+          (CUBE_COUNT_Y - 1) / 2) *
+        CUBE_SIZE;
+      cubePositions[i3 + 2] =
+        ((Math.floor(i / CUBE_COUNT_X) % CUBE_COUNT_Z) -
+          (CUBE_COUNT_Z - 1) / 2) *
+        CUBE_SIZE;
+
+      normalizedCubePositions[i3 + 0] =
+        cubePositions[i3 + 0] / ((CUBE_COUNT_X - 1) * CUBE_SIZE);
+      normalizedCubePositions[i3 + 1] =
+        cubePositions[i3 + 1] / ((CUBE_COUNT_Y - 1) * CUBE_SIZE);
+      normalizedCubePositions[i3 + 2] =
+        cubePositions[i3 + 2] / ((CUBE_COUNT_Z - 1) * CUBE_SIZE);
     }
-    instancedMeshRef.current.instanceMatrix.needsUpdate = true;
+
+    geometry.setAttribute(
+      "aGpgpuUv",
+      new THREE.InstancedBufferAttribute(gpgpuUvs, 2),
+    );
+    geometry.setAttribute(
+      "aNormalizedCubePosition",
+      new THREE.InstancedBufferAttribute(normalizedCubePositions, 3),
+    );
+
+    return geometry;
   }, []);
 
-  useEffect(() => {
-    if (!instancedMeshRef02.current) return;
+  useLayoutEffect(() => {
     for (let i = 0; i < TOTAL_CUBES; i++) {
-      instancedMeshRef02.current.setMatrixAt(
+      instancedMeshRef00.current.setMatrixAt(
         i,
         new THREE.Matrix4().setPosition(
           ((i % CUBE_COUNT_X) - CUBE_COUNT_X / 2) * CUBE_SIZE,
           (Math.floor(i / (CUBE_COUNT_X * CUBE_COUNT_Z)) - CUBE_COUNT_Y / 2) *
             CUBE_SIZE,
           ((Math.floor(i / CUBE_COUNT_X) % CUBE_COUNT_Z) - CUBE_COUNT_Z / 2) *
-            CUBE_SIZE,
+            CUBE_SIZE +
+            (Math.random() - 0.5) * CUBE_SIZE * 0.1,
         ),
       );
     }
-    instancedMeshRef02.current.instanceMatrix.needsUpdate = true;
+    instancedMeshRef00.current.instanceMatrix.needsUpdate = true;
+    instancedMeshRef00.current.matrixWorldNeedsUpdate = true;
+  }, []);
+
+  useLayoutEffect(() => {
+    for (let i = 0; i < TOTAL_CUBES; i++) {
+      instancedMeshRef01.current.setMatrixAt(
+        i,
+        new THREE.Matrix4().setPosition(
+          ((i % CUBE_COUNT_X) - CUBE_COUNT_X / 2) * CUBE_SIZE,
+          (Math.floor(i / (CUBE_COUNT_X * CUBE_COUNT_Z)) - CUBE_COUNT_Y / 2) *
+            CUBE_SIZE,
+          ((Math.floor(i / CUBE_COUNT_X) % CUBE_COUNT_Z) - CUBE_COUNT_Z / 2) *
+            CUBE_SIZE -
+            15,
+        ),
+      );
+    }
+    instancedMeshRef01.current.instanceMatrix.needsUpdate = true;
+    instancedMeshRef01.current.matrixWorldNeedsUpdate = true;
   }, []);
 
   useEffect(() => {
@@ -185,17 +228,19 @@ function Cavity() {
     <>
       {createPortal(<ClockDisplay />, clockScene)}
       <instancedMesh
-        ref={instancedMeshRef}
-        geometry={cubesGeometry!}
+        ref={instancedMeshRef00}
+        geometry={cubesGeometry00!}
         castShadow
         receiveShadow
         args={[undefined, undefined, TOTAL_CUBES]}
       >
-        <meshStandardMaterial
+        <meshPhysicalMaterial
           attach="material"
-          color={"#111"}
-          metalness={0.1}
+          color={"#363946"}
+          metalness={0.02}
           roughness={0.9}
+          clearcoat={1}
+          clearcoatRoughness={0.3}
           // flatShading={true}
           onBeforeCompile={(shader) => {
             shader.uniforms.uGPGPUTexture = cubeUniforms.uGPGPUTexture;
@@ -218,24 +263,17 @@ function Cavity() {
               #include <begin_vertex>
 
               vec4 sizeInfo = texture(uGPGPUTexture, aGpgpuUv);
-              vec4 tempMvPosition = vec4( 0.0, 0.0, 0.0, 1.0 );
-              #ifdef USE_INSTANCING
-                tempMvPosition = instanceMatrix * tempMvPosition;
-              #endif
-              tempMvPosition = modelViewMatrix * tempMvPosition;
-              vec4 tempGlPosition = projectionMatrix * tempMvPosition;
-              vec3 ndc = tempGlPosition.xyz / tempGlPosition.w;
-              vec2 clockUv = ndc.xy * 0.5 + 0.5;
-              vec4 clockInfo = texture(uClockTexture, clockUv);
-
               sizeInfo = smoothstep(0.0, 1.0, sizeInfo);
               float sizeIn = smoothstep(0.0, 0.1, sizeInfo.x);
               float sizeOut = 1.0 - smoothstep(0.9, 1.0, sizeInfo.x);
               float size = min(sizeIn, sizeOut);
-
-              float wall = smoothstep(0.6, 1.0, 1.0 - abs(aNormalizedCubePosition.z * 2.0));
+              
+              float wall = smoothstep(0.6, 1.0, (aNormalizedCubePosition.z + 0.5));
               wall = wall * wall * wall;
               size = max(size, wall);
+              
+              vec2 clockUv = aNormalizedCubePosition.xy + 0.5;
+              vec4 clockInfo = texture(uClockTexture, clockUv);
               size *= smoothstep(1.0, 0.0, clockInfo.r);
 
               transformed *= vec3(size);
@@ -243,9 +281,8 @@ function Cavity() {
             );
           }}
         />
-        <meshDepthMaterial
-          attach={"customDepthMaterial"}
-          depthPacking={THREE.RGBADepthPacking}
+        <meshDistanceMaterial
+          attach={"customDistanceMaterial"}
           onBeforeCompile={(shader) => {
             shader.uniforms.uGPGPUTexture = cubeUniforms.uGPGPUTexture;
             shader.uniforms.uClockTexture = cubeUniforms.uClockTexture;
@@ -267,24 +304,17 @@ function Cavity() {
               #include <begin_vertex>
 
               vec4 sizeInfo = texture(uGPGPUTexture, aGpgpuUv);
-              vec4 tempMvPosition = vec4( 0.0, 0.0, 0.0, 1.0 );
-              #ifdef USE_INSTANCING
-                tempMvPosition = instanceMatrix * tempMvPosition;
-              #endif
-              tempMvPosition = modelViewMatrix * tempMvPosition;
-              vec4 tempGlPosition = projectionMatrix * tempMvPosition;
-              vec3 ndc = tempGlPosition.xyz / tempGlPosition.w;
-              vec2 clockUv = ndc.xy * 0.5 + 0.5;
-              vec4 clockInfo = texture(uClockTexture, clockUv);
-
               sizeInfo = smoothstep(0.0, 1.0, sizeInfo);
               float sizeIn = smoothstep(0.0, 0.1, sizeInfo.x);
               float sizeOut = 1.0 - smoothstep(0.9, 1.0, sizeInfo.x);
               float size = min(sizeIn, sizeOut);
-
-              float wall = smoothstep(0.6, 1.0, 1.0 - abs(aNormalizedCubePosition.z * 2.0));
+              
+              float wall = smoothstep(0.6, 1.0, (aNormalizedCubePosition.z + 0.5));
               wall = wall * wall * wall;
               size = max(size, wall);
+              
+              vec2 clockUv = aNormalizedCubePosition.xy + 0.5;
+              vec4 clockInfo = texture(uClockTexture, clockUv);
               size *= smoothstep(1.0, 0.0, clockInfo.r);
 
               transformed *= vec3(size);
@@ -293,26 +323,30 @@ function Cavity() {
           }}
         />
       </instancedMesh>
-      <group position={[0, 0, -10]}>
-        <instancedMesh
-          ref={instancedMeshRef02}
-          geometry={cubesGeometry!}
-          castShadow
-          receiveShadow
-          args={[undefined, undefined, TOTAL_CUBES]}
-        >
-          <meshStandardMaterial
-            attach="material"
-            color={"#111"}
-            metalness={0.1}
-            roughness={0.9}
-            // flatShading={true}
-            onBeforeCompile={(shader) => {
-              shader.uniforms.uGPGPUTexture = cubeUniforms.uGPGPUTexture;
-              shader.uniforms.uClockTexture = cubeUniforms.uClockTexture;
-              shader.vertexShader = shader.vertexShader.replace(
-                "#include <common>",
-                /* glsl */ `
+      {/* ****************************************************************** */}
+      {/* ****************************************************************** */}
+      {/* ****************************************************************** */}
+      <instancedMesh
+        ref={instancedMeshRef01}
+        geometry={cubesGeometry01!}
+        castShadow
+        receiveShadow
+        args={[undefined, undefined, TOTAL_CUBES]}
+        scale={[2, 2, 1]}
+        rotation={[0, 0, Math.PI]}
+      >
+        <meshStandardMaterial
+          attach="material"
+          color={"#31E981"}
+          metalness={0.02}
+          roughness={0.1}
+          // flatShading={true}
+          onBeforeCompile={(shader) => {
+            shader.uniforms.uGPGPUTexture = cubeUniforms.uGPGPUTexture;
+            shader.uniforms.uClockTexture = cubeUniforms.uClockTexture;
+            shader.vertexShader = shader.vertexShader.replace(
+              "#include <common>",
+              /* glsl */ `
               #include <common>
 
               uniform sampler2D uGPGPUTexture;
@@ -321,47 +355,35 @@ function Cavity() {
               attribute vec2 aGpgpuUv;
               attribute vec3 aNormalizedCubePosition;
               `,
-              );
-              shader.vertexShader = shader.vertexShader.replace(
-                "#include <begin_vertex>",
-                /* glsl */ `
+            );
+            shader.vertexShader = shader.vertexShader.replace(
+              "#include <begin_vertex>",
+              /* glsl */ `
               #include <begin_vertex>
 
               vec4 sizeInfo = texture(uGPGPUTexture, aGpgpuUv);
-              vec4 tempMvPosition = vec4( 0.0, 0.0, 0.0, 1.0 );
-              #ifdef USE_INSTANCING
-                tempMvPosition = instanceMatrix * tempMvPosition;
-              #endif
-              tempMvPosition = modelViewMatrix * tempMvPosition;
-              vec4 tempGlPosition = projectionMatrix * tempMvPosition;
-              vec3 ndc = tempGlPosition.xyz / tempGlPosition.w;
-              vec2 clockUv = ndc.xy * 0.5 + 0.5;
-              vec4 clockInfo = texture(uClockTexture, clockUv);
-
               sizeInfo = smoothstep(0.0, 1.0, sizeInfo);
               float sizeIn = smoothstep(0.0, 0.1, sizeInfo.x);
               float sizeOut = 1.0 - smoothstep(0.9, 1.0, sizeInfo.x);
               float size = min(sizeIn, sizeOut);
-
-              float wall = smoothstep(0.6, 1.0, 1.0 - abs(aNormalizedCubePosition.z * 2.0));
+              
+              float wall = smoothstep(0.6, 1.0, 1.0 - (aNormalizedCubePosition.z + 0.5));
               wall = wall * wall * wall;
               size = max(size, wall);
-              // size *= smoothstep(1.0, 0.0, clockInfo.r);
 
               transformed *= vec3(size);
               `,
-              );
-            }}
-          />
-          <meshDepthMaterial
-            attach={"customDepthMaterial"}
-            depthPacking={THREE.RGBADepthPacking}
-            onBeforeCompile={(shader) => {
-              shader.uniforms.uGPGPUTexture = cubeUniforms.uGPGPUTexture;
-              shader.uniforms.uClockTexture = cubeUniforms.uClockTexture;
-              shader.vertexShader = shader.vertexShader.replace(
-                "#include <common>",
-                /* glsl */ `
+            );
+          }}
+        />
+        <meshDistanceMaterial
+          attach={"customDistanceMaterial"}
+          onBeforeCompile={(shader) => {
+            shader.uniforms.uGPGPUTexture = cubeUniforms.uGPGPUTexture;
+            shader.uniforms.uClockTexture = cubeUniforms.uClockTexture;
+            shader.vertexShader = shader.vertexShader.replace(
+              "#include <common>",
+              /* glsl */ `
               #include <common>
 
               uniform sampler2D uGPGPUTexture;
@@ -370,41 +392,29 @@ function Cavity() {
               attribute vec2 aGpgpuUv;
               attribute vec3 aNormalizedCubePosition;
               `,
-              );
-              shader.vertexShader = shader.vertexShader.replace(
-                "#include <begin_vertex>",
-                /* glsl */ `
+            );
+            shader.vertexShader = shader.vertexShader.replace(
+              "#include <begin_vertex>",
+              /* glsl */ `
               #include <begin_vertex>
 
               vec4 sizeInfo = texture(uGPGPUTexture, aGpgpuUv);
-              vec4 tempMvPosition = vec4( 0.0, 0.0, 0.0, 1.0 );
-              #ifdef USE_INSTANCING
-                tempMvPosition = instanceMatrix * tempMvPosition;
-              #endif
-              tempMvPosition = modelViewMatrix * tempMvPosition;
-              vec4 tempGlPosition = projectionMatrix * tempMvPosition;
-              vec3 ndc = tempGlPosition.xyz / tempGlPosition.w;
-              vec2 clockUv = ndc.xy * 0.5 + 0.5;
-              vec4 clockInfo = texture(uClockTexture, clockUv);
-
               sizeInfo = smoothstep(0.0, 1.0, sizeInfo);
               float sizeIn = smoothstep(0.0, 0.1, sizeInfo.x);
               float sizeOut = 1.0 - smoothstep(0.9, 1.0, sizeInfo.x);
               float size = min(sizeIn, sizeOut);
-
-              float wall = smoothstep(0.6, 1.0, 1.0 - abs(aNormalizedCubePosition.z * 2.0));
+              
+              float wall = smoothstep(0.6, 1.0, 1.0 - (aNormalizedCubePosition.z + 0.5));
               wall = wall * wall * wall;
               size = max(size, wall);
-              // size *= smoothstep(1.0, 0.0, clockInfo.r);
 
               transformed *= vec3(size);
               `,
-              );
-            }}
-          />
-        </instancedMesh>
-      </group>
-      <Plane ref={gpgpuDisplayPlaneRef}>
+            );
+          }}
+        />
+      </instancedMesh>
+      <Plane ref={gpgpuDisplayPlaneRef} visible={false}>
         <meshBasicMaterial
           attach="material"
           map={gpgpuTexture.current}
@@ -430,7 +440,7 @@ function Cavity() {
           }}
         />
       </Plane>
-      <Plane ref={clockDisplayPlaneRef}>
+      <Plane ref={clockDisplayPlaneRef} visible={false}>
         <meshBasicMaterial
           attach="material"
           map={clockRenderTarget.texture}
@@ -485,14 +495,20 @@ export default function CavityScene() {
             files="./environments/photo_studio_loft_hall_4k.exr"
             resolution={2048}
           /> */}
-          <ambientLight intensity={0.1} />
+          <ambientLight intensity={1.9} />
+          <Cavity />
           <pointLight
-            position={[0, 0, -6]}
-            color={"orange"}
+            position={[0, 0, -5]}
+            color={"#31E981"}
             intensity={500}
             castShadow
           />
-          <Cavity />
+          <directionalLight
+            position={[9, 10, 10]}
+            color={"lightblue"}
+            intensity={0.5}
+            castShadow
+          />
           <OrbitControls makeDefault />
         </Suspense>
       </Canvas>

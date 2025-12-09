@@ -44,7 +44,7 @@ function getSpringConfig(index: number) {
 function Char({
   index,
   distance = 0,
-  fadeSpeed = 3,
+  fadeSpeed = 2,
 }: {
   index: number;
   distance?: number;
@@ -53,7 +53,7 @@ function Char({
   const isSemicolon = [2, 5].includes(index);
 
   const groupPosition = useMemo(() => {
-    const x = getDigitSpace(index, 0.5, 0.42);
+    const x = getDigitSpace(index, 0.1, 0.08);
     return [x, 0, 0] as [number, number, number];
   }, [index]);
 
@@ -159,7 +159,7 @@ function Char({
       }
     } else if (presence00StateRef.current === "exiting") {
       opacity00Ref.current = Math.max(
-        opacity00Ref.current - deltaRef.current * fadeSpeed * 1.1,
+        opacity00Ref.current - deltaRef.current * fadeSpeed,
         0,
       );
       if (opacity00Ref.current === 0) {
@@ -178,7 +178,7 @@ function Char({
       }
     } else if (presence01StateRef.current === "exiting") {
       opacity01Ref.current = Math.max(
-        opacity01Ref.current - deltaRef.current * fadeSpeed * 1.1,
+        opacity01Ref.current - deltaRef.current * fadeSpeed,
         0,
       );
       if (opacity01Ref.current === 0) {
@@ -198,10 +198,12 @@ function Char({
       <Text
         ref={text00Ref}
         font={FONT_URL}
+        fontSize={0.18}
+        textAlign="center"
         characters={CHARACTERS}
         position={[0, 0, 0]}
-        outlineBlur={0.07}
-        outlineWidth={0.04}
+        outlineBlur={0.002}
+        outlineWidth={0.004}
         outlineColor={"#fff"}
       >
         {text00Char}
@@ -210,10 +212,12 @@ function Char({
       <Text
         ref={text01Ref}
         font={FONT_URL}
+        fontSize={0.18}
+        textAlign="center"
         characters={CHARACTERS}
         position={[0, distance, 0.01]}
-        outlineBlur={0.07}
-        outlineWidth={0.04}
+        outlineBlur={0.002}
+        outlineWidth={0.004}
         outlineColor={"#fff"}
       >
         {text01Char}
