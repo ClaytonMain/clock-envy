@@ -1,7 +1,15 @@
-import { Loader, OrbitControls, Plane, useFBO } from "@react-three/drei";
+import {
+  Loader,
+  OrbitControls,
+  Plane,
+  useFBO,
+  useHelper,
+} from "@react-three/drei";
 import { Canvas, createPortal, useFrame } from "@react-three/fiber";
+import { useControls } from "leva";
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import useAppStore from "../../../stores/useAppStore";
 import CustomStatsComponent from "../../misc/CustomStatsComponent";
 import ClockDisplay from "./ClockDisplay";
@@ -63,8 +71,13 @@ function Cavity() {
   });
 
   const cubesGeometry00 = useMemo(() => {
-    // const geometry =
-    //   new RoundedBoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE, 1, 0.05)
+    const notGonnaUseThisGeometry = new RoundedBoxGeometry(
+      CUBE_SIZE,
+      CUBE_SIZE,
+      CUBE_SIZE,
+      1,
+      0.05,
+    );
 
     const geometry = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
     const gpgpuUvs = new Float32Array(TOTAL_CUBES * 2);
@@ -163,7 +176,7 @@ function Cavity() {
             CUBE_SIZE,
           ((Math.floor(i / CUBE_COUNT_X) % CUBE_COUNT_Z) - CUBE_COUNT_Z / 2) *
             CUBE_SIZE +
-            (Math.random() - 0.5) * CUBE_SIZE * 0.1,
+            (Math.random() - 0.5) * CUBE_SIZE * 0.3,
         ),
       );
     }
@@ -241,7 +254,6 @@ function Cavity() {
           roughness={0.9}
           clearcoat={1}
           clearcoatRoughness={0.3}
-          // flatShading={true}
           onBeforeCompile={(shader) => {
             shader.uniforms.uGPGPUTexture = cubeUniforms.uGPGPUTexture;
             shader.uniforms.uClockTexture = cubeUniforms.uClockTexture;
@@ -269,7 +281,49 @@ function Cavity() {
               float size = min(sizeIn, sizeOut);
               
               float wall = smoothstep(0.6, 1.0, (aNormalizedCubePosition.z + 0.5));
-              wall = wall * wall * wall;
+              wall = wall;
+              size = max(size, wall);
+              
+              vec2 clockUv = aNormalizedCubePosition.xy + 0.5;
+              vec4 clockInfo = texture(uClockTexture, clockUv);
+              size *= smoothstep(1.0, 0.0, clockInfo.r);
+
+              transformed *= vec3(size);
+              `,
+            );
+          }}
+        />
+        <meshDepthMaterial
+          attach={"customDepthMaterial"}
+          depthPacking={THREE.RGBADepthPacking}
+          onBeforeCompile={(shader) => {
+            shader.uniforms.uGPGPUTexture = cubeUniforms.uGPGPUTexture;
+            shader.uniforms.uClockTexture = cubeUniforms.uClockTexture;
+            shader.vertexShader = shader.vertexShader.replace(
+              "#include <common>",
+              /* glsl */ `
+              #include <common>
+
+              uniform sampler2D uGPGPUTexture;
+              uniform sampler2D uClockTexture;
+
+              attribute vec2 aGpgpuUv;
+              attribute vec3 aNormalizedCubePosition;
+              `,
+            );
+            shader.vertexShader = shader.vertexShader.replace(
+              "#include <begin_vertex>",
+              /* glsl */ `
+              #include <begin_vertex>
+
+              vec4 sizeInfo = texture(uGPGPUTexture, aGpgpuUv);
+              sizeInfo = smoothstep(0.0, 1.0, sizeInfo);
+              float sizeIn = smoothstep(0.0, 0.1, sizeInfo.x);
+              float sizeOut = 1.0 - smoothstep(0.9, 1.0, sizeInfo.x);
+              float size = min(sizeIn, sizeOut);
+              
+              float wall = smoothstep(0.6, 1.0, (aNormalizedCubePosition.z + 0.5));
+              wall = wall;
               size = max(size, wall);
               
               vec2 clockUv = aNormalizedCubePosition.xy + 0.5;
@@ -310,7 +364,7 @@ function Cavity() {
               float size = min(sizeIn, sizeOut);
               
               float wall = smoothstep(0.6, 1.0, (aNormalizedCubePosition.z + 0.5));
-              wall = wall * wall * wall;
+              wall = wall;
               size = max(size, wall);
               
               vec2 clockUv = aNormalizedCubePosition.xy + 0.5;
@@ -368,7 +422,45 @@ function Cavity() {
               float size = min(sizeIn, sizeOut);
               
               float wall = smoothstep(0.6, 1.0, 1.0 - (aNormalizedCubePosition.z + 0.5));
-              wall = wall * wall * wall;
+              wall = wall;
+              size = max(size, wall);
+
+              transformed *= vec3(size);
+              `,
+            );
+          }}
+        />
+        <meshDepthMaterial
+          attach={"customDepthMaterial"}
+          depthPacking={THREE.RGBADepthPacking}
+          onBeforeCompile={(shader) => {
+            shader.uniforms.uGPGPUTexture = cubeUniforms.uGPGPUTexture;
+            shader.uniforms.uClockTexture = cubeUniforms.uClockTexture;
+            shader.vertexShader = shader.vertexShader.replace(
+              "#include <common>",
+              /* glsl */ `
+              #include <common>
+
+              uniform sampler2D uGPGPUTexture;
+              uniform sampler2D uClockTexture;
+
+              attribute vec2 aGpgpuUv;
+              attribute vec3 aNormalizedCubePosition;
+              `,
+            );
+            shader.vertexShader = shader.vertexShader.replace(
+              "#include <begin_vertex>",
+              /* glsl */ `
+              #include <begin_vertex>
+
+              vec4 sizeInfo = texture(uGPGPUTexture, aGpgpuUv);
+              sizeInfo = smoothstep(0.0, 1.0, sizeInfo);
+              float sizeIn = smoothstep(0.0, 0.1, sizeInfo.x);
+              float sizeOut = 1.0 - smoothstep(0.9, 1.0, sizeInfo.x);
+              float size = min(sizeIn, sizeOut);
+              
+              float wall = smoothstep(0.6, 1.0, 1.0 - (aNormalizedCubePosition.z + 0.5));
+              wall = wall;
               size = max(size, wall);
 
               transformed *= vec3(size);
@@ -405,7 +497,7 @@ function Cavity() {
               float size = min(sizeIn, sizeOut);
               
               float wall = smoothstep(0.6, 1.0, 1.0 - (aNormalizedCubePosition.z + 0.5));
-              wall = wall * wall * wall;
+              wall = wall;
               size = max(size, wall);
 
               transformed *= vec3(size);
@@ -470,6 +562,84 @@ function Cavity() {
   );
 }
 
+function Lights() {
+  // const spotLightRef00 = useRef<THREE.SpotLight>(null!);
+  const directionalLightRef00 = useRef<THREE.DirectionalLight>(null!);
+  const helpersEnabled = true;
+  const targetRef = useRef<THREE.Object3D>(null!);
+  // useHelper(helpersEnabled && directionalLightRef00, DirectionalLightHelper);
+
+  // const spotLight00Values = useControls("SpotLight 00", {
+  //   positionX: { value: 0, min: -10, max: 10 },
+  //   positionY: { value: 0, min: -10, max: 10 },
+  //   positionZ: { value: 0, min: -10, max: 10 },
+  //   near: { value: 0.1, min: 0.1, max: 10 },
+  //   far: { value: 100, min: 10, max: 1000 },
+  //   fov: { value: 45, min: 1, max: 180 },
+  //   angle: { value: Math.PI / 4, min: 0, max: Math.PI / 2 },
+  //   penumbra: { value: 0, min: 0, max: 1 },
+  //   decay: { value: 2, min: 0, max: 10 },
+  //   intensity: { value: 1, min: 0, max: 10 },
+  // });
+  const directionalLight00Values = useControls("DirectionalLight 00", {
+    targetX: { value: 0, min: -10, max: 10, step: 0.01 },
+    targetY: { value: 0, min: -10, max: 10, step: 0.01 },
+    targetZ: { value: 0, min: -10, max: 10, step: 0.01 },
+    positionX: { value: 0, min: -10, max: 10, step: 0.01 },
+    positionY: { value: 0, min: -10, max: 10, step: 0.01 },
+    positionZ: { value: -2, min: -10, max: 10, step: 0.01 },
+    intensity: { value: 1, min: 0, max: 10, step: 0.01 },
+  });
+
+  return (
+    <>
+      <object3D
+        position={[
+          directionalLight00Values.targetX,
+          directionalLight00Values.targetY,
+          directionalLight00Values.targetZ,
+        ]}
+        ref={targetRef}
+      />
+      {/* <spotLight
+        ref={spotLightRef00}
+        position={[
+          spotLight00Values.positionX,
+          spotLight00Values.positionY,
+          spotLight00Values.positionZ,
+        ]}
+        color={"#31E981"}
+        intensity={spotLight00Values.intensity}
+        angle={spotLight00Values.angle}
+        penumbra={spotLight00Values.penumbra}
+        decay={spotLight00Values.decay}
+        shadow-camera-near={spotLight00Values.near}
+        shadow-camera-far={spotLight00Values.far}
+        shadow-camera-fov={spotLight00Values.fov}
+        castShadow
+      /> */}
+      <directionalLight
+        ref={directionalLightRef00}
+        position={[
+          directionalLight00Values.positionX,
+          directionalLight00Values.positionY,
+          directionalLight00Values.positionZ,
+        ]}
+        intensity={directionalLight00Values.intensity}
+        target={targetRef.current}
+        color={"#31E981"}
+        castShadow
+      />
+      <directionalLight
+        position={[9, 10, 10]}
+        color={"lightblue"}
+        intensity={0.5}
+        castShadow
+      />
+    </>
+  );
+}
+
 export default function CavityScene() {
   const interactionState = useAppStore((state) => state.interactionState);
 
@@ -495,20 +665,15 @@ export default function CavityScene() {
             files="./environments/photo_studio_loft_hall_4k.exr"
             resolution={2048}
           /> */}
-          <ambientLight intensity={1.9} />
+          <ambientLight intensity={0.8} />
           <Cavity />
-          <pointLight
+          {/* <pointLight
             position={[0, 0, -5]}
             color={"#31E981"}
             intensity={500}
             castShadow
-          />
-          <directionalLight
-            position={[9, 10, 10]}
-            color={"lightblue"}
-            intensity={0.5}
-            castShadow
-          />
+          /> */}
+          <Lights />
           <OrbitControls makeDefault />
         </Suspense>
       </Canvas>
