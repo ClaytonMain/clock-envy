@@ -4,72 +4,107 @@
  */
 
 import { useFrame, useThree } from "@react-three/fiber";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { GPUComputationRenderer } from "three/examples/jsm/misc/GPUComputationRenderer.js";
-import {
-  CUBE_COUNT_X,
-  CUBE_COUNT_Y,
-  CUBE_COUNT_Z,
-  CUBE_SIZE,
-  TEXTURE_SIZE,
-  TOTAL_CUBES,
-} from "./constants/constants";
-import gpgpuShader from "./shaders/gpgpu/gpgpu.glsl";
+import gpgpuActualSizeShader from "./shaders/gpgpu/gpgpuActualSize.glsl";
 
-export default function useGPGPU() {
+export default function useGPGPU({
+  cubeCounts,
+  threshold = 0.5,
+  sizeSpeed = 0.1,
+  timeFactor = 0.1,
+  noiseOffsets = [0, 10, 20],
+}: {
+  cubeCounts: [number, number, number];
+  threshold?: number;
+  sizeSpeed?: number;
+  timeFactor?: number;
+  noiseOffsets?: [number, number, number];
+}) {
   const gl = useThree((state) => state.gl);
 
-  const gpgpuTextureRef = useRef<THREE.Texture>(null!);
+  const { totalCubes, textureSize } = useMemo(() => {
+    const totalCubes = cubeCounts[0] * cubeCounts[1] * cubeCounts[2];
+    const textureSize = Math.ceil(Math.sqrt(totalCubes));
+    return { totalCubes, textureSize };
+  }, [cubeCounts]);
+
+  // const gpgpuTargetTextureRef = useRef<THREE.Texture>(null!);
+  const gpgpuActualTextureRef = useRef<THREE.Texture>(null!);
 
   const gpgpu = useMemo(() => {
     const computation = new GPUComputationRenderer(
-      TEXTURE_SIZE,
-      TEXTURE_SIZE,
+      textureSize,
+      textureSize,
       gl,
     );
 
-    const gpgpuTexture = computation.createTexture();
+    // const gpgpuTargetSizeTexture = computation.createTexture();
+    const gpgpuActualSizeTexture = computation.createTexture();
 
-    const sizeArray = gpgpuTexture.image.data as Float32Array;
+    // const targetSizeArray = gpgpuTargetSizeTexture.image.data as Float32Array;
+    const actualSizeArray = gpgpuActualSizeTexture.image.data as Float32Array;
 
-    for (let i = 0; i < TOTAL_CUBES; i++) {
+    for (let i = 0; i < totalCubes; i++) {
       const i4 = i * 4;
-      sizeArray[i4 + 0] = CUBE_SIZE;
-      sizeArray[i4 + 1] = CUBE_SIZE;
-      sizeArray[i4 + 2] = CUBE_SIZE;
-      sizeArray[i4 + 3] = 1.0;
+      // targetSizeArray[i4 + 0] = 1;
+      // targetSizeArray[i4 + 1] = 1;
+      // targetSizeArray[i4 + 2] = 1;
+      // targetSizeArray[i4 + 3] = 1;
+
+      actualSizeArray[i4 + 0] = 1;
+      actualSizeArray[i4 + 1] = 1;
+      actualSizeArray[i4 + 2] = 1;
+      actualSizeArray[i4 + 3] = 1;
     }
 
-    const textureDefaultSize = gpgpuTexture.clone();
-
-    const sizeVariable = computation.addVariable(
-      "gpgpuTexture",
-      gpgpuShader,
-      gpgpuTexture,
+    // const targetSizeVariable = computation.addVariable(
+    //   "targetSizeTexture",
+    //   gpgpuTargetSizeShader,
+    //   gpgpuTargetSizeTexture,
+    // );
+    const actualSizeVariable = computation.addVariable(
+      "actualSizeTexture",
+      gpgpuActualSizeShader,
+      gpgpuActualSizeTexture,
     );
 
-    computation.setVariableDependencies(sizeVariable, [sizeVariable]);
+    // computation.setVariableDependencies(targetSizeVariable, [
+    //   targetSizeVariable,
+    // ]);
+    computation.setVariableDependencies(actualSizeVariable, [
+      // targetSizeVariable,
+      actualSizeVariable,
+    ]);
 
-    gpgpuTextureRef.current = gpgpuTexture;
+    // gpgpuTargetTextureRef.current = gpgpuTargetSizeTexture;
+    gpgpuActualTextureRef.current = gpgpuActualSizeTexture;
 
-    sizeVariable.material.uniforms.uTime = { value: 0.0 };
-    sizeVariable.material.uniforms.uDelta = { value: 0.0 };
-    sizeVariable.material.uniforms.uMouse3d = {
-      value: new THREE.Vector3(),
+    // targetSizeVariable.material.uniforms.uTime = { value: 0.0 };
+    // targetSizeVariable.material.uniforms.uCubeCounts = {
+    //   value: new THREE.Vector3(...cubeCounts),
+    // };
+    // targetSizeVariable.material.uniforms.uThreshold = { value: threshold };
+
+    actualSizeVariable.material.uniforms.uTime = { value: 0.0 };
+    actualSizeVariable.material.uniforms.uDelta = { value: 0.0 };
+    actualSizeVariable.material.uniforms.uCubeCounts = {
+      value: new THREE.Vector3(...cubeCounts),
     };
-    sizeVariable.material.uniforms.uTextureDefaultSize = {
-      value: textureDefaultSize,
+    actualSizeVariable.material.uniforms.uThreshold = { value: threshold };
+    actualSizeVariable.material.uniforms.uSizeSpeed = { value: sizeSpeed };
+    actualSizeVariable.material.uniforms.uNoiseOffsets = {
+      value: new THREE.Vector3(...noiseOffsets),
     };
-    sizeVariable.material.uniforms.uCubeCountX = { value: CUBE_COUNT_X };
-    sizeVariable.material.uniforms.uCubeCountY = { value: CUBE_COUNT_Y };
-    sizeVariable.material.uniforms.uCubeCountZ = { value: CUBE_COUNT_Z };
 
     return {
       computation,
-      sizeVariable,
+      // targetSizeVariable,
+      actualSizeVariable,
     };
-  }, [gl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useLayoutEffect(() => {
     const error = gpgpu.computation.init();
@@ -78,36 +113,28 @@ export default function useGPGPU() {
     }
   });
 
-  const [ray] = useState(() => new THREE.Ray());
+  const uTimeRef = useRef(0);
+  useFrame((_, delta) => {
+    const uDelta = Math.min(delta, 0.1);
+    uTimeRef.current += uDelta * timeFactor;
 
-  useFrame(({ camera, clock, pointer }, delta) => {
-    const deltaRatio = 60 * delta;
+    // gpgpu.targetSizeVariable.material.uniforms.uTime.value = uTimeRef.current;
 
-    ray.origin.copy(camera.position);
-    ray.direction
-      .set(pointer.x, pointer.y, 0.5)
-      .unproject(camera)
-      .sub(ray.origin)
-      .normalize();
-    const mousePosition = new THREE.Vector3();
-    mousePosition.copy(ray.direction);
-    mousePosition.multiplyScalar(
-      ray.origin.length() /
-        Math.cos(Math.PI - ray.direction.angleTo(ray.origin)),
-    );
-    mousePosition.add(ray.origin);
+    gpgpu.actualSizeVariable.material.uniforms.uTime.value = uTimeRef.current;
+    gpgpu.actualSizeVariable.material.uniforms.uDelta.value = uDelta;
 
-    gpgpu.sizeVariable.material.uniforms.uTime.value = clock.elapsedTime;
-    gpgpu.sizeVariable.material.uniforms.uDelta.value = deltaRatio;
-    gpgpu.sizeVariable.material.uniforms.uMouse3d.value.copy(mousePosition);
     gpgpu.computation.compute();
 
-    gpgpuTextureRef.current = gpgpu.computation.getCurrentRenderTarget(
-      gpgpu.sizeVariable,
+    // gpgpuTargetTextureRef.current = gpgpu.computation.getCurrentRenderTarget(
+    //   gpgpu.targetSizeVariable,
+    // ).texture;
+    gpgpuActualTextureRef.current = gpgpu.computation.getCurrentRenderTarget(
+      gpgpu.actualSizeVariable,
     ).texture;
   });
 
   return {
-    gpgpuTexture: gpgpuTextureRef,
+    // gpgpuTargetTexture: gpgpuTargetTextureRef,
+    gpgpuActualTexture: gpgpuActualTextureRef,
   };
 }

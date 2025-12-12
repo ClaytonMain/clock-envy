@@ -39,7 +39,9 @@ const cubeUniforms = {
 };
 
 function Cavity() {
-  const { gpgpuTexture } = useGPGPU();
+  const { gpgpuActualTexture: gpgpuActualTexture00 } = useGPGPU({
+    cubeCounts: [CUBE_COUNT_X, CUBE_COUNT_Y, CUBE_COUNT_Z],
+  });
 
   const instancedMeshRef00 = useRef<THREE.InstancedMesh>(null!);
   const instancedMeshRef01 = useRef<THREE.InstancedMesh>(null!);
@@ -71,6 +73,7 @@ function Cavity() {
   });
 
   const cubesGeometry00 = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const notGonnaUseThisGeometry = new RoundedBoxGeometry(
       CUBE_SIZE,
       CUBE_SIZE,
@@ -78,7 +81,6 @@ function Cavity() {
       1,
       0.05,
     );
-
     const geometry = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
     const gpgpuUvs = new Float32Array(TOTAL_CUBES * 2);
     const cubePositions = new Float32Array(TOTAL_CUBES * 3);
@@ -167,17 +169,27 @@ function Cavity() {
   }, []);
 
   useLayoutEffect(() => {
+    const zOffsets: Record<string, number> = {};
+    let x = -1;
+    let y = -1;
+    let key = "";
+    let z = -999;
     for (let i = 0; i < TOTAL_CUBES; i++) {
+      x = ((i % CUBE_COUNT_X) - CUBE_COUNT_X / 2) * CUBE_SIZE;
+      y =
+        (Math.floor(i / (CUBE_COUNT_X * CUBE_COUNT_Z)) - CUBE_COUNT_Y / 2) *
+        CUBE_SIZE;
+      key = `${x.toFixed(8)}_${y.toFixed(8)}`;
+      if (zOffsets[key] === undefined) {
+        zOffsets[key] = (Math.random() - 0.5) * CUBE_SIZE * 0.3;
+      }
+      z =
+        ((Math.floor(i / CUBE_COUNT_X) % CUBE_COUNT_Z) - CUBE_COUNT_Z / 2) *
+          CUBE_SIZE +
+        zOffsets[key];
       instancedMeshRef00.current.setMatrixAt(
         i,
-        new THREE.Matrix4().setPosition(
-          ((i % CUBE_COUNT_X) - CUBE_COUNT_X / 2) * CUBE_SIZE,
-          (Math.floor(i / (CUBE_COUNT_X * CUBE_COUNT_Z)) - CUBE_COUNT_Y / 2) *
-            CUBE_SIZE,
-          ((Math.floor(i / CUBE_COUNT_X) % CUBE_COUNT_Z) - CUBE_COUNT_Z / 2) *
-            CUBE_SIZE +
-            (Math.random() - 0.5) * CUBE_SIZE * 0.3,
-        ),
+        new THREE.Matrix4().setPosition(x, y, z),
       );
     }
     instancedMeshRef00.current.instanceMatrix.needsUpdate = true;
@@ -217,8 +229,8 @@ function Cavity() {
   }, [window.innerWidth, window.innerHeight]);
 
   useFrame(({ gl }) => {
-    if (gpgpuTexture.current) {
-      cubeUniforms.uGPGPUTexture.value = gpgpuTexture.current;
+    if (gpgpuActualTexture00.current) {
+      cubeUniforms.uGPGPUTexture.value = gpgpuActualTexture00.current;
     }
 
     gl.setRenderTarget(clockRenderTarget);
@@ -229,9 +241,9 @@ function Cavity() {
 
     gl.setRenderTarget(null);
 
-    if (gpgpuDisplayPlaneRef.current && gpgpuTexture.current) {
+    if (gpgpuDisplayPlaneRef.current && gpgpuActualTexture00.current) {
       // @ts-expect-error 'map' does exist.
-      gpgpuDisplayPlaneRef.current.material.map = gpgpuTexture.current;
+      gpgpuDisplayPlaneRef.current.material.map = gpgpuActualTexture00.current;
     }
     // @ts-expect-error `map` does exist.
     clockDisplayPlaneRef.current.material.map = clockRenderTarget.texture;
@@ -506,10 +518,10 @@ function Cavity() {
           }}
         />
       </instancedMesh>
-      <Plane ref={gpgpuDisplayPlaneRef} visible={false}>
+      <Plane ref={gpgpuDisplayPlaneRef}>
         <meshBasicMaterial
           attach="material"
-          map={gpgpuTexture.current}
+          map={gpgpuActualTexture00.current}
           depthTest={false}
           depthWrite={false}
           onBeforeCompile={(shader) => {
@@ -532,7 +544,7 @@ function Cavity() {
           }}
         />
       </Plane>
-      <Plane ref={clockDisplayPlaneRef} visible={false}>
+      <Plane ref={clockDisplayPlaneRef}>
         <meshBasicMaterial
           attach="material"
           map={clockRenderTarget.texture}
@@ -563,45 +575,26 @@ function Cavity() {
 }
 
 function Lights() {
-  // const spotLightRef00 = useRef<THREE.SpotLight>(null!);
-  const directionalLightRef00 = useRef<THREE.DirectionalLight>(null!);
+  const spotLightRef00 = useRef<THREE.SpotLight>(null!);
   const helpersEnabled = true;
-  const targetRef = useRef<THREE.Object3D>(null!);
-  // useHelper(helpersEnabled && directionalLightRef00, DirectionalLightHelper);
+  useHelper(helpersEnabled && spotLightRef00, THREE.SpotLightHelper);
 
-  // const spotLight00Values = useControls("SpotLight 00", {
-  //   positionX: { value: 0, min: -10, max: 10 },
-  //   positionY: { value: 0, min: -10, max: 10 },
-  //   positionZ: { value: 0, min: -10, max: 10 },
-  //   near: { value: 0.1, min: 0.1, max: 10 },
-  //   far: { value: 100, min: 10, max: 1000 },
-  //   fov: { value: 45, min: 1, max: 180 },
-  //   angle: { value: Math.PI / 4, min: 0, max: Math.PI / 2 },
-  //   penumbra: { value: 0, min: 0, max: 1 },
-  //   decay: { value: 2, min: 0, max: 10 },
-  //   intensity: { value: 1, min: 0, max: 10 },
-  // });
-  const directionalLight00Values = useControls("DirectionalLight 00", {
-    targetX: { value: 0, min: -10, max: 10, step: 0.01 },
-    targetY: { value: 0, min: -10, max: 10, step: 0.01 },
-    targetZ: { value: 0, min: -10, max: 10, step: 0.01 },
-    positionX: { value: 0, min: -10, max: 10, step: 0.01 },
-    positionY: { value: 0, min: -10, max: 10, step: 0.01 },
-    positionZ: { value: -2, min: -10, max: 10, step: 0.01 },
-    intensity: { value: 1, min: 0, max: 10, step: 0.01 },
+  const spotLight00Values = useControls("SpotLight 00", {
+    positionX: { value: 0, min: -30, max: 30 },
+    positionY: { value: 0, min: -30, max: 30 },
+    positionZ: { value: -8, min: -30, max: 30 },
+    near: { value: 0.1, min: 0.1, max: 10 },
+    far: { value: 100, min: 10, max: 1000 },
+    fov: { value: 45, min: 1, max: 180 },
+    angle: { value: Math.PI / 4, min: 0, max: Math.PI / 2 },
+    penumbra: { value: 0, min: 0, max: 1 },
+    decay: { value: 0.1, min: 0, max: 10 },
+    intensity: { value: 10, min: 0, max: 50 },
   });
 
   return (
     <>
-      <object3D
-        position={[
-          directionalLight00Values.targetX,
-          directionalLight00Values.targetY,
-          directionalLight00Values.targetZ,
-        ]}
-        ref={targetRef}
-      />
-      {/* <spotLight
+      <spotLight
         ref={spotLightRef00}
         position={[
           spotLight00Values.positionX,
@@ -616,18 +609,6 @@ function Lights() {
         shadow-camera-near={spotLight00Values.near}
         shadow-camera-far={spotLight00Values.far}
         shadow-camera-fov={spotLight00Values.fov}
-        castShadow
-      /> */}
-      <directionalLight
-        ref={directionalLightRef00}
-        position={[
-          directionalLight00Values.positionX,
-          directionalLight00Values.positionY,
-          directionalLight00Values.positionZ,
-        ]}
-        intensity={directionalLight00Values.intensity}
-        target={targetRef.current}
-        color={"#31E981"}
         castShadow
       />
       <directionalLight
@@ -667,12 +648,6 @@ export default function CavityScene() {
           /> */}
           <ambientLight intensity={0.8} />
           <Cavity />
-          {/* <pointLight
-            position={[0, 0, -5]}
-            color={"#31E981"}
-            intensity={500}
-            castShadow
-          /> */}
           <Lights />
           <OrbitControls makeDefault />
         </Suspense>
