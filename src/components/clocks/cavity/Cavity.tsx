@@ -396,7 +396,7 @@ function Cavity() {
           }}
         />
       </instancedMesh>
-      <Plane ref={gpgpuDisplayPlaneRef}>
+      <Plane ref={gpgpuDisplayPlaneRef} visible={false}>
         <meshBasicMaterial
           attach="material"
           map={gpgpuTexture00.current}
@@ -422,7 +422,7 @@ function Cavity() {
           }}
         />
       </Plane>
-      <Plane ref={clockDisplayPlaneRef}>
+      <Plane ref={clockDisplayPlaneRef} visible={false}>
         <meshBasicMaterial
           attach="material"
           map={clockRenderTarget.texture}
@@ -459,7 +459,7 @@ function Lights() {
   const spotLightTargetRef00 = useRef<THREE.Object3D>(null);
   const spotLightTargetRef01 = useRef<THREE.Object3D>(null);
   const spotLightTargetRef02 = useRef<THREE.Object3D>(null);
-  const helpersEnabled = true;
+  const helpersEnabled = false;
   useHelper(helpersEnabled && spotLightRef00, THREE.SpotLightHelper);
   useHelper(helpersEnabled && spotLightRef01, THREE.SpotLightHelper);
   useHelper(helpersEnabled && spotLightRef02, THREE.SpotLightHelper);
@@ -606,7 +606,7 @@ export default function CavityScene() {
         shadows
         dpr={Math.min(window.devicePixelRatio, 2)}
         camera={{
-          position: [0, 0, 35],
+          position: [0, -2.5, 19],
           // rotation: [0.05, 0, 0],
           fov: 8,
         }}
