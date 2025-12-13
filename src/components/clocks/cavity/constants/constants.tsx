@@ -1,9 +1,26 @@
-export const CUBE_COUNT_X = 60;
-export const CUBE_COUNT_Y = 60;
-export const CUBE_COUNT_Z = 9;
-export const CUBE_SIZE = 0.2;
-export const TOTAL_CUBES = CUBE_COUNT_X * CUBE_COUNT_Y * CUBE_COUNT_Z;
-export const TEXTURE_SIZE = Math.ceil(Math.sqrt(TOTAL_CUBES));
+const FOREGROUND_CUBE_COUNTS: [number, number, number] = [60, 30, 5];
+const FOREGROUND_TOTAL_CUBES = FOREGROUND_CUBE_COUNTS.reduce(
+  (a, b) => a * b,
+  1,
+);
+export const FOREGROUND_CONSTANTS = {
+  cubeCounts: FOREGROUND_CUBE_COUNTS,
+  totalCubes: FOREGROUND_TOTAL_CUBES,
+  cubeSize: 0.1,
+  textureSize: Math.ceil(Math.sqrt(FOREGROUND_TOTAL_CUBES)),
+};
+
+const BACKGROUND_CUBE_COUNTS: [number, number, number] = [80, 40, 4];
+const BACKGROUND_TOTAL_CUBES = BACKGROUND_CUBE_COUNTS.reduce(
+  (a, b) => a * b,
+  1,
+);
+export const BACKGROUND_CONSTANTS = {
+  cubeCounts: BACKGROUND_CUBE_COUNTS,
+  totalCubes: BACKGROUND_TOTAL_CUBES,
+  cubeSize: 0.1,
+  textureSize: Math.ceil(Math.sqrt(BACKGROUND_TOTAL_CUBES)),
+};
 
 export const SPRING_CONFIGS = {
   shared: {

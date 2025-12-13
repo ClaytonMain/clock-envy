@@ -17,7 +17,9 @@ function getDigitSpace(index: number, digitSpace: number, colonSpace: number) {
   );
 }
 
-const FONT_URL = "./fonts/Roboto_Mono/static/RobotoMono-Regular.ttf";
+// const FONT_URL = "./fonts/Roboto_Mono/static/RobotoMono-Regular.ttf";
+// const FONT_URL = "./fonts/Six_Caps/SixCaps-Regular.ttf";
+const FONT_URL = "./fonts/Teko/static/Teko-Light.ttf";
 const CHARACTERS = "0123456789:";
 
 function getSpringConfig(index: number) {
@@ -44,7 +46,7 @@ function getSpringConfig(index: number) {
 function Char({
   index,
   distance = 0,
-  fadeSpeed = 2,
+  fadeSpeed = 10,
 }: {
   index: number;
   distance?: number;
@@ -53,7 +55,7 @@ function Char({
   const isSemicolon = [2, 5].includes(index);
 
   const groupPosition = useMemo(() => {
-    const x = getDigitSpace(index, 0.1, 0.08);
+    const x = getDigitSpace(index, 0.062, 0.042);
     return [x, 0, 0] as [number, number, number];
   }, [index]);
 
@@ -119,20 +121,24 @@ function Char({
               setText00Char(char);
               presence00StateRef.current = "entering";
               text00Ref.current.position.z = 0;
-              text00YOffset.set(0);
+              // text00YOffset.set(0);
+              text00YOffset.jump(0);
 
               presence01StateRef.current = "exiting";
               text01Ref.current.position.z = 0.01;
-              text01YOffset.set(-distance);
+              // text01YOffset.set(-distance);
+              text01YOffset.jump(-distance);
             } else {
               setText01Char(char);
               presence01StateRef.current = "entering";
               text01Ref.current.position.z = 0;
-              text01YOffset.set(0);
+              // text01YOffset.set(0);
+              text01YOffset.jump(0);
 
               presence00StateRef.current = "exiting";
               text00Ref.current.position.z = 0.01;
-              text00YOffset.set(-distance);
+              // text00YOffset.set(-distance);
+              text00YOffset.jump(-distance);
             }
           },
           (7 - index) * 100,
@@ -202,8 +208,8 @@ function Char({
         textAlign="center"
         characters={CHARACTERS}
         position={[0, 0, 0]}
-        outlineBlur={0.002}
-        outlineWidth={0.004}
+        outlineBlur={0.004}
+        outlineWidth={0.003}
         outlineColor={"#fff"}
       >
         {text00Char}
@@ -216,8 +222,8 @@ function Char({
         textAlign="center"
         characters={CHARACTERS}
         position={[0, distance, 0.01]}
-        outlineBlur={0.002}
-        outlineWidth={0.004}
+        outlineBlur={0.004}
+        outlineWidth={0.003}
         outlineColor={"#fff"}
       >
         {text01Char}
@@ -233,16 +239,16 @@ export default function Digits({
   position?: [number, number, number];
 }) {
   const groupRef = useRef<THREE.Group>(null!);
-  useEffect(() => {
-    groupRef.current.scale.set(
-      window.innerHeight * 0.3,
-      window.innerHeight * 0.3,
-      1,
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [window.innerHeight]);
+  // useEffect(() => {
+  //   groupRef.current.scale.set(
+  //     0.3,
+  //     window.innerHeight * 0.3,
+  //     1,
+  //   );
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []);
   return (
-    <group ref={groupRef} position={position} scale={[1, 1, 1]}>
+    <group ref={groupRef} position={position} scale={[520, 520, 1]}>
       {Array.from({ length: 8 }).map((_, index) => {
         // return <ClockPositionCharGroup key={`digit-${index}`} index={index} />;
         return <Char key={`digit-${index}`} index={index} />;
