@@ -2,20 +2,22 @@ import {
   Loader,
   OrbitControls,
   Plane,
+  Sphere,
   useFBO,
-  useHelper,
 } from "@react-three/drei";
 import { Canvas, createPortal, useFrame } from "@react-three/fiber";
-import { useControls } from "leva";
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import useAppStore from "../../../stores/useAppStore";
 import CustomStatsComponent from "../../misc/CustomStatsComponent";
 import ClockDisplay from "./ClockDisplay";
 import {
   BACKGROUND_CONSTANTS,
   FOREGROUND_CONSTANTS,
 } from "./constants/constants";
+import Lights from "./Lights";
+import Screen from "./Screen";
 import useGPGPU from "./useGPGPU";
 
 const texturePlaneUniforms = {
@@ -52,8 +54,8 @@ function Cavity() {
       new THREE.OrthographicCamera(
         -256 / 2,
         256 / 2,
-        128 / 2,
-        -128 / 2,
+        102.4 / 2,
+        -102.4 / 2,
         1 / Math.pow(2, 53),
         1,
       ),
@@ -170,25 +172,39 @@ function Cavity() {
   }, []);
 
   useLayoutEffect(() => {
+    const zOffsets: Record<string, number> = {};
+    let x = -1;
+    let y = -1;
+    let key = "";
+    let z = -999;
+
     for (let i = 0; i < BACKGROUND_CONSTANTS.totalCubes; i++) {
+      x =
+        ((i % BACKGROUND_CONSTANTS.cubeCounts[0]) -
+          BACKGROUND_CONSTANTS.cubeCounts[0] / 2) *
+        BACKGROUND_CONSTANTS.cubeSize;
+      y =
+        (Math.floor(
+          i /
+            (BACKGROUND_CONSTANTS.cubeCounts[0] *
+              BACKGROUND_CONSTANTS.cubeCounts[2]),
+        ) -
+          BACKGROUND_CONSTANTS.cubeCounts[1] / 2) *
+        BACKGROUND_CONSTANTS.cubeSize;
+      key = `${x.toFixed(8)}_${y.toFixed(8)}`;
+      if (zOffsets[key] === undefined) {
+        zOffsets[key] =
+          (Math.random() - 0.5) * BACKGROUND_CONSTANTS.cubeSize * 0.3;
+      }
+      z =
+        ((Math.floor(i / BACKGROUND_CONSTANTS.cubeCounts[0]) %
+          BACKGROUND_CONSTANTS.cubeCounts[2]) -
+          BACKGROUND_CONSTANTS.cubeCounts[2] / 2) *
+          BACKGROUND_CONSTANTS.cubeSize +
+        zOffsets[key];
       instancedMeshRef01.current.setMatrixAt(
         i,
-        new THREE.Matrix4().setPosition(
-          ((i % BACKGROUND_CONSTANTS.cubeCounts[0]) -
-            BACKGROUND_CONSTANTS.cubeCounts[0] / 2) *
-            BACKGROUND_CONSTANTS.cubeSize,
-          (Math.floor(
-            i /
-              (BACKGROUND_CONSTANTS.cubeCounts[0] *
-                BACKGROUND_CONSTANTS.cubeCounts[2]),
-          ) -
-            BACKGROUND_CONSTANTS.cubeCounts[1] / 2) *
-            BACKGROUND_CONSTANTS.cubeSize,
-          ((Math.floor(i / BACKGROUND_CONSTANTS.cubeCounts[0]) %
-            BACKGROUND_CONSTANTS.cubeCounts[2]) -
-            BACKGROUND_CONSTANTS.cubeCounts[2] / 2) *
-            BACKGROUND_CONSTANTS.cubeSize,
-        ),
+        new THREE.Matrix4().setPosition(x, y, z),
       );
     }
     instancedMeshRef01.current.instanceMatrix.needsUpdate = true;
@@ -205,7 +221,21 @@ function Cavity() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [window.innerWidth, window.innerHeight]);
 
-  useFrame(({ gl }) => {
+  useFrame(({ gl, camera }) => {
+    // const angle =
+    //   (-useAppStore.getState().currentTimeValue.toSeconds() / 60) *
+    //     Math.PI *
+    //     2 +
+    //   Math.PI / 2;
+    // camera.position.lerp(
+    //   new THREE.Vector3(
+    //     Math.cos(angle) * 0.5,
+    //     Math.sin(angle) * 0.5 - 2.5,
+    //     camera.position.z,
+    //   ),
+    //   0.1,
+    // );
+    // camera.lookAt(new THREE.Vector3(0, 0, 0));
     if (gpgpuTexture00.current) {
       cubeUniforms00.uGPGPUTexture.value = gpgpuTexture00.current;
     }
@@ -232,7 +262,7 @@ function Cavity() {
 
   return (
     <>
-      {createPortal(<ClockDisplay />, clockScene)}
+      {createPortal(<ClockDisplay position={[0, -9, 0]} />, clockScene)}
       <instancedMesh
         ref={instancedMeshRef00}
         geometry={cubesGeometry00!}
@@ -323,7 +353,7 @@ function Cavity() {
         receiveShadow
         args={[undefined, undefined, BACKGROUND_CONSTANTS.totalCubes]}
         rotation={[0, 0, 0]}
-        position={[0, 1, -5]}
+        position={[0, 0.6, -5]}
       >
         <meshStandardMaterial
           attach="material"
@@ -396,7 +426,7 @@ function Cavity() {
           }}
         />
       </instancedMesh>
-      <Plane ref={gpgpuDisplayPlaneRef} visible={false}>
+      <Plane ref={gpgpuDisplayPlaneRef} visible={true} position={[0, 0, -1]}>
         <meshBasicMaterial
           attach="material"
           map={gpgpuTexture00.current}
@@ -422,7 +452,7 @@ function Cavity() {
           }}
         />
       </Plane>
-      <Plane ref={clockDisplayPlaneRef} visible={false}>
+      <Plane ref={clockDisplayPlaneRef} visible={true}>
         <meshBasicMaterial
           attach="material"
           map={clockRenderTarget.texture}
@@ -452,167 +482,39 @@ function Cavity() {
   );
 }
 
-function Lights() {
-  const spotLightRef00 = useRef<THREE.SpotLight>(null!);
-  const spotLightRef01 = useRef<THREE.SpotLight>(null!);
-  const spotLightRef02 = useRef<THREE.SpotLight>(null!);
-  const spotLightTargetRef00 = useRef<THREE.Object3D>(null);
-  const spotLightTargetRef01 = useRef<THREE.Object3D>(null);
-  const spotLightTargetRef02 = useRef<THREE.Object3D>(null);
-  const helpersEnabled = false;
-  useHelper(helpersEnabled && spotLightRef00, THREE.SpotLightHelper);
-  useHelper(helpersEnabled && spotLightRef01, THREE.SpotLightHelper);
-  useHelper(helpersEnabled && spotLightRef02, THREE.SpotLightHelper);
-
-  const spotLight00Values = useControls("SpotLight 00", {
-    positionX: { value: 0, min: -30, max: 30 },
-    positionY: { value: 0, min: -30, max: 30 },
-    positionZ: { value: -4.4, min: -30, max: 30 },
-    targetX: { value: 0, min: -30, max: 30 },
-    targetY: { value: 0, min: -30, max: 30 },
-    targetZ: { value: 0, min: -30, max: 30 },
-    angle: { value: 0.87, min: 0, max: Math.PI / 2 },
-    penumbra: { value: 0.27, min: 0, max: 1 },
-    decay: { value: 0.1, min: 0, max: 10 },
-    intensity: { value: 10, min: 0, max: 50 },
-    color: { value: "#31E981" },
-  });
-  const spotLight01Values = useControls("SpotLight 01", {
-    positionX: { value: 0, min: -30, max: 30 },
-    positionY: { value: -0.5, min: -30, max: 30 },
-    positionZ: { value: -2, min: -30, max: 30 },
-    targetX: { value: 0, min: -30, max: 30 },
-    targetY: { value: 0, min: -30, max: 30 },
-    targetZ: { value: -5, min: -30, max: 30 },
-    angle: { value: 1.03, min: 0, max: Math.PI / 2 },
-    penumbra: { value: 0.26, min: 0, max: 1 },
-    decay: { value: 0.1, min: 0, max: 10 },
-    intensity: { value: 2, min: 0, max: 50 },
-    color: { value: "#31E981" },
-  });
-  const spotLight02Values = useControls("SpotLight 02", {
-    positionX: { value: -5, min: -30, max: 30 },
-    positionY: { value: 7, min: -30, max: 30 },
-    positionZ: { value: 10, min: -30, max: 30 },
-    targetX: { value: -0.5, min: -30, max: 30 },
-    targetY: { value: 0, min: -30, max: 30 },
-    targetZ: { value: 1, min: -30, max: 30 },
-    angle: { value: 0.3, min: 0, max: Math.PI / 2 },
-    penumbra: { value: 0.4, min: 0, max: 1 },
-    decay: { value: 0.1, min: 0, max: 10 },
-    intensity: { value: 4, min: 0, max: 50 },
-    color: { value: "#31E981" },
-  });
-
-  useFrame(() => {
-    if (
-      spotLightTargetRef00.current &&
-      spotLightTargetRef01.current &&
-      spotLightTargetRef02.current
-    ) {
-      spotLightRef00.current.target = spotLightTargetRef00.current;
-      spotLightRef01.current.target = spotLightTargetRef01.current;
-      spotLightRef02.current.target = spotLightTargetRef02.current;
-    }
-  });
-
-  return (
-    <>
-      <spotLight
-        ref={spotLightRef00}
-        position={[
-          spotLight00Values.positionX,
-          spotLight00Values.positionY,
-          spotLight00Values.positionZ,
-        ]}
-        color={spotLight00Values.color}
-        intensity={spotLight00Values.intensity}
-        angle={spotLight00Values.angle}
-        penumbra={spotLight00Values.penumbra}
-        decay={spotLight00Values.decay}
-        shadow-camera-near={0.01}
-        shadow-camera-far={20}
-        shadow-camera-fov={spotLight00Values.angle}
-        castShadow
-      />
-      <spotLight
-        ref={spotLightRef01}
-        position={[
-          spotLight01Values.positionX,
-          spotLight01Values.positionY,
-          spotLight01Values.positionZ,
-        ]}
-        color={spotLight01Values.color}
-        intensity={spotLight01Values.intensity}
-        angle={spotLight01Values.angle}
-        penumbra={spotLight01Values.penumbra}
-        decay={spotLight01Values.decay}
-        shadow-camera-near={0.01}
-        shadow-camera-far={20}
-        shadow-camera-fov={spotLight01Values.angle}
-        castShadow
-      />
-      <spotLight
-        ref={spotLightRef02}
-        position={[
-          spotLight02Values.positionX,
-          spotLight02Values.positionY,
-          spotLight02Values.positionZ,
-        ]}
-        color={spotLight02Values.color}
-        intensity={spotLight02Values.intensity}
-        angle={spotLight02Values.angle}
-        penumbra={spotLight02Values.penumbra}
-        decay={spotLight02Values.decay}
-        shadow-camera-near={0.01}
-        shadow-camera-far={20}
-        shadow-camera-fov={spotLight02Values.angle}
-        castShadow
-      />
-      <object3D
-        ref={spotLightTargetRef00}
-        position={[
-          spotLight00Values.targetX,
-          spotLight00Values.targetY,
-          spotLight00Values.targetZ,
-        ]}
-      />
-      <object3D
-        ref={spotLightTargetRef01}
-        position={[
-          spotLight01Values.targetX,
-          spotLight01Values.targetY,
-          spotLight01Values.targetZ,
-        ]}
-      />
-      <object3D
-        ref={spotLightTargetRef02}
-        position={[
-          spotLight02Values.targetX,
-          spotLight02Values.targetY,
-          spotLight02Values.targetZ,
-        ]}
-      />
-    </>
-  );
-}
-
 export default function CavityScene() {
+  const canvasRef = useRef<HTMLCanvasElement>(null!);
   // const interactionState = useAppStore((state) => state.interactionState);
+
+  useEffect(() => {
+    const unsubInteractionState = useAppStore.subscribe(
+      (state) => state.interactionState,
+      (value) => {
+        if (value === "active") {
+          document.body.style.cursor = "default";
+        } else {
+          document.body.style.cursor = "none";
+        }
+      },
+    );
+
+    return () => {
+      unsubInteractionState();
+    };
+  }, []);
 
   return (
     <>
       <Canvas
+        ref={canvasRef}
         shadows
         dpr={Math.min(window.devicePixelRatio, 2)}
         camera={{
           position: [0, -2.5, 19],
-          // rotation: [0.05, 0, 0],
           fov: 8,
         }}
         style={{
           touchAction: "none",
-          // cursor: interactionState === "active" ? "default" : "none",
         }}
       >
         <CustomStatsComponent />
@@ -624,6 +526,7 @@ export default function CavityScene() {
           /> */}
           <ambientLight intensity={0.1} />
           <Cavity />
+          <Screen />
           <Lights />
           <OrbitControls makeDefault />
         </Suspense>

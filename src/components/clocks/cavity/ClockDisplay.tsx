@@ -208,7 +208,7 @@ function Char({
         textAlign="center"
         characters={CHARACTERS}
         position={[0, 0, 0]}
-        outlineBlur={0.004}
+        outlineBlur={0.002}
         outlineWidth={0.003}
         outlineColor={"#fff"}
       >
@@ -222,7 +222,7 @@ function Char({
         textAlign="center"
         characters={CHARACTERS}
         position={[0, distance, 0.01]}
-        outlineBlur={0.004}
+        outlineBlur={0.002}
         outlineWidth={0.003}
         outlineColor={"#fff"}
       >
@@ -248,7 +248,7 @@ export default function Digits({
   //   // eslint-disable-next-line react-hooks/exhaustive-deps
   // }, []);
   return (
-    <group ref={groupRef} position={position} scale={[520, 520, 1]}>
+    <group ref={groupRef} position={position} scale={[600, 600, 1]}>
       {Array.from({ length: 8 }).map((_, index) => {
         // return <ClockPositionCharGroup key={`digit-${index}`} index={index} />;
         return <Char key={`digit-${index}`} index={index} />;

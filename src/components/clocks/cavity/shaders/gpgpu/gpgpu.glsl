@@ -27,7 +27,8 @@ void main() {
   #ifdef USE_CLOCK_TEXTURE
   vec2 clockUV = (vec2(positionX, positionY) + 0.5) / vec2(float(uCubeCounts.x), float(uCubeCounts.y));
   vec4 clockInfo = texture(uClockTexture, clockUV);
-  targetSizeInfo.xyz *= 1.0 - step(0.5, clockInfo.xyz);
+  // targetSizeInfo.xyz *= 1.0 - step(0.5, clockInfo.xyz);
+  targetSizeInfo.xyz *= (1.0 - clockInfo.xyz) * step(clockInfo.x, 0.8);
   #endif
 
   vec4 actualSizeInfo = texture(sizeTexture, uv);
