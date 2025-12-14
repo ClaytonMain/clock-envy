@@ -1,15 +1,11 @@
-import {
-  Loader,
-  OrbitControls,
-  Plane,
-  Sphere,
-  useFBO,
-} from "@react-three/drei";
+import { Loader, Plane, useFBO } from "@react-three/drei";
 import { Canvas, createPortal, useFrame } from "@react-three/fiber";
+import { useControls } from "leva";
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import useAppStore from "../../../stores/useAppStore";
+import useCavityStore from "../../../stores/useCavityStore";
 import CustomStatsComponent from "../../misc/CustomStatsComponent";
 import ClockDisplay from "./ClockDisplay";
 import {
@@ -33,6 +29,7 @@ const cubeUniforms01 = {
 };
 
 function Cavity() {
+  const showTextureDisplayPlanes = false;
   const clockTextureRef = useRef<THREE.Texture>(null!);
   const { gpgpuTexture: gpgpuTexture00 } = useGPGPU({
     cubeCounts: FOREGROUND_CONSTANTS.cubeCounts,
@@ -221,21 +218,46 @@ function Cavity() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [window.innerWidth, window.innerHeight]);
 
+  useEffect(() => {
+    const unsubPrimaryColor = useCavityStore.subscribe(
+      (state) => state.primaryColor,
+      (color) => {
+        if (instancedMeshRef01.current) {
+          // @ts-expect-error asdf
+          instancedMeshRef01.current.material.color = color;
+        }
+      },
+    );
+    const unsubSecondaryColor = useCavityStore.subscribe(
+      (state) => state.secondaryColor,
+      (color) => {
+        if (instancedMeshRef00.current) {
+          // @ts-expect-error asdf
+          instancedMeshRef00.current.material.color = color;
+        }
+      },
+    );
+    return () => {
+      unsubPrimaryColor();
+      unsubSecondaryColor();
+    };
+  }, []);
+
   useFrame(({ gl, camera }) => {
-    // const angle =
-    //   (-useAppStore.getState().currentTimeValue.toSeconds() / 60) *
-    //     Math.PI *
-    //     2 +
-    //   Math.PI / 2;
-    // camera.position.lerp(
-    //   new THREE.Vector3(
-    //     Math.cos(angle) * 0.5,
-    //     Math.sin(angle) * 0.5 - 2.5,
-    //     camera.position.z,
-    //   ),
-    //   0.1,
-    // );
-    // camera.lookAt(new THREE.Vector3(0, 0, 0));
+    const angle =
+      (-useAppStore.getState().currentTimeValue.toSeconds() / 60) *
+        Math.PI *
+        2 +
+      Math.PI / 2;
+    camera.position.lerp(
+      new THREE.Vector3(
+        Math.cos(angle) * 0.5,
+        Math.sin(angle) * 0.5 - 2.5,
+        camera.position.z,
+      ),
+      0.1,
+    );
+    camera.lookAt(new THREE.Vector3(0, 0, 0));
     if (gpgpuTexture00.current) {
       cubeUniforms00.uGPGPUTexture.value = gpgpuTexture00.current;
     }
@@ -272,7 +294,7 @@ function Cavity() {
       >
         <meshPhysicalMaterial
           attach="material"
-          color={"#363946"}
+          color={useCavityStore.getState().secondaryColor}
           metalness={0.02}
           roughness={0.9}
           clearcoat={1}
@@ -353,11 +375,11 @@ function Cavity() {
         receiveShadow
         args={[undefined, undefined, BACKGROUND_CONSTANTS.totalCubes]}
         rotation={[0, 0, 0]}
-        position={[0, 0.6, -5]}
+        position={[0, 0.22, -2]}
       >
         <meshStandardMaterial
           attach="material"
-          color={"#31E981"}
+          color={useCavityStore.getState().primaryColor}
           metalness={0.02}
           roughness={0.1}
           onBeforeCompile={(shader) => {
@@ -426,7 +448,7 @@ function Cavity() {
           }}
         />
       </instancedMesh>
-      <Plane ref={gpgpuDisplayPlaneRef} visible={true} position={[0, 0, -1]}>
+      <Plane ref={gpgpuDisplayPlaneRef} visible={showTextureDisplayPlanes}>
         <meshBasicMaterial
           attach="material"
           map={gpgpuTexture00.current}
@@ -452,7 +474,7 @@ function Cavity() {
           }}
         />
       </Plane>
-      <Plane ref={clockDisplayPlaneRef} visible={true}>
+      <Plane ref={clockDisplayPlaneRef} visible={showTextureDisplayPlanes}>
         <meshBasicMaterial
           attach="material"
           map={clockRenderTarget.texture}
@@ -484,6 +506,21 @@ function Cavity() {
 
 export default function CavityScene() {
   const canvasRef = useRef<HTMLCanvasElement>(null!);
+
+  useControls("Cavity Scene", {
+    primaryColor: {
+      value: `#${useCavityStore.getState().primaryColor.getHexString()}`,
+      onChange: (value) => {
+        useCavityStore.setState({ primaryColor: new THREE.Color(value) });
+      },
+    },
+    secondaryColor: {
+      value: `#${useCavityStore.getState().secondaryColor.getHexString()}`,
+      onChange: (value) => {
+        useCavityStore.setState({ secondaryColor: new THREE.Color(value) });
+      },
+    },
+  });
   // const interactionState = useAppStore((state) => state.interactionState);
 
   useEffect(() => {
@@ -528,7 +565,7 @@ export default function CavityScene() {
           <Cavity />
           <Screen />
           <Lights />
-          <OrbitControls makeDefault />
+          {/* <OrbitControls makeDefault /> */}
         </Suspense>
       </Canvas>
       <Loader />

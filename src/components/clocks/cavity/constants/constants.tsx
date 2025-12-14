@@ -10,7 +10,7 @@ export const FOREGROUND_CONSTANTS = {
   textureSize: Math.ceil(Math.sqrt(FOREGROUND_TOTAL_CUBES)),
 };
 
-const BACKGROUND_CUBE_COUNTS: [number, number, number] = [65, 22, 3];
+const BACKGROUND_CUBE_COUNTS: [number, number, number] = [58, 22, 3];
 const BACKGROUND_TOTAL_CUBES = BACKGROUND_CUBE_COUNTS.reduce(
   (a, b) => a * b,
   1,
@@ -18,7 +18,7 @@ const BACKGROUND_TOTAL_CUBES = BACKGROUND_CUBE_COUNTS.reduce(
 export const BACKGROUND_CONSTANTS = {
   cubeCounts: BACKGROUND_CUBE_COUNTS,
   totalCubes: BACKGROUND_TOTAL_CUBES,
-  cubeSize: 0.05,
+  cubeSize: 0.1,
   textureSize: Math.ceil(Math.sqrt(BACKGROUND_TOTAL_CUBES)),
 };
 
