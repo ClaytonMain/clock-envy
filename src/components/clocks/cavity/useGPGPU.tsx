@@ -14,13 +14,15 @@ export default function useGPGPU({
   clockTextureRef,
   sizeSpeed = 0.01,
   timeFactor = 0.1,
-  noiseOffsets = [0, 1, 2],
+  noiseOffsets = [0, 0.1, 0.2],
+  noiseScale = [3, 3, 3],
 }: {
   cubeCounts: [number, number, number];
   clockTextureRef?: RefObject<THREE.Texture>;
   sizeSpeed?: number;
   timeFactor?: number;
   noiseOffsets?: [number, number, number];
+  noiseScale?: [number, number, number];
 }) {
   const gl = useThree((state) => state.gl);
 
@@ -78,6 +80,9 @@ export default function useGPGPU({
         value: clockTextureRef.current,
       };
     }
+    sizeVariable.material.uniforms.uNoiseScale = {
+      value: new THREE.Vector3(...noiseScale),
+    };
 
     return {
       computation,

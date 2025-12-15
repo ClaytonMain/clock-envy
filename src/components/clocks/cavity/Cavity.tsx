@@ -75,11 +75,6 @@ function Cavity() {
       1,
       0.005,
     );
-    // const geometry = new THREE.BoxGeometry(
-    //   FOREGROUND_CONSTANTS.cubeSize,
-    //   FOREGROUND_CONSTANTS.cubeSize,
-    //   FOREGROUND_CONSTANTS.cubeSize,
-    // );
     const gpgpuUvs = new Float32Array(FOREGROUND_CONSTANTS.totalCubes * 2);
 
     for (let i = 0; i < FOREGROUND_CONSTANTS.totalCubes; i++) {
@@ -134,6 +129,7 @@ function Cavity() {
     let y = -1;
     let key = "";
     let z = -999;
+    const secondaryColor = useCavityStore.getState().secondaryColor;
 
     for (let i = 0; i < FOREGROUND_CONSTANTS.totalCubes; i++) {
       x =
@@ -163,6 +159,23 @@ function Cavity() {
         i,
         new THREE.Matrix4().setPosition(x, y, z),
       );
+      instancedMeshRef00.current.setColorAt(
+        i,
+        new THREE.Color(
+          Math.min(
+            Math.max(secondaryColor.r + (Math.random() - 0.5) * 0.015, 0),
+            1,
+          ),
+          Math.min(
+            Math.max(secondaryColor.g + (Math.random() - 0.5) * 0.015, 0),
+            1,
+          ),
+          Math.min(
+            Math.max(secondaryColor.b + (Math.random() - 0.5) * 0.015, 0),
+            1,
+          ),
+        ),
+      );
     }
     instancedMeshRef00.current.instanceMatrix.needsUpdate = true;
     instancedMeshRef00.current.matrixWorldNeedsUpdate = true;
@@ -174,6 +187,8 @@ function Cavity() {
     let y = -1;
     let key = "";
     let z = -999;
+
+    const primaryColor = useCavityStore.getState().primaryColor;
 
     for (let i = 0; i < BACKGROUND_CONSTANTS.totalCubes; i++) {
       x =
@@ -203,6 +218,23 @@ function Cavity() {
         i,
         new THREE.Matrix4().setPosition(x, y, z),
       );
+      instancedMeshRef01.current.setColorAt(
+        i,
+        new THREE.Color(
+          Math.min(
+            Math.max(primaryColor.r + (Math.random() - 0.5) * 0.015, 0),
+            1,
+          ),
+          Math.min(
+            Math.max(primaryColor.g + (Math.random() - 0.5) * 0.015, 0),
+            1,
+          ),
+          Math.min(
+            Math.max(primaryColor.b + (Math.random() - 0.5) * 0.015, 0),
+            1,
+          ),
+        ),
+      );
     }
     instancedMeshRef01.current.instanceMatrix.needsUpdate = true;
     instancedMeshRef01.current.matrixWorldNeedsUpdate = true;
@@ -223,8 +255,26 @@ function Cavity() {
       (state) => state.primaryColor,
       (color) => {
         if (instancedMeshRef01.current) {
-          // @ts-expect-error asdf
-          instancedMeshRef01.current.material.color = color;
+          for (let i = 0; i < BACKGROUND_CONSTANTS.totalCubes; i++) {
+            instancedMeshRef01.current.setColorAt(
+              i,
+              new THREE.Color(
+                Math.min(
+                  Math.max(color.r + (Math.random() - 0.5) * 0.015, 0),
+                  1,
+                ),
+                Math.min(
+                  Math.max(color.g + (Math.random() - 0.5) * 0.015, 0),
+                  1,
+                ),
+                Math.min(
+                  Math.max(color.b + (Math.random() - 0.5) * 0.015, 0),
+                  1,
+                ),
+              ),
+            );
+          }
+          instancedMeshRef01.current.instanceColor!.needsUpdate = true;
         }
       },
     );
@@ -232,8 +282,26 @@ function Cavity() {
       (state) => state.secondaryColor,
       (color) => {
         if (instancedMeshRef00.current) {
-          // @ts-expect-error asdf
-          instancedMeshRef00.current.material.color = color;
+          for (let i = 0; i < FOREGROUND_CONSTANTS.totalCubes; i++) {
+            instancedMeshRef00.current.setColorAt(
+              i,
+              new THREE.Color(
+                Math.min(
+                  Math.max(color.r + (Math.random() - 0.5) * 0.015, 0),
+                  1,
+                ),
+                Math.min(
+                  Math.max(color.g + (Math.random() - 0.5) * 0.015, 0),
+                  1,
+                ),
+                Math.min(
+                  Math.max(color.b + (Math.random() - 0.5) * 0.015, 0),
+                  1,
+                ),
+              ),
+            );
+          }
+          instancedMeshRef00.current.instanceColor!.needsUpdate = true;
         }
       },
     );
@@ -251,8 +319,8 @@ function Cavity() {
       Math.PI / 2;
     camera.position.lerp(
       new THREE.Vector3(
-        Math.cos(angle) * 0.5,
-        Math.sin(angle) * 0.5 - 2.5,
+        Math.cos(angle) * 1.1,
+        Math.sin(angle) * 1.1 - 2.5,
         camera.position.z,
       ),
       0.1,
@@ -294,7 +362,7 @@ function Cavity() {
       >
         <meshPhysicalMaterial
           attach="material"
-          color={useCavityStore.getState().secondaryColor}
+          // color={useCavityStore.getState().secondaryColor}
           metalness={0.02}
           roughness={0.9}
           clearcoat={1}
@@ -379,7 +447,6 @@ function Cavity() {
       >
         <meshStandardMaterial
           attach="material"
-          color={useCavityStore.getState().primaryColor}
           metalness={0.02}
           roughness={0.1}
           onBeforeCompile={(shader) => {
@@ -510,13 +577,13 @@ export default function CavityScene() {
   useControls("Cavity Scene", {
     primaryColor: {
       value: `#${useCavityStore.getState().primaryColor.getHexString()}`,
-      onChange: (value) => {
+      onEditEnd: (value) => {
         useCavityStore.setState({ primaryColor: new THREE.Color(value) });
       },
     },
     secondaryColor: {
       value: `#${useCavityStore.getState().secondaryColor.getHexString()}`,
-      onChange: (value) => {
+      onEditEnd: (value) => {
         useCavityStore.setState({ secondaryColor: new THREE.Color(value) });
       },
     },

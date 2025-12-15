@@ -34,7 +34,7 @@ const SPRING_CONFIGS = {
 
 function Glass({ glassGeometry }: { glassGeometry: THREE.BufferGeometry }) {
   return (
-    <mesh geometry={glassGeometry}>
+    <mesh geometry={glassGeometry} position={[0, 0.4, 0]}>
       {/* <meshStandardMaterial color="white" /> */}
       {/* <meshNormalMaterial /> */}
       <MeshTransmissionMaterial
@@ -311,7 +311,7 @@ export default function Tube({
       <Posts />
       <Backing />
       <Screen />
-      <Lights displayIndex={displayIndex} />
+      {/* <Lights displayIndex={displayIndex} /> */}
     </group>
   );
 }

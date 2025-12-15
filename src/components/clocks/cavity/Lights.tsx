@@ -6,7 +6,7 @@ import useCavityStore from "../../../stores/useCavityStore";
 
 export default function Lights() {
   const spotLight00Position: [number, number, number] = [0, 0, -1.8];
-  const spotLight01Position: [number, number, number] = [0, -0.5, -0.2];
+  const spotLight01Position: [number, number, number] = [0, -1.5, -0.2];
   const spotLight02Position: [number, number, number] = [-1, 10, 10];
   const spotLightRef00 = useRef<THREE.SpotLight>(null!);
   const spotLightRef01 = useRef<THREE.SpotLight>(null!);
@@ -14,7 +14,7 @@ export default function Lights() {
   const spotLightTargetRef00 = useRef<THREE.Object3D>(null);
   const spotLightTargetRef01 = useRef<THREE.Object3D>(null);
   const spotLightTargetRef02 = useRef<THREE.Object3D>(null);
-  const helpersEnabled = true;
+  const helpersEnabled = false;
   useHelper(helpersEnabled && spotLightRef00, THREE.SpotLightHelper);
   useHelper(helpersEnabled && spotLightRef01, THREE.SpotLightHelper);
   useHelper(helpersEnabled && spotLightRef02, THREE.SpotLightHelper);
@@ -108,7 +108,7 @@ export default function Lights() {
         position={spotLight01Position}
         color={useCavityStore.getState().primaryColor}
         intensity={2}
-        angle={1.03}
+        angle={1.23}
         penumbra={0.26}
         decay={0.1}
         shadow-camera-near={0.01}
@@ -133,7 +133,7 @@ export default function Lights() {
         castShadow
       />
       <object3D ref={spotLightTargetRef00} position={[0, 0, 0]} />
-      <object3D ref={spotLightTargetRef01} position={[0, 0.22, -2]} />
+      <object3D ref={spotLightTargetRef01} position={[0, -1.5, -2]} />
       <object3D ref={spotLightTargetRef02} position={[-0.5, 0, 0]} />
     </>
   );

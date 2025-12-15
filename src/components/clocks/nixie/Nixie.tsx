@@ -15,51 +15,53 @@ import Tube from "./Tube";
 
 function Nixie() {
   const glassGeometry = useMemo(() => {
-    const points = [];
-    points.push(new THREE.Vector2(0.0, 1.0));
-    points.push(new THREE.Vector2(0.009, 0.998));
-    points.push(new THREE.Vector2(0.0197, 0.989));
-    points.push(new THREE.Vector2(0.022, 0.98));
-    points.push(new THREE.Vector2(0.0245, 0.97));
-    points.push(new THREE.Vector2(0.028, 0.948));
-    points.push(new THREE.Vector2(0.035, 0.94));
-    points.push(new THREE.Vector2(0.05, 0.934));
-    points.push(new THREE.Vector2(0.072, 0.928));
-    points.push(new THREE.Vector2(0.1, 0.92));
-    points.push(new THREE.Vector2(0.15, 0.9));
-    points.push(new THREE.Vector2(0.195, 0.87));
-    points.push(new THREE.Vector2(0.24, 0.82));
-    points.push(new THREE.Vector2(0.26, 0.77));
-    points.push(new THREE.Vector2(0.26, 0.6));
-    points.push(new THREE.Vector2(0.26, 0.5));
-    points.push(new THREE.Vector2(0.26, 0.5));
-    points.push(new THREE.Vector2(0.26, 0.4));
-    points.push(new THREE.Vector2(0.26, 0.3));
-    points.push(new THREE.Vector2(0.26, 0.2));
-    points.push(new THREE.Vector2(0.26, 0.1));
-    points.push(new THREE.Vector2(0.26, 0.0));
-    // // Test
-    // points.push(new THREE.Vector2(0.0, 0.0));
-    // Return
-    points.push(new THREE.Vector2(0.22, 0.0));
-    points.push(new THREE.Vector2(0.22, 0.1));
-    points.push(new THREE.Vector2(0.22, 0.2));
-    points.push(new THREE.Vector2(0.22, 0.3));
-    points.push(new THREE.Vector2(0.22, 0.4));
-    points.push(new THREE.Vector2(0.22, 0.5));
-    points.push(new THREE.Vector2(0.22, 0.6));
-    points.push(new THREE.Vector2(0.22, 0.7));
-    points.push(new THREE.Vector2(0.22, 0.77));
-    points.push(new THREE.Vector2(0.21, 0.795));
-    points.push(new THREE.Vector2(0.195, 0.82));
-    points.push(new THREE.Vector2(0.175, 0.84));
-    points.push(new THREE.Vector2(0.13, 0.866));
-    points.push(new THREE.Vector2(0.07, 0.89));
-    points.push(new THREE.Vector2(0, 0.897));
-    points.reverse();
-    const latheGeometry = new THREE.LatheGeometry(points, 32);
-    const geometry = mergeVertices(latheGeometry);
+    const geometry = new THREE.CapsuleGeometry(0.25, 0.25, 8, 16, 1);
     return geometry;
+    // const points = [];
+    // points.push(new THREE.Vector2(0.0, 1.0));
+    // points.push(new THREE.Vector2(0.009, 0.998));
+    // points.push(new THREE.Vector2(0.0197, 0.989));
+    // points.push(new THREE.Vector2(0.022, 0.98));
+    // points.push(new THREE.Vector2(0.0245, 0.97));
+    // points.push(new THREE.Vector2(0.028, 0.948));
+    // points.push(new THREE.Vector2(0.035, 0.94));
+    // points.push(new THREE.Vector2(0.05, 0.934));
+    // points.push(new THREE.Vector2(0.072, 0.928));
+    // points.push(new THREE.Vector2(0.1, 0.92));
+    // points.push(new THREE.Vector2(0.15, 0.9));
+    // points.push(new THREE.Vector2(0.195, 0.87));
+    // points.push(new THREE.Vector2(0.24, 0.82));
+    // points.push(new THREE.Vector2(0.26, 0.77));
+    // points.push(new THREE.Vector2(0.26, 0.6));
+    // points.push(new THREE.Vector2(0.26, 0.5));
+    // points.push(new THREE.Vector2(0.26, 0.5));
+    // points.push(new THREE.Vector2(0.26, 0.4));
+    // points.push(new THREE.Vector2(0.26, 0.3));
+    // points.push(new THREE.Vector2(0.26, 0.2));
+    // points.push(new THREE.Vector2(0.26, 0.1));
+    // points.push(new THREE.Vector2(0.26, 0.0));
+    // // // Test
+    // // points.push(new THREE.Vector2(0.0, 0.0));
+    // // Return
+    // points.push(new THREE.Vector2(0.22, 0.0));
+    // points.push(new THREE.Vector2(0.22, 0.1));
+    // points.push(new THREE.Vector2(0.22, 0.2));
+    // points.push(new THREE.Vector2(0.22, 0.3));
+    // points.push(new THREE.Vector2(0.22, 0.4));
+    // points.push(new THREE.Vector2(0.22, 0.5));
+    // points.push(new THREE.Vector2(0.22, 0.6));
+    // points.push(new THREE.Vector2(0.22, 0.7));
+    // points.push(new THREE.Vector2(0.22, 0.77));
+    // points.push(new THREE.Vector2(0.21, 0.795));
+    // points.push(new THREE.Vector2(0.195, 0.82));
+    // points.push(new THREE.Vector2(0.175, 0.84));
+    // points.push(new THREE.Vector2(0.13, 0.866));
+    // points.push(new THREE.Vector2(0.07, 0.89));
+    // points.push(new THREE.Vector2(0, 0.897));
+    // points.reverse();
+    // const latheGeometry = new THREE.LatheGeometry(points, 32);
+    // const geometry = mergeVertices(latheGeometry);
+    // return geometry;
   }, []);
   const [baseColorMap, baseDisplacementMap] = useLoader(THREE.TextureLoader, [
     "./textures/wood_table_worn_1k/textures/wood_table_worn_diff_1k.jpg",

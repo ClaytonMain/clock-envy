@@ -6,6 +6,7 @@ uniform ivec3 uCubeCounts;
 uniform float uSizeSpeed;
 uniform vec3 uNoiseOffsets;
 uniform sampler2D uClockTexture;
+uniform vec3 uNoiseScale;
 
 #include ../../../../../shaders/includes/simplexNoise4d.glsl
 
@@ -19,7 +20,11 @@ void main() {
 
   vec3 position = vec3(positionX, positionY, 0.0);
   position = position / float(uCubeCounts.x);
-  vec3 flowField = vec3(simplexNoise4d(vec4(position.xyz + uNoiseOffsets.x, uTime)), simplexNoise4d(vec4(position.xyz + uNoiseOffsets.y, uTime)), simplexNoise4d(vec4(position.xyz + uNoiseOffsets.z, uTime)));
+  vec3 flowField = vec3(
+    simplexNoise4d(vec4(position.xyz * uNoiseScale.x + uNoiseOffsets.x, uTime)),
+    simplexNoise4d(vec4(position.xyz * uNoiseScale.y + uNoiseOffsets.y, uTime)),
+    simplexNoise4d(vec4(position.xyz * uNoiseScale.z + uNoiseOffsets.z, uTime))
+  );
   flowField = normalize(flowField);
 
   vec4 targetSizeInfo = vec4(step((positionZ - 1.5) / float(uCubeCounts.z), smoothstep(-1.0, 1.0, flowField)), 1.0);

@@ -1,4 +1,4 @@
-const FOREGROUND_CUBE_COUNTS: [number, number, number] = [100, 40, 4];
+const FOREGROUND_CUBE_COUNTS: [number, number, number] = [100, 40, 3];
 const FOREGROUND_TOTAL_CUBES = FOREGROUND_CUBE_COUNTS.reduce(
   (a, b) => a * b,
   1,
