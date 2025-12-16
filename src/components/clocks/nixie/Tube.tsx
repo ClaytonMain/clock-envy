@@ -32,21 +32,53 @@ const SPRING_CONFIGS = {
   },
 };
 
-function Glass({ glassGeometry }: { glassGeometry: THREE.BufferGeometry }) {
+function Glass({ geometry }: { geometry: THREE.BufferGeometry }) {
   return (
-    <mesh geometry={glassGeometry} position={[0, 0.4, 0]}>
+    <mesh
+      geometry={geometry}
+      position={[0, 0, 0]}
+      rotation={[Math.PI / 2, 0, 0]}
+      scale={0.6}
+    >
       {/* <meshStandardMaterial color="white" /> */}
       {/* <meshNormalMaterial /> */}
       <MeshTransmissionMaterial
-        // clearcoatRoughness={0.6}
-        // clearcoat={0.6}
-        reflectivity={0.2}
-        roughness={0.1}
-        // distortion={10}
-        // distortionScale={1000}
-        // anisotropicBlur={1}
-        // transmissionSampler
+      // flatShading={false}
+      // clearcoatRoughness={0.6}
+      // clearcoat={0.6}
+      // reflectivity={0.2}
+      // roughness={0.1}
+      // distortion={10}
+      // distortionScale={1000}
+      // anisotropicBlur={1}
+      // transmissionSampler
       />
+    </mesh>
+  );
+}
+
+function Rim({ geometry }: { geometry: THREE.BufferGeometry }) {
+  return (
+    <mesh
+      geometry={geometry}
+      position={[0, 0, 0]}
+      rotation={[Math.PI / 2, 0, 0]}
+      scale={0.6}
+    >
+      <meshPhysicalMaterial color={"gold"} />
+      {/* <meshStandardMaterial color="white" /> */}
+      {/* <meshNormalMaterial /> */}
+      {/* <MeshTransmissionMaterial
+      // flatShading={false}
+      // clearcoatRoughness={0.6}
+      // clearcoat={0.6}
+      // reflectivity={0.2}
+      // roughness={0.1}
+      // distortion={10}
+      // distortionScale={1000}
+      // anisotropicBlur={1}
+      // transmissionSampler
+      /> */}
     </mesh>
   );
 }
@@ -126,7 +158,7 @@ function Digit({
         {/* <meshBasicMaterial ref={materialRef} color={"#333"} /> */}
         <meshStandardMaterial
           color={"#333"}
-          opacity={0.8}
+          // opacity={0.8}
           // transparent={false}
           emissive={"#ff6741"}
           emissiveIntensity={0.02}
@@ -144,7 +176,7 @@ function Digit({
 
 function Digits({ displayIndex }: { displayIndex: number }) {
   return (
-    <group position={[0, 0.4, 0]}>
+    <group position={[0, 0, 0.1]}>
       {DIGIT_Z_ORDER.map((zIndex, digit) => (
         <Digit
           key={digit}
@@ -250,7 +282,7 @@ function Lights({ displayIndex }: { displayIndex: number }) {
 
   return (
     <>
-      <group ref={lightGroup00Ref} position={[0, 0.4, 0]}>
+      <group ref={lightGroup00Ref} position={[0, 0, 0]}>
         <pointLight
           ref={light0000Ref}
           color={"#ff6741"}
@@ -298,14 +330,17 @@ export default function Tube({
   displayIndex,
   position = [0, 0, 0],
   glassGeometry,
+  rimGeometry,
 }: {
   displayIndex: number;
   position?: [number, number, number];
   glassGeometry: THREE.BufferGeometry;
+  rimGeometry: THREE.BufferGeometry;
 }) {
   return (
     <group position={position}>
-      <Glass glassGeometry={glassGeometry} />
+      <Glass geometry={glassGeometry} />
+      <Rim geometry={rimGeometry} />
       <Digits displayIndex={displayIndex} />
       <Plate />
       <Posts />
