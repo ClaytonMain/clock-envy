@@ -2,7 +2,8 @@ import {
   Environment,
   Loader,
   OrbitControls,
-  RoundedBox,
+  Plane,
+  useGLTF,
 } from "@react-three/drei";
 import { Canvas, useLoader } from "@react-three/fiber";
 import { Suspense, useMemo } from "react";
@@ -14,102 +15,93 @@ import CustomStatsComponent from "../../misc/CustomStatsComponent";
 import Tube from "./Tube";
 
 function Nixie() {
-  const glassGeometry = useMemo(() => {
-    const points = [];
-    points.push(new THREE.Vector2(0.0, 1.0));
-    points.push(new THREE.Vector2(0.009, 0.998));
-    points.push(new THREE.Vector2(0.0197, 0.989));
-    points.push(new THREE.Vector2(0.022, 0.98));
-    points.push(new THREE.Vector2(0.0245, 0.97));
-    points.push(new THREE.Vector2(0.028, 0.948));
-    points.push(new THREE.Vector2(0.035, 0.94));
-    points.push(new THREE.Vector2(0.05, 0.934));
-    points.push(new THREE.Vector2(0.072, 0.928));
-    points.push(new THREE.Vector2(0.1, 0.92));
-    points.push(new THREE.Vector2(0.15, 0.9));
-    points.push(new THREE.Vector2(0.195, 0.87));
-    points.push(new THREE.Vector2(0.24, 0.82));
-    points.push(new THREE.Vector2(0.26, 0.77));
-    points.push(new THREE.Vector2(0.26, 0.6));
-    points.push(new THREE.Vector2(0.26, 0.5));
-    points.push(new THREE.Vector2(0.26, 0.5));
-    points.push(new THREE.Vector2(0.26, 0.4));
-    points.push(new THREE.Vector2(0.26, 0.3));
-    points.push(new THREE.Vector2(0.26, 0.2));
-    points.push(new THREE.Vector2(0.26, 0.1));
-    points.push(new THREE.Vector2(0.26, 0.0));
-    // // Test
-    // points.push(new THREE.Vector2(0.0, 0.0));
-    // Return
-    points.push(new THREE.Vector2(0.22, 0.0));
-    points.push(new THREE.Vector2(0.22, 0.1));
-    points.push(new THREE.Vector2(0.22, 0.2));
-    points.push(new THREE.Vector2(0.22, 0.3));
-    points.push(new THREE.Vector2(0.22, 0.4));
-    points.push(new THREE.Vector2(0.22, 0.5));
-    points.push(new THREE.Vector2(0.22, 0.6));
-    points.push(new THREE.Vector2(0.22, 0.7));
-    points.push(new THREE.Vector2(0.22, 0.77));
-    points.push(new THREE.Vector2(0.21, 0.795));
-    points.push(new THREE.Vector2(0.195, 0.82));
-    points.push(new THREE.Vector2(0.175, 0.84));
-    points.push(new THREE.Vector2(0.13, 0.866));
-    points.push(new THREE.Vector2(0.07, 0.89));
-    points.push(new THREE.Vector2(0, 0.897));
-    points.reverse();
-    const latheGeometry = new THREE.LatheGeometry(points, 32);
-    const geometry = mergeVertices(latheGeometry);
-    return geometry;
-  }, []);
-  const [baseColorMap, baseDisplacementMap] = useLoader(THREE.TextureLoader, [
-    "./textures/wood_table_worn_1k/textures/wood_table_worn_diff_1k.jpg",
-    "./textures/wood_table_worn_1k/textures/wood_table_worn_disp_1k.png",
+  const nixieTubeGlb = useGLTF("./models/nixie/NixieTube.glb");
+  const { glassGeometry, rimGeometry } = useMemo(() => {
+    let glassGeometry = nixieTubeGlb.meshes.Glass.geometry;
+    delete glassGeometry.attributes.normal;
+    glassGeometry = mergeVertices(glassGeometry);
+    glassGeometry.computeVertexNormals();
+
+    let rimGeometry = nixieTubeGlb.meshes.Rim.geometry;
+    delete rimGeometry.attributes.normal;
+    rimGeometry = mergeVertices(rimGeometry);
+    rimGeometry.computeVertexNormals();
+
+    return { glassGeometry, rimGeometry };
+  }, [nixieTubeGlb]);
+  const [baseColorMap, baseDisplacementMap, baseRoughnessMap] = useLoader(
+    THREE.TextureLoader,
+    [
+      "./textures/green_metal_rust_4k/textures/green_metal_rust_diff_4k.jpg",
+      "./textures/green_metal_rust_4k/textures/green_metal_rust_disp_4k.png",
+      "./textures/green_metal_rust_4k/textures/green_metal_rust_rough_4k.jpg",
+    ],
+  );
+  const [baseNormalMap] = useLoader(EXRLoader, [
+    "./textures/green_metal_rust_4k/textures/green_metal_rust_nor_gl_4k.exr",
   ]);
-  const [baseNormalMap, baseRoughnessMap] = useLoader(EXRLoader, [
-    "./textures/wood_table_worn_1k/textures/wood_table_worn_nor_gl_1k.exr",
-    "./textures/wood_table_worn_1k/textures/wood_table_worn_rough_1k.exr",
-  ]);
-  baseColorMap.wrapS = THREE.MirroredRepeatWrapping;
-  baseColorMap.wrapT = THREE.MirroredRepeatWrapping;
-  baseDisplacementMap.wrapS = THREE.MirroredRepeatWrapping;
-  baseDisplacementMap.wrapT = THREE.MirroredRepeatWrapping;
-  baseNormalMap.wrapS = THREE.MirroredRepeatWrapping;
-  baseNormalMap.wrapT = THREE.MirroredRepeatWrapping;
-  baseRoughnessMap.wrapS = THREE.MirroredRepeatWrapping;
-  baseRoughnessMap.wrapT = THREE.MirroredRepeatWrapping;
+
+  const wrapping = THREE.RepeatWrapping;
+  baseColorMap.wrapS = wrapping;
+  baseColorMap.wrapT = wrapping;
+  baseDisplacementMap.wrapS = wrapping;
+  baseDisplacementMap.wrapT = wrapping;
+  baseNormalMap.wrapS = wrapping;
+  baseNormalMap.wrapT = wrapping;
+  baseRoughnessMap.wrapS = wrapping;
+  baseRoughnessMap.wrapT = wrapping;
+
+  const repeatScale = 10;
+  baseColorMap.repeat.set(repeatScale, repeatScale);
+  baseDisplacementMap.repeat.set(repeatScale, repeatScale);
+  baseNormalMap.repeat.set(repeatScale, repeatScale);
+  baseRoughnessMap.repeat.set(repeatScale, repeatScale);
+
+  const rotation = 0.0;
+  baseColorMap.rotation = rotation;
+  baseDisplacementMap.rotation = rotation;
+  baseNormalMap.rotation = rotation;
+  baseRoughnessMap.rotation = rotation;
+
   return (
     <>
       <Tube
         displayIndex={0}
-        glassGeometry={glassGeometry}
         position={[-1.5, 0, 0]}
+        glassGeometry={glassGeometry}
+        rimGeometry={rimGeometry}
       />
       <Tube
         displayIndex={1}
-        glassGeometry={glassGeometry}
         position={[-0.95, 0, 0]}
+        glassGeometry={glassGeometry}
+        rimGeometry={rimGeometry}
       />
       <Tube
         displayIndex={3}
-        glassGeometry={glassGeometry}
         position={[-0.275, 0, 0]}
+        glassGeometry={glassGeometry}
+        rimGeometry={rimGeometry}
       />
       <Tube
         displayIndex={4}
-        glassGeometry={glassGeometry}
         position={[0.275, 0, 0]}
+        glassGeometry={glassGeometry}
+        rimGeometry={rimGeometry}
       />
       <Tube
         displayIndex={6}
-        glassGeometry={glassGeometry}
         position={[0.95, 0, 0]}
+        glassGeometry={glassGeometry}
+        rimGeometry={rimGeometry}
       />
       <Tube
         displayIndex={7}
-        glassGeometry={glassGeometry}
         position={[1.5, 0, 0]}
+        glassGeometry={glassGeometry}
+        rimGeometry={rimGeometry}
       />
-      <RoundedBox args={[3.8, 0.3, 1]} position={[0, -0.1, 0]} radius={0.03}>
+      <Plane args={[30, 30]} position={[0, 0, 0]}>
         <meshPhysicalMaterial
           roughness={0.2}
           clearcoat={0.3}
@@ -120,7 +112,7 @@ function Nixie() {
           roughnessMap={baseRoughnessMap}
           displacementScale={0.02}
         />
-      </RoundedBox>
+      </Plane>
     </>
   );
 }
@@ -156,11 +148,11 @@ export default function NixieScene() {
         </Suspense>
       </Canvas>
       <Loader />
-      <div className="fixed top-0 left-0 flex h-full w-full">
+      {/* <div className="fixed top-0 left-0 flex h-full w-full">
         <div className="pointer-events-none m-auto text-center text-9xl text-white select-none">
           WORK IN PROGRESS I AM NOT PLEASED WITH THIS YET
         </div>
-      </div>
+      </div> */}
     </>
   );
 }

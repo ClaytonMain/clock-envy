@@ -60,7 +60,7 @@ export default function Timekeeper() {
       useAppStore.setState({
         currentTimeValue: DateTime.now().plus({ milliseconds: timeOffsetMs }),
       });
-    }, 1000);
+    }, 100);
     return () => clearInterval(interval);
   }, [timeOffsetMs]);
 
