@@ -3,6 +3,7 @@ import { Route, Routes } from "react-router";
 import "./App.css";
 import ArchdukeVonOrbenScene from "./components/clocks/archduke-von-orben/ArchdukeVonOrben";
 import CavityScene from "./components/clocks/cavity/Cavity";
+import GameOfLifeScene from "./components/clocks/game-of-life/GameOfLife";
 import NixieScene from "./components/clocks/nixie/Nixie";
 import Timekeeper from "./components/misc/Timekeeper";
 import FullscreenHandleComponent from "./components/ui/FullscreenHandleComponent";
@@ -32,6 +33,7 @@ function App() {
             />
             <Route path="/Nixie" element={<NixieScene />} />
             <Route path="/Cavity" element={<CavityScene />} />
+            <Route path="/GameOfLife" element={<GameOfLifeScene />} />
             <Route path="*" element={<ArchdukeVonOrbenScene />} />
           </Routes>
         </div>
