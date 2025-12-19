@@ -1,14 +1,26 @@
 import { useFrame, useThree } from "@react-three/fiber";
+import { useControls } from "leva";
 import { useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 import * as THREE from "three";
 import { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer.js";
 import gpgpuShader from "./shaders/gpgpu/gpgpu.glsl";
 
 const gameVariables = {
-  gameTextureSize: 1024,
-  lifeProbability: 1.1,
+  gameTextureSize: 2048,
+  lifeProbability: 0.0,
   gameSpeed: 32,
 };
+
+const initialUniforms = {
+  uRho: { value: 5 },
+  uBeta: { value: new THREE.Vector2(34, 45) },
+  uDelta: { value: new THREE.Vector2(34, 58) },
+};
+// const initialUniforms = {
+//   uRho: { value: 4 },
+//   uBeta: { value: new THREE.Vector2(34, 45) },
+//   uDelta: { value: new THREE.Vector2(34, 57) },
+// };
 
 export default function useGPGPU({
   clockTextureRef,
@@ -16,6 +28,39 @@ export default function useGPGPU({
   clockTextureRef?: RefObject<THREE.Texture>;
 }) {
   const gl = useThree((state) => state.gl);
+
+  const uniforms = useControls({
+    rho: {
+      value: initialUniforms.uRho.value,
+      min: 1,
+      max: 10,
+      step: 1,
+    },
+    beta: {
+      value: [initialUniforms.uBeta.value.x, initialUniforms.uBeta.value.y],
+      min: 0,
+      max: 441,
+      step: 1,
+    },
+    delta: {
+      value: [initialUniforms.uDelta.value.x, initialUniforms.uDelta.value.y],
+      min: 0,
+      max: 441,
+      step: 1,
+    },
+    growthRate: {
+      value: 2.0,
+      min: 0.1,
+      max: 32.0,
+      step: 0.1,
+    },
+    decayRate: {
+      value: 0.5,
+      min: 0.1,
+      max: 32.0,
+      step: 0.1,
+    },
+  });
 
   const gpgpuTextureRef = useRef<THREE.Texture>(null!);
 
@@ -55,6 +100,20 @@ export default function useGPGPU({
 
     gpgpuTextureRef.current = gameStateTexture;
 
+    gameStateVariable.material.uniforms.uRho = { value: uniforms.rho };
+    gameStateVariable.material.uniforms.uBeta = {
+      value: new THREE.Vector2(uniforms.beta[0], uniforms.beta[1]),
+    };
+    gameStateVariable.material.uniforms.uDelta = {
+      value: new THREE.Vector2(uniforms.delta[0], uniforms.delta[1]),
+    };
+    gameStateVariable.material.uniforms.uGrowthRate = {
+      value: uniforms.growthRate,
+    };
+    gameStateVariable.material.uniforms.uDecayRate = {
+      value: uniforms.decayRate,
+    };
+
     if (clockTextureRef) {
       gameStateVariable.material.uniforms.uClockTexture = {
         value: clockTextureRef.current,
@@ -65,6 +124,7 @@ export default function useGPGPU({
       computation,
       gameStateVariable,
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gl, clockTextureRef]);
 
   useLayoutEffect(() => {
@@ -89,6 +149,19 @@ export default function useGPGPU({
       gpgpu.gameStateVariable.material.uniforms.uClockTexture.value =
         clockTextureRef.current;
     }
+    gpgpu.gameStateVariable.material.uniforms.uRho.value = uniforms.rho;
+    gpgpu.gameStateVariable.material.uniforms.uBeta.value = new THREE.Vector2(
+      uniforms.beta[0],
+      uniforms.beta[1],
+    );
+    gpgpu.gameStateVariable.material.uniforms.uDelta.value = new THREE.Vector2(
+      uniforms.delta[0],
+      uniforms.delta[1],
+    );
+    gpgpu.gameStateVariable.material.uniforms.uGrowthRate.value =
+      uniforms.growthRate;
+    gpgpu.gameStateVariable.material.uniforms.uDecayRate.value =
+      uniforms.decayRate;
 
     gpgpu.computation.compute();
 

@@ -73,7 +73,7 @@ function Char({ index }: { index: number }) {
         textAlign="center"
         characters={CHARACTERS}
         position={[0, 0, 0]}
-        outlineWidth={0.001}
+        outlineWidth={0.002}
         outlineColor={"#fff"}
       >
         {text00Char}
