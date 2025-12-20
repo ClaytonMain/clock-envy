@@ -2,14 +2,14 @@
 export const CLOCK_NAMES = [
   "Archduke Von Orben",
   "Cavity",
-  "Flip",
-  "Fourier",
+  // "Flip",
+  // "Fourier",
   "Game of Life",
-  "Hex",
+  // "Hex",
   "Nixie",
-  "Shadow Box",
-  "Viva",
-  "Word",
+  // "Shadow Box",
+  // "Viva",
+  // "Word",
 ] as const;
 
 export const STATS_CLASS_NAME =
