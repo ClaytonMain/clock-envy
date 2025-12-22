@@ -1,74 +1,18 @@
-import { Instance, Instances, Loader, Trail } from "@react-three/drei";
+import { Instance, Instances, Loader, Plane, Trail } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
+import { useControls } from "leva";
 import { Suspense, useEffect, useRef } from "react";
 import * as THREE from "three";
 import useAppStore from "../../../stores/useAppStore";
 import useFourierStore from "../../../stores/useFourierStore";
 import CustomStatsComponent from "../../misc/CustomStatsComponent";
-
-// Props to The Coding Train for the Fourier code example.
-// https://www.youtube.com/watch?v=7_vKzcgpfvU
-
-type FourierData = {
-  re: number;
-  im: number;
-  freq: number;
-  amp: number;
-  phase: number;
-};
-
-type EpicycleData = {
-  center: THREE.Vector2;
-  outerPoint: THREE.Vector2;
-  scale: number;
-  rotation: number;
-};
-
-class Complex {
-  re: number;
-  im: number;
-  constructor(re: number, im: number) {
-    this.re = re;
-    this.im = im;
-  }
-  add(other: Complex): Complex {
-    return new Complex(this.re + other.re, this.im + other.im);
-  }
-  multiply(other: Complex): Complex {
-    return new Complex(
-      this.re * other.re - this.im * other.im,
-      this.re * other.im + this.im * other.re,
-    );
-  }
-  amplitude(): number {
-    return Math.sqrt(this.re * this.re + this.im * this.im);
-  }
-  phase(): number {
-    return Math.atan2(this.im, this.re);
-  }
-}
-
-function dft(x: Complex[]): FourierData[] {
-  const X: FourierData[] = [];
-  const N = x.length;
-  for (let k = 0; k < N; k++) {
-    let sum = new Complex(0, 0);
-    for (let n = 0; n < N; n++) {
-      const phi = (2 * Math.PI * k * n) / N;
-      const c = new Complex(Math.cos(phi), -Math.sin(phi));
-      sum = sum.add(x[n].multiply(c));
-    }
-    sum = new Complex(sum.re / N, sum.im / N);
-    X.push({
-      re: sum.re,
-      im: sum.im,
-      freq: k,
-      amp: sum.amplitude(),
-      phase: sum.phase(),
-    });
-  }
-  return X;
-}
+import { RENDER_EPICYCLES, TOTAL_EPICYCLES } from "./constants/constants";
+import useGPGPU from "./useGPGPU";
+import {
+  getEpicycleData,
+  getFourier,
+  getHourMinuteSecondPoints,
+} from "./utils/utils";
 
 function EpicycleCircle({ index }: { index: number }) {
   const instanceRef = useRef<THREE.InstancedMesh>(null!);
@@ -81,7 +25,11 @@ function EpicycleCircle({ index }: { index: number }) {
         epicycleData.center.y,
         0,
       );
-      instanceRef.current.scale.set(epicycleData.scale, epicycleData.scale, 1);
+      instanceRef.current.scale.set(
+        epicycleData.scale * 2,
+        epicycleData.scale * 2,
+        1,
+      );
       instanceRef.current.rotation.set(0, 0, epicycleData.rotation);
     }
   });
@@ -107,7 +55,7 @@ function EpicycleLine({ index }: { index: number }) {
         outerPoint.x - center.x,
       );
       instanceRef.current.position.set(midPoint.x, midPoint.y, 0);
-      instanceRef.current.scale.set(length, 0.1, 1);
+      instanceRef.current.scale.set(length, 0.01, 1);
       instanceRef.current.rotation.set(0, 0, angle);
     }
   });
@@ -115,91 +63,51 @@ function EpicycleLine({ index }: { index: number }) {
   return <Instance ref={instanceRef} />;
 }
 
-function getEpicycleData(
-  fourier: FourierData[],
-  time: number,
-): { epicycleData: EpicycleData[]; position: THREE.Vector2 } {
-  const epicycleData: EpicycleData[] = [];
-  let x = 0;
-  let y = 0;
-  for (let i = 0; i < fourier.length; i++) {
-    const prevX = x;
-    const prevY = y;
-    const freq = fourier[i].freq;
-    const radius = fourier[i].amp;
-    const phase = fourier[i].phase;
-    x += radius * Math.cos(freq * time + phase);
-    y -= radius * Math.sin(freq * time + phase);
-    epicycleData.push({
-      center: new THREE.Vector2(prevX, prevY),
-      outerPoint: new THREE.Vector2(x, y),
-      scale: radius,
-      rotation: -freq * time + phase,
-    });
-  }
-  return { epicycleData, position: new THREE.Vector2(x, y) };
-}
-
-function getFourier(pointsToUse: { x: number; y: number }[]) {
-  const signal: Complex[] = pointsToUse.map((p) => new Complex(p.x, p.y));
-  const fourier = dft(signal);
-  fourier.sort((a, b) => b.amp - a.amp);
-  return fourier;
-}
-
-function getHourMinuteSecondPoints({ totalPoints }: { totalPoints: number }) {
-  const currentTimeValue = useAppStore.getState().currentTimeValue;
-  const hour =
-    (currentTimeValue.toMillis() / (1000 * 60 * 60) +
-      currentTimeValue.offset / 60) %
-    12;
-  const minute = (currentTimeValue.toMillis() / (1000 * 60)) % 60;
-  const hourAngle = (hour / 12) * 2 * Math.PI - Math.PI / 2;
-  const minuteAngle = (minute / 60) * 2 * Math.PI - Math.PI / 2;
-
-  const pointsPerHand = totalPoints / 2;
-  const points: { x: number; y: number }[] = [];
-  for (let i = 0; i < pointsPerHand; i++) {
-    const maxHourLength = 30;
-    const currentLength = -(
-      (Math.abs(i - pointsPerHand / 2) - pointsPerHand / 2) /
-      pointsPerHand
-    );
-    points.push({
-      x: currentLength * maxHourLength * Math.cos(hourAngle),
-      y: currentLength * maxHourLength * Math.sin(hourAngle),
-    });
-  }
-  for (let i = 0; i < pointsPerHand; i++) {
-    const maxMinuteLength = 40;
-    const currentLength = -(
-      (Math.abs(i - pointsPerHand / 2) - pointsPerHand / 2) /
-      pointsPerHand
-    );
-    points.push({
-      x: currentLength * maxMinuteLength * Math.cos(minuteAngle),
-      y: currentLength * maxMinuteLength * Math.sin(minuteAngle),
-    });
-  }
-  while (points.length < totalPoints) {
-    points.push({ x: 0, y: 0 });
-  }
-  while (points.length > totalPoints) {
-    points.pop();
-  }
-  return points;
-}
+const uniforms = {
+  uBackgroundColor: { value: new THREE.Color("#000000") },
+  uEpicycleColor: { value: new THREE.Color("#ffffff") },
+  uRadiusColor: { value: new THREE.Color("#888888") },
+  uTrailColor: { value: new THREE.Color("#ff0000") },
+};
 
 function Fourier() {
-  const numPoints = 500;
   const meshRef = useRef<THREE.Mesh>(null!);
+  const fourierDataDisplayPlaneRef = useRef<THREE.Mesh>(null!);
+  const { gpgpuTexture } = useGPGPU();
+
+  const controlValues = useControls({
+    uBackgroundColor: {
+      value: `#${uniforms.uBackgroundColor.value.getHexString()}`,
+      onEdit: (value: string) => {
+        uniforms.uBackgroundColor.value.set(new THREE.Color(value));
+      },
+    },
+    uEpicycleColor: {
+      value: `#${uniforms.uEpicycleColor.value.getHexString()}`,
+      onEdit: (value: string) => {
+        uniforms.uEpicycleColor.value.set(new THREE.Color(value));
+      },
+    },
+    uRadiusColor: {
+      value: `#${uniforms.uRadiusColor.value.getHexString()}`,
+      onEdit: (value: string) => {
+        uniforms.uRadiusColor.value.set(new THREE.Color(value));
+      },
+    },
+    uTrailColor: {
+      value: `#${uniforms.uTrailColor.value.getHexString()}`,
+      onEdit: (value: string) => {
+        uniforms.uTrailColor.value.set(new THREE.Color(value));
+      },
+    },
+  });
 
   useEffect(() => {
-    const points = getHourMinuteSecondPoints({ totalPoints: numPoints });
+    const points = getHourMinuteSecondPoints({ totalPoints: TOTAL_EPICYCLES });
     const fourier = getFourier(points);
-    const { epicycleData } = getEpicycleData(fourier, 0);
+    const { epicycleData } = getEpicycleData(fourier, 0, RENDER_EPICYCLES);
     useFourierStore.setState({ epicycleData });
-  }, [numPoints]);
+  }, []);
 
   const framerate = 60;
   const frameDurationRef = useRef(0);
@@ -210,39 +118,53 @@ function Fourier() {
       return;
     }
     frameDurationRef.current = 0;
-    timeRef.current += (2 * Math.PI) / numPoints;
+    timeRef.current += (2 * Math.PI) / TOTAL_EPICYCLES;
     if (timeRef.current > 2 * Math.PI) {
       timeRef.current = 0;
     }
-    const points = getHourMinuteSecondPoints({ totalPoints: numPoints });
+    const points = getHourMinuteSecondPoints({ totalPoints: TOTAL_EPICYCLES });
     const fourier = getFourier(points);
     const { epicycleData, position } = getEpicycleData(
       fourier,
       timeRef.current,
+      RENDER_EPICYCLES,
     );
     meshRef.current.position.set(position.x, position.y, 0);
     useFourierStore.setState({ epicycleData });
+
+    if (fourierDataDisplayPlaneRef.current && gpgpuTexture.current) {
+      // @ts-expect-error 'map' does exist.
+      fourierDataDisplayPlaneRef.current.material.map = gpgpuTexture.current;
+      fourierDataDisplayPlaneRef.current.material.needsUpdate = true;
+    }
   });
 
   return (
-    <group scale={0.05}>
-      <Instances limit={numPoints} range={numPoints}>
+    <group scale={1}>
+      <Plane
+        ref={fourierDataDisplayPlaneRef}
+        args={[1, 1]}
+        position={[0, 0, -0.01]}
+      />
+      {/* <meshBasicMaterial transparent={true} />
+      </Plane> */}
+      {/* <Instances limit={RENDER_EPICYCLES} range={RENDER_EPICYCLES}>
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial color="blue" wireframe />
-        {Array.from({ length: numPoints }).map((_, index) => (
+        {Array.from({ length: RENDER_EPICYCLES }).map((_, index) => (
           <EpicycleCircle index={index} key={index} />
         ))}
-      </Instances>
-      <Instances limit={numPoints} range={numPoints}>
+      </Instances> */}
+      <Instances limit={RENDER_EPICYCLES} range={RENDER_EPICYCLES}>
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial color="red" />
-        {Array.from({ length: numPoints }).map((_, index) => (
+        {Array.from({ length: RENDER_EPICYCLES }).map((_, index) => (
           <EpicycleLine index={index} key={index} />
         ))}
       </Instances>
-      <Trail color="hotpink" length={20} width={1} interval={5}>
+      <Trail color="hotpink" length={50} width={1} interval={5}>
         <mesh ref={meshRef}>
-          <sphereGeometry args={[0.05, 16, 16]} />
+          <sphereGeometry args={[0.005, 16, 16]} />
           <meshBasicMaterial color="yellow" />
         </mesh>
       </Trail>
