@@ -10,6 +10,7 @@ import {
   TOTAL_EPICYCLES,
 } from "./constants/constants";
 import gpgpuShader from "./shaders/gpgpu/gpgpu.glsl";
+import type { EpicycleData } from "./types/types";
 import {
   getEpicycleData,
   getFourier,
@@ -18,10 +19,12 @@ import {
 
 // Props to The Coding Train for the Fourier code example.
 // https://www.youtube.com/watch?v=7_vKzcgpfvU
+
 type GpgpuUniforms = {
   uDelta: { value: number };
   uNumEpicycles: { value: number };
   uEpicycleData: { value: THREE.Vector3[] }; // x: center.x, y: center.y, z: scale
+  uDrawPoint: { value: THREE.Vector2 };
   uFadeSpeed: { value: number };
 };
 const gpgpuUniforms: GpgpuUniforms = {
@@ -32,14 +35,22 @@ const gpgpuUniforms: GpgpuUniforms = {
       () => new THREE.Vector3(),
     ),
   },
-  uFadeSpeed: { value: 0.1 },
+  uDrawPoint: { value: new THREE.Vector2() },
+  uFadeSpeed: { value: 1.0 },
 };
 
-function getEpicycleDataForTime(time: number) {
+function getEpicycleDataForTime(time: number): {
+  epicycleData: EpicycleData[];
+  position: THREE.Vector2;
+} {
   const points = getHourMinuteSecondPoints({ totalPoints: TOTAL_EPICYCLES });
   const fourier = getFourier(points);
-  const { epicycleData } = getEpicycleData(fourier, time, TOTAL_EPICYCLES);
-  return epicycleData;
+  const { epicycleData, position } = getEpicycleData(
+    fourier,
+    time,
+    TOTAL_EPICYCLES,
+  );
+  return { epicycleData, position };
 }
 
 export default function useGPGPU() {
@@ -54,7 +65,7 @@ export default function useGPGPU() {
     },
     uFadeSpeed: {
       value: gpgpuUniforms.uFadeSpeed.value,
-      min: 0.01,
+      min: 0.1,
       max: 1,
       step: 0.01,
     },
@@ -73,7 +84,7 @@ export default function useGPGPU() {
 
     const gpgpuArray = gpgpuTexture.image.data as Float32Array;
 
-    const epicycleData = getEpicycleDataForTime(0);
+    const { epicycleData, position } = getEpicycleDataForTime(0);
 
     for (let i = 0; i < GPGPU_TEXTURE_SIZE * GPGPU_TEXTURE_SIZE; i++) {
       const i4 = i * 4;
@@ -81,7 +92,7 @@ export default function useGPGPU() {
       gpgpuArray[i4 + 0] = 0; // Distance to nearest circle
       gpgpuArray[i4 + 1] = 0; // Distance to nearest line segment
       gpgpuArray[i4 + 2] = 0; // Distance to draw point
-      gpgpuArray[i4 + 3] = 1; // Draw strength history
+      gpgpuArray[i4 + 3] = 0; // Draw strength history
     }
 
     const gpgpuTextureVariable = computation.addVariable(
@@ -105,6 +116,7 @@ export default function useGPGPU() {
         (data) => new THREE.Vector3(data.center.x, data.center.y, data.scale),
       ),
     };
+    gpgpuTextureVariable.material.uniforms.uDrawPoint = { value: position };
     gpgpuTextureVariable.material.uniforms.uFadeSpeed = {
       value: gpgpuUniforms.uFadeSpeed.value,
     };
@@ -151,12 +163,13 @@ export default function useGPGPU() {
       timeRef.current = 0;
     }
 
-    const epicycleData = getEpicycleDataForTime(timeRef.current);
+    const { epicycleData, position } = getEpicycleDataForTime(timeRef.current);
 
     gpgpu.gpgpuTextureVariable.material.uniforms.uEpicycleData.value =
       epicycleData.map(
         (data) => new THREE.Vector3(data.center.x, data.center.y, data.scale),
       );
+    gpgpu.gpgpuTextureVariable.material.uniforms.uDrawPoint.value = position;
 
     gpgpu.computation.compute();
 
