@@ -2,6 +2,7 @@ uniform float uDelta;
 uniform int uNumEpicycles;
 uniform vec3[500] uEpicycleData; // x: center x, y: center y, z: radius
 uniform vec2 uDrawPoint;
+uniform vec2 uPrevDrawPoint;
 uniform float uFadeSpeed;
 
 // Thanks (as always) to Iñigo Quilez for the SDF functions.
@@ -36,7 +37,7 @@ void main() {
    */
 
   vec2 uv = (gl_FragCoord.xy - vec2(0.5)) / resolution.xy;
-  vec2 position = uv - 0.5;
+  vec2 position = (uv - 0.5) * 1.05;
 
   float minCircleDist = 10000.0;
   float minRadialDist = 10000.0;
@@ -57,24 +58,13 @@ void main() {
     prevEpicycleEnd = center;
   }
 
-  float pointDist = length(position - uDrawPoint);
+  float pointDist = sdSegment(position, uPrevDrawPoint, uDrawPoint);
   pointDist = clamp(pointDist, 0.0, 1.0);
 
-  // Value between 0 and 1 representing trail intensity.
   float trail = texture(vGpgpuTexture, uv).a;
-  // Get smoothed 1.0 - distance to point.
-  float smoothedPointDist = smoothstep(0.996, 1.0, 1.0 - pointDist);
-  // Get last frame time input for exponential decay (log^2 being inverse of e^(sqrt(x))).
+  float smoothedPointDist = smoothstep(0.99, 1.0, 1.0 - pointDist);
   trail = -pow(log(max(trail, smoothedPointDist)), 5.0);
   trail = 1.0 / exp(pow(trail + uDelta * uFadeSpeed, 0.2));
-  // trailFade =
-  //   max(trailFade, smoothstep(0.99, 1.0, 1.0 - pointDist)) *
-  //   pow(1.0 - uFadeSpeed * uDelta, 3.0);
 
-  // gl_FragColor = vec4(
-  //   step(vec2(minCircleDist, minRadialDist), vec2(0.001)),
-  //   step(pointDistFade, 0.005),
-  //   pointDistFade
-  // );
   gl_FragColor = vec4(minCircleDist, minRadialDist, pointDist, trail);
 }

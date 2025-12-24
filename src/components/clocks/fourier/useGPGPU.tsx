@@ -25,6 +25,7 @@ type GpgpuUniforms = {
   uNumEpicycles: { value: number };
   uEpicycleData: { value: THREE.Vector3[] }; // x: center.x, y: center.y, z: scale
   uDrawPoint: { value: THREE.Vector2 };
+  uPrevDrawPoint: { value: THREE.Vector2 };
   uFadeSpeed: { value: number };
 };
 const gpgpuUniforms: GpgpuUniforms = {
@@ -36,6 +37,7 @@ const gpgpuUniforms: GpgpuUniforms = {
     ),
   },
   uDrawPoint: { value: new THREE.Vector2() },
+  uPrevDrawPoint: { value: new THREE.Vector2() },
   uFadeSpeed: { value: 1.0 },
 };
 
@@ -117,6 +119,7 @@ export default function useGPGPU() {
       ),
     };
     gpgpuTextureVariable.material.uniforms.uDrawPoint = { value: position };
+    gpgpuTextureVariable.material.uniforms.uPrevDrawPoint = { value: position };
     gpgpuTextureVariable.material.uniforms.uFadeSpeed = {
       value: gpgpuUniforms.uFadeSpeed.value,
     };
@@ -139,7 +142,8 @@ export default function useGPGPU() {
   const timeRef = useRef(0);
   useFrame((_, delta) => {
     if (!gpgpu) return;
-    const uDelta = Math.min(delta, 0.1);
+    // const uDelta = Math.min(delta, 0.1);
+    const uDelta = delta;
 
     gpgpu.gpgpuTextureVariable.material.uniforms.uDelta.value = uDelta;
     gpgpu.gpgpuTextureVariable.material.uniforms.uNumEpicycles.value =
@@ -170,12 +174,19 @@ export default function useGPGPU() {
         (data) => new THREE.Vector3(data.center.x, data.center.y, data.scale),
       );
     gpgpu.gpgpuTextureVariable.material.uniforms.uDrawPoint.value = position;
+    if (uDelta > 0.25) {
+      gpgpu.gpgpuTextureVariable.material.uniforms.uPrevDrawPoint.value =
+        position;
+    }
 
     gpgpu.computation.compute();
 
     gpgpuTextureRef.current = gpgpu.computation.getCurrentRenderTarget(
       gpgpu.gpgpuTextureVariable,
     ).texture;
+
+    gpgpu.gpgpuTextureVariable.material.uniforms.uPrevDrawPoint.value =
+      position;
   });
 
   return {

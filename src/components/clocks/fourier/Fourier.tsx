@@ -1,65 +1,96 @@
 import { Loader, Plane } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Suspense, useEffect, useRef } from "react";
+import { useControls } from "leva";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import useAppStore from "../../../stores/useAppStore";
 import CustomStatsComponent from "../../misc/CustomStatsComponent";
+import { COLOR_PALETTE } from "./constants/constants";
+import displayFragmentShader from "./shaders/display/display.frag";
+import displayVertexShader from "./shaders/display/display.vert";
 import useGPGPU from "./useGPGPU";
 
-// const uniforms = {
-//   uBackgroundColor: { value: new THREE.Color("#000000") },
-//   uEpicycleColor: { value: new THREE.Color("#ffffff") },
-//   uRadiusColor: { value: new THREE.Color("#888888") },
-//   uTrailColor: { value: new THREE.Color("#ff0000") },
-// };
-
 function Fourier() {
-  const fourierDataDisplayPlaneRef = useRef<THREE.Mesh>(null!);
+  const displayPlaneRef = useRef<THREE.Mesh>(null!);
+  const shaderRef = useRef<THREE.ShaderMaterial>(null!);
+
   const { gpgpuTexture } = useGPGPU();
 
-  // const controlValues = useControls({
-  //   uBackgroundColor: {
-  //     value: `#${uniforms.uBackgroundColor.value.getHexString()}`,
-  //     onEdit: (value: string) => {
-  //       uniforms.uBackgroundColor.value.set(new THREE.Color(value));
-  //     },
-  //   },
-  //   uEpicycleColor: {
-  //     value: `#${uniforms.uEpicycleColor.value.getHexString()}`,
-  //     onEdit: (value: string) => {
-  //       uniforms.uEpicycleColor.value.set(new THREE.Color(value));
-  //     },
-  //   },
-  //   uRadiusColor: {
-  //     value: `#${uniforms.uRadiusColor.value.getHexString()}`,
-  //     onEdit: (value: string) => {
-  //       uniforms.uRadiusColor.value.set(new THREE.Color(value));
-  //     },
-  //   },
-  //   uTrailColor: {
-  //     value: `#${uniforms.uTrailColor.value.getHexString()}`,
-  //     onEdit: (value: string) => {
-  //       uniforms.uTrailColor.value.set(new THREE.Color(value));
-  //     },
-  //   },
-  // });
+  const uniforms = useMemo(() => {
+    return {
+      uTime: { value: 0 },
+      uGpgpuTexture: { value: new THREE.Texture() },
+      // uBackgroundColor: { value: new THREE.Color("#56565f") },
+      // uEpicycleColor: { value: new THREE.Color("#939393") },
+      // uRadialColor: { value: new THREE.Color("#e8e8e8") },
+      // uTrailColor: { value: new THREE.Color("#ff0078") },
+      // uBackgroundColor: { value: new THREE.Color("#edff00") },
+      // uEpicycleColor: { value: new THREE.Color("#b77aae") },
+      // uRadialColor: { value: new THREE.Color("#ff0094") },
+      // uTrailColor: { value: new THREE.Color("#7600b1") },
+      // uBackgroundColor: { value: new THREE.Color("#4e575c") },
+      uPaletteA: { value: new THREE.Vector3(...COLOR_PALETTE.a) },
+      uPaletteB: { value: new THREE.Vector3(...COLOR_PALETTE.b) },
+      uPaletteC: { value: new THREE.Vector3(...COLOR_PALETTE.c) },
+      uPaletteD: { value: new THREE.Vector3(...COLOR_PALETTE.d) },
+    };
+  }, []);
 
-  useFrame(() => {
-    if (fourierDataDisplayPlaneRef.current && gpgpuTexture.current) {
-      // @ts-expect-error 'map' does exist.
-      fourierDataDisplayPlaneRef.current.material.map = gpgpuTexture.current;
-      // @ts-expect-error 'needsUpdate' does exist.
-      fourierDataDisplayPlaneRef.current.material.needsUpdate = true;
-    }
+  useControls({
+    // uBackgroundColor: {
+    //   value: `#${uniforms.uBackgroundColor.value.getHexString()}`,
+    //   onChange: (value: string) => {
+    //     uniforms.uBackgroundColor.value.set(new THREE.Color(value));
+    //     console.log(uniforms);
+    //   },
+    // },
+    // uEpicycleColor: {
+    //   value: `#${uniforms.uEpicycleColor.value.getHexString()}`,
+    //   onChange: (value: string) => {
+    //     uniforms.uEpicycleColor.value.set(new THREE.Color(value));
+    //   },
+    // },
+    // uRadialColor: {
+    //   value: `#${uniforms.uRadialColor.value.getHexString()}`,
+    //   onChange: (value: string) => {
+    //     uniforms.uRadialColor.value.set(new THREE.Color(value));
+    //   },
+    // },
+    // uTrailColor: {
+    //   value: `#${uniforms.uTrailColor.value.getHexString()}`,
+    //   onChange: (value: string) => {
+    //     uniforms.uTrailColor.value.set(new THREE.Color(value));
+    //   },
+    // },
+  });
+
+  useFrame(({ clock }) => {
+    if (!(gpgpuTexture.current && shaderRef.current)) return;
+
+    shaderRef.current.uniforms.uTime.value = clock.getElapsedTime();
+
+    shaderRef.current.uniforms.uGpgpuTexture.value = gpgpuTexture.current;
+    // shaderRef.current.uniforms.uBackgroundColor.value =
+    //   uniforms.uBackgroundColor.value;
+    // shaderRef.current.uniforms.uEpicycleColor.value =
+    //   uniforms.uEpicycleColor.value;
+    // shaderRef.current.uniforms.uRadialColor.value = uniforms.uRadialColor.value;
+    // shaderRef.current.uniforms.uTrailColor.value = uniforms.uTrailColor.value;
   });
 
   return (
     <group scale={1}>
-      <Plane
-        ref={fourierDataDisplayPlaneRef}
-        args={[2, 2]}
-        position={[0, 0, -0.01]}
-      />
+      <Plane ref={displayPlaneRef} args={[1.5, 1.5]}>
+        <shaderMaterial
+          ref={shaderRef}
+          vertexShader={displayVertexShader}
+          fragmentShader={displayFragmentShader}
+          uniforms={uniforms}
+          transparent
+          depthTest={false}
+          depthWrite={false}
+        />
+      </Plane>
     </group>
   );
 }
