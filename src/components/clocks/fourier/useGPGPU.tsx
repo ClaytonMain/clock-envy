@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer.js";
 import {
   GPGPU_TEXTURE_SIZE,
+  MAX_FADE_TIME,
   RENDER_EPICYCLES,
   TICK_RATE,
   TOTAL_EPICYCLES,
@@ -26,7 +27,7 @@ type GpgpuUniforms = {
   uEpicycleData: { value: THREE.Vector3[] }; // x: center.x, y: center.y, z: scale
   uDrawPoint: { value: THREE.Vector2 };
   uPrevDrawPoint: { value: THREE.Vector2 };
-  uFadeSpeed: { value: number };
+  uMaxFadeTime: { value: number }; // In seconds.
 };
 const gpgpuUniforms: GpgpuUniforms = {
   uDelta: { value: 0 },
@@ -38,7 +39,7 @@ const gpgpuUniforms: GpgpuUniforms = {
   },
   uDrawPoint: { value: new THREE.Vector2() },
   uPrevDrawPoint: { value: new THREE.Vector2() },
-  uFadeSpeed: { value: 1.0 },
+  uMaxFadeTime: { value: MAX_FADE_TIME },
 };
 
 function getEpicycleDataForTime(time: number): {
@@ -65,12 +66,6 @@ export default function useGPGPU() {
       max: TOTAL_EPICYCLES,
       step: 1,
     },
-    uFadeSpeed: {
-      value: gpgpuUniforms.uFadeSpeed.value,
-      min: 0.1,
-      max: 1,
-      step: 0.01,
-    },
   });
 
   const gpgpuTextureRef = useRef<THREE.Texture>(null!);
@@ -93,8 +88,8 @@ export default function useGPGPU() {
 
       gpgpuArray[i4 + 0] = 0; // Distance to nearest circle
       gpgpuArray[i4 + 1] = 0; // Distance to nearest line segment
-      gpgpuArray[i4 + 2] = 0; // Distance to draw point
-      gpgpuArray[i4 + 3] = 0; // Draw strength history
+      gpgpuArray[i4 + 2] = 1; // Min distance history
+      gpgpuArray[i4 + 3] = 1; // Time since closest drawn point
     }
 
     const gpgpuTextureVariable = computation.addVariable(
@@ -120,8 +115,8 @@ export default function useGPGPU() {
     };
     gpgpuTextureVariable.material.uniforms.uDrawPoint = { value: position };
     gpgpuTextureVariable.material.uniforms.uPrevDrawPoint = { value: position };
-    gpgpuTextureVariable.material.uniforms.uFadeSpeed = {
-      value: gpgpuUniforms.uFadeSpeed.value,
+    gpgpuTextureVariable.material.uniforms.uMaxFadeTime = {
+      value: gpgpuUniforms.uMaxFadeTime.value,
     };
 
     return {
@@ -148,8 +143,6 @@ export default function useGPGPU() {
     gpgpu.gpgpuTextureVariable.material.uniforms.uDelta.value = uDelta;
     gpgpu.gpgpuTextureVariable.material.uniforms.uNumEpicycles.value =
       uniforms.uNumEpicycles;
-    gpgpu.gpgpuTextureVariable.material.uniforms.uFadeSpeed.value =
-      uniforms.uFadeSpeed;
 
     frameDurationRef.current += uDelta;
     if (frameDurationRef.current < 1 / TICK_RATE) {

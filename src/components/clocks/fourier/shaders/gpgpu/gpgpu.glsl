@@ -3,7 +3,7 @@ uniform int uNumEpicycles;
 uniform vec3[500] uEpicycleData; // x: center x, y: center y, z: radius
 uniform vec2 uDrawPoint;
 uniform vec2 uPrevDrawPoint;
-uniform float uFadeSpeed;
+uniform float uMaxFadeTime; // In seconds.
 
 // Thanks (as always) to Iñigo Quilez for the SDF functions.
 float sdCircle(vec2 p, float r) {
@@ -29,11 +29,19 @@ float sdSegment(vec2 p, vec2 a, vec2 b) {
 
 void main() {
   /*
-   * vGpgpuTexture
+   * vGpgpuTexture (old version)
    *  r: Distance to nearest epicycle circle
    *  g: Distance to nearest epicycle radial line
    *  b: Distance to draw point
    *  a: Draw strength history
+   */
+
+  /*
+   * vGpgpuTexture (current version)
+   *  r: Distance to nearest epicycle circle
+   *  g: Distance to nearest epicycle radial line
+   *  b: Closest distance to drawn point so far
+   *  a: Time since closest drawn point, scaled to max fade time.
    */
 
   vec2 uv = (gl_FragCoord.xy - vec2(0.5)) / resolution.xy;
@@ -59,12 +67,20 @@ void main() {
   }
 
   float pointDist = sdSegment(position, uPrevDrawPoint, uDrawPoint);
-  pointDist = clamp(pointDist, 0.0, 1.0);
+  pointDist = smoothstep(0.0, 0.01, clamp(pointDist, 0.0, 1.0));
+  float minPointDist = texture(vGpgpuTexture, uv).b;
+  float minPointTime = texture(vGpgpuTexture, uv).a;
+  if (pointDist < 0.95) {
+    minPointDist = min(pointDist, minPointDist);
+    minPointTime = 0.0;
+  }
+  minPointDist = min(minPointDist + uDelta / uMaxFadeTime, 1.0);
+  minPointTime = min(minPointTime + uDelta / uMaxFadeTime, 1.0);
 
-  float trail = texture(vGpgpuTexture, uv).a;
-  float smoothedPointDist = smoothstep(0.99, 1.0, 1.0 - pointDist);
-  trail = -pow(log(max(trail, smoothedPointDist)), 5.0);
-  trail = 1.0 / exp(pow(trail + uDelta * uFadeSpeed, 0.2));
+  // float trail = texture(vGpgpuTexture, uv).a;
+  // float smoothedPointDist = smoothstep(0.99, 1.0, 1.0 - pointDist);
+  // trail = -pow(log(max(trail, smoothedPointDist)), 5.0);
+  // trail = 1.0 / exp(pow(trail + uDelta * uFadeSpeed, 0.2));
 
-  gl_FragColor = vec4(minCircleDist, minRadialDist, pointDist, trail);
+  gl_FragColor = vec4(minCircleDist, minRadialDist, minPointDist, minPointTime);
 }

@@ -1,11 +1,11 @@
-import { Loader, Plane } from "@react-three/drei";
+import { Bounds, Loader, Plane } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useControls } from "leva";
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import useAppStore from "../../../stores/useAppStore";
 import CustomStatsComponent from "../../misc/CustomStatsComponent";
-import { COLOR_PALETTE } from "./constants/constants";
+import { COLOR_PALETTE, MAX_FADE_TIME } from "./constants/constants";
 import displayFragmentShader from "./shaders/display/display.frag";
 import displayVertexShader from "./shaders/display/display.vert";
 import useGPGPU from "./useGPGPU";
@@ -19,6 +19,8 @@ function Fourier() {
   const uniforms = useMemo(() => {
     return {
       uTime: { value: 0 },
+      uDelta: { value: 0 },
+      uMaxFadeTime: { value: MAX_FADE_TIME },
       uGpgpuTexture: { value: new THREE.Texture() },
       // uBackgroundColor: { value: new THREE.Color("#56565f") },
       // uEpicycleColor: { value: new THREE.Color("#939393") },
@@ -79,19 +81,21 @@ function Fourier() {
   });
 
   return (
-    <group scale={1}>
-      <Plane ref={displayPlaneRef} args={[1.5, 1.5]}>
-        <shaderMaterial
-          ref={shaderRef}
-          vertexShader={displayVertexShader}
-          fragmentShader={displayFragmentShader}
-          uniforms={uniforms}
-          transparent
-          depthTest={false}
-          depthWrite={false}
-        />
-      </Plane>
-    </group>
+    <Bounds fit clip observe>
+      <group scale={1}>
+        <Plane ref={displayPlaneRef} args={[1.5, 1.5]}>
+          <shaderMaterial
+            ref={shaderRef}
+            vertexShader={displayVertexShader}
+            fragmentShader={displayFragmentShader}
+            uniforms={uniforms}
+            transparent
+            depthTest={false}
+            depthWrite={false}
+          />
+        </Plane>
+      </group>
+    </Bounds>
   );
 }
 

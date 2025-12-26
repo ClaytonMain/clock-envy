@@ -1,4 +1,6 @@
 uniform float uTime;
+uniform float uDelta;
+uniform float uMaxFadeTime;
 
 uniform sampler2D uGpgpuTexture;
 
@@ -32,8 +34,17 @@ void main() {
   color = mix(color, radialColor, smoothstep(0.004, 0.0, gpgpuData.g));
 
   // color = mix(color, uTrailColor, smoothstep(0.2, 0.75, gpgpuData.a + 0.2));
-  vec4 trailColor = vec4(palette(uTime * 0.001 + 0.44 + gpgpuData.a), 1.0);
-  color = mix(color, trailColor, smoothstep(0.2, 0.75, gpgpuData.a + 0.2));
+  // vec4 trailColor = vec4(palette(uTime * 0.001 + 0.44 + gpgpuData.a), 1.0);
+  // color = mix(color, trailColor, smoothstep(0.2, 0.75, gpgpuData.a + 0.2));
+  color = mix(
+    color,
+    vec4(
+      palette((uTime - gpgpuData.a * uMaxFadeTime) * 0.01) *
+        (1.0 - gpgpuData.b),
+      1.0
+    ),
+    smoothstep(0.2, 0.75, gpgpuData.a + 0.2)
+  );
 
   gl_FragColor = vec4(color);
 }
