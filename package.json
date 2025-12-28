@@ -30,6 +30,7 @@
     "three": "^0.180.0",
     "three-custom-shader-material": "^6.4.0",
     "vite-plugin-glsl": "^1.5.4",
+    "vite-plugin-restart": "^2.0.0",
     "zustand": "^5.0.8"
   },
   "devDependencies": {

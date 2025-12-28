@@ -5,7 +5,7 @@ import { Suspense, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import useAppStore from "../../../stores/useAppStore";
 import CustomStatsComponent from "../../misc/CustomStatsComponent";
-import { COLOR_PALETTE, MAX_FADE_TIME } from "./constants/constants";
+import { COLOR_PALETTE, MAX_FADE_TIME, TICK_RATE } from "./constants/constants";
 import displayFragmentShader from "./shaders/display/display.frag";
 import displayVertexShader from "./shaders/display/display.vert";
 import useGPGPU from "./useGPGPU";
@@ -23,8 +23,8 @@ function Fourier() {
       uMaxFadeTime: { value: MAX_FADE_TIME },
       uGpgpuTexture: { value: new THREE.Texture() },
       // uBackgroundColor: { value: new THREE.Color("#56565f") },
-      // uEpicycleColor: { value: new THREE.Color("#939393") },
-      // uRadialColor: { value: new THREE.Color("#e8e8e8") },
+      uEpicycleColor: { value: new THREE.Color("#939393") },
+      uRadialColor: { value: new THREE.Color("#e8e8e8") },
       // uTrailColor: { value: new THREE.Color("#ff0078") },
       // uBackgroundColor: { value: new THREE.Color("#edff00") },
       // uEpicycleColor: { value: new THREE.Color("#b77aae") },
@@ -46,18 +46,18 @@ function Fourier() {
     //     console.log(uniforms);
     //   },
     // },
-    // uEpicycleColor: {
-    //   value: `#${uniforms.uEpicycleColor.value.getHexString()}`,
-    //   onChange: (value: string) => {
-    //     uniforms.uEpicycleColor.value.set(new THREE.Color(value));
-    //   },
-    // },
-    // uRadialColor: {
-    //   value: `#${uniforms.uRadialColor.value.getHexString()}`,
-    //   onChange: (value: string) => {
-    //     uniforms.uRadialColor.value.set(new THREE.Color(value));
-    //   },
-    // },
+    uEpicycleColor: {
+      value: `#${uniforms.uEpicycleColor.value.getHexString()}`,
+      onChange: (value: string) => {
+        uniforms.uEpicycleColor.value.set(new THREE.Color(value));
+      },
+    },
+    uRadialColor: {
+      value: `#${uniforms.uRadialColor.value.getHexString()}`,
+      onChange: (value: string) => {
+        uniforms.uRadialColor.value.set(new THREE.Color(value));
+      },
+    },
     // uTrailColor: {
     //   value: `#${uniforms.uTrailColor.value.getHexString()}`,
     //   onChange: (value: string) => {
@@ -66,17 +66,25 @@ function Fourier() {
     // },
   });
 
-  useFrame(({ clock }) => {
+  const frameDurationRef = useRef(1);
+  const timeRef = useRef(0);
+  useFrame((_, delta) => {
     if (!(gpgpuTexture.current && shaderRef.current)) return;
 
-    shaderRef.current.uniforms.uTime.value = clock.getElapsedTime();
+    frameDurationRef.current += delta;
+
+    if (frameDurationRef.current >= 1 / TICK_RATE) {
+      timeRef.current += frameDurationRef.current;
+      frameDurationRef.current = 0;
+      shaderRef.current.uniforms.uTime.value = timeRef.current;
+    }
 
     shaderRef.current.uniforms.uGpgpuTexture.value = gpgpuTexture.current;
     // shaderRef.current.uniforms.uBackgroundColor.value =
     //   uniforms.uBackgroundColor.value;
-    // shaderRef.current.uniforms.uEpicycleColor.value =
-    //   uniforms.uEpicycleColor.value;
-    // shaderRef.current.uniforms.uRadialColor.value = uniforms.uRadialColor.value;
+    shaderRef.current.uniforms.uEpicycleColor.value =
+      uniforms.uEpicycleColor.value;
+    shaderRef.current.uniforms.uRadialColor.value = uniforms.uRadialColor.value;
     // shaderRef.current.uniforms.uTrailColor.value = uniforms.uTrailColor.value;
   });
 

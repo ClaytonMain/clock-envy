@@ -21,15 +21,14 @@ float sdOrientedBox(vec2 p, vec2 a, vec2 b, float th) {
 }
 
 float sdSegment(vec2 p, vec2 a, vec2 b) {
-  vec2 pa = p - a,
-    ba = b - a;
+  vec2 pa = p - a, ba = b - a;
   float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
   return length(pa - ba * h);
 }
 
 void main() {
   /*
-   * vGpgpuTexture (old version)
+   * vGpgpuTexture (older version)
    *  r: Distance to nearest epicycle circle
    *  g: Distance to nearest epicycle radial line
    *  b: Distance to draw point
@@ -37,11 +36,19 @@ void main() {
    */
 
   /*
-   * vGpgpuTexture (current version)
+   * vGpgpuTexture (old version)
    *  r: Distance to nearest epicycle circle
    *  g: Distance to nearest epicycle radial line
    *  b: Closest distance to drawn point so far
    *  a: Time since closest drawn point, scaled to max fade time.
+   */
+
+  /*
+   * vGpgpuTexture (current version)
+   *  r: Distance to nearest epicycle circle
+   *  g: Distance to nearest epicycle radial line
+   *  b: Trail strength
+   *  a: Trail color time
    */
 
   vec2 uv = (gl_FragCoord.xy - vec2(0.5)) / resolution.xy;
@@ -67,20 +74,26 @@ void main() {
   }
 
   float pointDist = sdSegment(position, uPrevDrawPoint, uDrawPoint);
-  pointDist = smoothstep(0.0, 0.01, clamp(pointDist, 0.0, 1.0));
-  float minPointDist = texture(vGpgpuTexture, uv).b;
-  float minPointTime = texture(vGpgpuTexture, uv).a;
-  if (pointDist < 0.95) {
-    minPointDist = min(pointDist, minPointDist);
-    minPointTime = 0.0;
-  }
-  minPointDist = min(minPointDist + uDelta / uMaxFadeTime, 1.0);
-  minPointTime = min(minPointTime + uDelta / uMaxFadeTime, 1.0);
+  // pointDist = smoothstep(0.01, 0.0, pointDist);
+  float trailStrength = texture(vGpgpuTexture, uv).b;
+  float trailTime = texture(vGpgpuTexture, uv).a;
 
-  // float trail = texture(vGpgpuTexture, uv).a;
-  // float smoothedPointDist = smoothstep(0.99, 1.0, 1.0 - pointDist);
-  // trail = -pow(log(max(trail, smoothedPointDist)), 5.0);
-  // trail = 1.0 / exp(pow(trail + uDelta * uFadeSpeed, 0.2));
+  // trailStrength = mix(trailStrength, pointDist, pointDist);
+  // trailTime = mix(trailTime, 1.0, pointDist);
 
-  gl_FragColor = vec4(minCircleDist, minRadialDist, minPointDist, minPointTime);
+  // if (trailStrength < pointDist) {
+  //   trailStrength = pointDist;
+  //   trailTime = 1.0;
+  // }
+  // trailStrength += uDelta / smoothstep(0.0, 0.01, (1.0 - pointDist) * (1.0 - pointDist));
+  trailStrength += smoothstep(0.0, 50.0, min(uDelta, 0.015) * (1.0 - trailStrength) / (50.0 * pow(pointDist, 1.8)));
+  // trailStrength += (1.0 - trailStrength) * min(uDelta, 0.015) * 0.01 / exp(pointDist);
+  trailStrength = clamp(trailStrength, 0.0, 1.0);
+  trailStrength *= exp(-uDelta * 0.05);
+  trailTime = max(trailTime - uDelta / uMaxFadeTime, 0.0);
+  // trailStrength = clamp(trailStrength, 0.0, 1.0);
+  // trailStrength = mix(trailStrength, pointDist, pointDist);
+  // trailTime = mix(trailTime, 1.0, pointDist);
+
+  gl_FragColor = vec4(minCircleDist, minRadialDist, trailStrength, trailTime);
 }

@@ -28,6 +28,7 @@ type GpgpuUniforms = {
   uDrawPoint: { value: THREE.Vector2 };
   uPrevDrawPoint: { value: THREE.Vector2 };
   uMaxFadeTime: { value: number }; // In seconds.
+  uTrailThickness: { value: number };
 };
 const gpgpuUniforms: GpgpuUniforms = {
   uDelta: { value: 0 },
@@ -40,6 +41,7 @@ const gpgpuUniforms: GpgpuUniforms = {
   uDrawPoint: { value: new THREE.Vector2() },
   uPrevDrawPoint: { value: new THREE.Vector2() },
   uMaxFadeTime: { value: MAX_FADE_TIME },
+  uTrailThickness: { value: 0.01 },
 };
 
 function getEpicycleDataForTime(time: number): {
@@ -88,8 +90,8 @@ export default function useGPGPU() {
 
       gpgpuArray[i4 + 0] = 0; // Distance to nearest circle
       gpgpuArray[i4 + 1] = 0; // Distance to nearest line segment
-      gpgpuArray[i4 + 2] = 1; // Min distance history
-      gpgpuArray[i4 + 3] = 1; // Time since closest drawn point
+      gpgpuArray[i4 + 2] = 0; // Trail strength
+      gpgpuArray[i4 + 3] = 0; // Time since trail strength
     }
 
     const gpgpuTextureVariable = computation.addVariable(
@@ -128,6 +130,7 @@ export default function useGPGPU() {
   useLayoutEffect(() => {
     if (!gpgpu) return;
     const error = gpgpu.computation.init();
+    console.log(gpgpu.computation);
     if (error !== error) {
       console.error("GPUComputationRenderer initialization error:", error);
     }
@@ -137,22 +140,22 @@ export default function useGPGPU() {
   const timeRef = useRef(0);
   useFrame((_, delta) => {
     if (!gpgpu) return;
-    // const uDelta = Math.min(delta, 0.1);
     const uDelta = delta;
 
-    gpgpu.gpgpuTextureVariable.material.uniforms.uDelta.value = uDelta;
     gpgpu.gpgpuTextureVariable.material.uniforms.uNumEpicycles.value =
       uniforms.uNumEpicycles;
 
     frameDurationRef.current += uDelta;
     if (frameDurationRef.current < 1 / TICK_RATE) {
       // Still advancing frames when not advancing Fourier time.
-      gpgpu.computation.compute();
-      gpgpuTextureRef.current = gpgpu.computation.getCurrentRenderTarget(
-        gpgpu.gpgpuTextureVariable,
-      ).texture;
+      // gpgpu.computation.compute();
+      // gpgpuTextureRef.current = gpgpu.computation.getCurrentRenderTarget(
+      //   gpgpu.gpgpuTextureVariable,
+      // ).texture;
       return;
     }
+    gpgpu.gpgpuTextureVariable.material.uniforms.uDelta.value =
+      frameDurationRef.current;
     frameDurationRef.current = 0;
 
     timeRef.current += (2 * Math.PI) / TOTAL_EPICYCLES;
@@ -166,6 +169,7 @@ export default function useGPGPU() {
       epicycleData.map(
         (data) => new THREE.Vector3(data.center.x, data.center.y, data.scale),
       );
+
     gpgpu.gpgpuTextureVariable.material.uniforms.uDrawPoint.value = position;
     if (uDelta > 0.25) {
       gpgpu.gpgpuTextureVariable.material.uniforms.uPrevDrawPoint.value =
