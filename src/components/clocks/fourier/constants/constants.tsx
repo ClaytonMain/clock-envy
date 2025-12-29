@@ -1,5 +1,5 @@
 export const GPGPU_TEXTURE_SIZE = 2048;
-export const TOTAL_EPICYCLES = 500;
+export const TOTAL_EPICYCLES = 600;
 export const RENDER_EPICYCLES = 30;
 export const TICK_RATE = 60;
 export const MAX_FADE_TIME = 30.0; // In seconds.

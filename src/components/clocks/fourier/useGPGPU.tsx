@@ -1,11 +1,9 @@
 import { useFrame, useThree } from "@react-three/fiber";
-import { useControls } from "leva";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer.js";
 import {
   GPGPU_TEXTURE_SIZE,
-  MAX_FADE_TIME,
   RENDER_EPICYCLES,
   TICK_RATE,
   TOTAL_EPICYCLES,
@@ -27,8 +25,6 @@ type GpgpuUniforms = {
   uEpicycleData: { value: THREE.Vector3[] }; // x: center.x, y: center.y, z: scale
   uDrawPoint: { value: THREE.Vector2 };
   uPrevDrawPoint: { value: THREE.Vector2 };
-  uMaxFadeTime: { value: number }; // In seconds.
-  uTrailThickness: { value: number };
 };
 const gpgpuUniforms: GpgpuUniforms = {
   uDelta: { value: 0 },
@@ -40,8 +36,6 @@ const gpgpuUniforms: GpgpuUniforms = {
   },
   uDrawPoint: { value: new THREE.Vector2() },
   uPrevDrawPoint: { value: new THREE.Vector2() },
-  uMaxFadeTime: { value: MAX_FADE_TIME },
-  uTrailThickness: { value: 0.01 },
 };
 
 function getEpicycleDataForTime(time: number): {
@@ -60,15 +54,6 @@ function getEpicycleDataForTime(time: number): {
 
 export default function useGPGPU() {
   const gl = useThree((state) => state.gl);
-
-  const uniforms = useControls({
-    uNumEpicycles: {
-      value: gpgpuUniforms.uNumEpicycles.value,
-      min: 1,
-      max: TOTAL_EPICYCLES,
-      step: 1,
-    },
-  });
 
   const gpgpuTextureRef = useRef<THREE.Texture>(null!);
 
@@ -91,7 +76,7 @@ export default function useGPGPU() {
       gpgpuArray[i4 + 0] = 0; // Distance to nearest circle
       gpgpuArray[i4 + 1] = 0; // Distance to nearest line segment
       gpgpuArray[i4 + 2] = 0; // Trail strength
-      gpgpuArray[i4 + 3] = 0; // Time since trail strength
+      gpgpuArray[i4 + 3] = 0; // Unused
     }
 
     const gpgpuTextureVariable = computation.addVariable(
@@ -117,9 +102,6 @@ export default function useGPGPU() {
     };
     gpgpuTextureVariable.material.uniforms.uDrawPoint = { value: position };
     gpgpuTextureVariable.material.uniforms.uPrevDrawPoint = { value: position };
-    gpgpuTextureVariable.material.uniforms.uMaxFadeTime = {
-      value: gpgpuUniforms.uMaxFadeTime.value,
-    };
 
     return {
       computation,
@@ -142,18 +124,8 @@ export default function useGPGPU() {
     if (!gpgpu) return;
     const uDelta = delta;
 
-    gpgpu.gpgpuTextureVariable.material.uniforms.uNumEpicycles.value =
-      uniforms.uNumEpicycles;
-
     frameDurationRef.current += uDelta;
-    if (frameDurationRef.current < 1 / TICK_RATE) {
-      // Still advancing frames when not advancing Fourier time.
-      // gpgpu.computation.compute();
-      // gpgpuTextureRef.current = gpgpu.computation.getCurrentRenderTarget(
-      //   gpgpu.gpgpuTextureVariable,
-      // ).texture;
-      return;
-    }
+    if (frameDurationRef.current < 1 / TICK_RATE) return;
     gpgpu.gpgpuTextureVariable.material.uniforms.uDelta.value =
       frameDurationRef.current;
     frameDurationRef.current = 0;

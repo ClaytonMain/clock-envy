@@ -98,23 +98,33 @@ export function getHourMinuteSecondPoints({
   const pointsPerHand = totalPoints / 2;
   const points: { x: number; y: number }[] = [];
   for (let i = 0; i < pointsPerHand; i++) {
-    const maxHourLength = 0.9;
+    const maxHourLength = 0.8;
     const currentLength = -(
       (Math.abs(i - pointsPerHand / 2) - pointsPerHand / 2) /
       pointsPerHand
     );
+    // const currentWidth =
+    //   (1 -
+    //     Math.pow(
+    //       Math.abs(Math.sin(Math.PI * (currentLength / maxHourLength / 2))),
+    //       0.1,
+    //     )) *
+    //   0.4;
+    const currentWidth = 0.05;
     points.push({
       x:
         currentLength *
         maxHourLength *
         Math.cos(
-          hourAngle + Math.sin((16 * i * Math.PI) / pointsPerHand) * 0.05,
+          hourAngle +
+            Math.sin((16 * i * Math.PI) / pointsPerHand) * currentWidth,
         ),
       y:
         currentLength *
         maxHourLength *
         Math.sin(
-          hourAngle + Math.sin((16 * i * Math.PI) / pointsPerHand) * 0.05,
+          hourAngle +
+            Math.sin((16 * i * Math.PI) / pointsPerHand) * currentWidth,
         ),
     });
   }

@@ -1,6 +1,4 @@
 uniform float uTime;
-uniform float uDelta;
-uniform float uMaxFadeTime;
 
 uniform sampler2D uGpgpuTexture;
 
@@ -23,19 +21,27 @@ vec3 palette(float t) {
 void main() {
   vec4 gpgpuData = texture(uGpgpuTexture, vUv);
 
-  // vec4 color = vec4(uBackgroundColor, 0.0);
   vec4 color = vec4(0.0);
 
-  // color = vec4(palette(gpgpuData.b), gpgpuData.b);
-
-  color += vec4(palette(uTime * 0.05 * 0.01) * 3.0 * 0.009 / gpgpuData.r, 0.009 / gpgpuData.r) * 0.08;
-  color += vec4(palette(uTime * 0.05 * 0.01) * 3.0 * 0.009 / gpgpuData.g, 0.009 / gpgpuData.g) * 0.08;
+  color +=
+    vec4(
+      palette(uTime * 0.05 * 0.05) * 1.5 * 0.011 / gpgpuData.r,
+      0.011 / gpgpuData.r
+    ) *
+    0.1;
+  color +=
+    vec4(
+      palette(uTime * 0.05 * 0.05) * 1.5 * 0.011 / gpgpuData.g,
+      0.011 / gpgpuData.g
+    ) *
+    0.1;
   color = clamp(color, 0.0, 1.0);
-  color += vec4(palette((gpgpuData.b - 1.0 + uTime * 0.05) * 0.1) * gpgpuData.b * 2.0, gpgpuData.b);
+  color += vec4(
+    palette(gpgpuData.b * 0.1 - 0.1 + 0.5 + uTime * 0.05 * 0.05) * 2.0 +
+      gpgpuData.b * 0.5,
+    gpgpuData.b - 0.05
+  );
   color = clamp(color, 0.0, 1.0);
-  // color = mix(color, vec4(0.0), 1.0 - length(normalize(color)));
-  // color = mix(color, vec4(uRadialColor * 0.002 / gpgpuData.g, 1.0), smoothstep(0.0, 1.0, clamp(0.002 / gpgpuData.g, 0.0, 1.0)));
 
   gl_FragColor = vec4(color);
-  // gl_FragColor = vec4(vec3(gpgpuData.b), 1.0);
 }
