@@ -1,12 +1,77 @@
-import { Loader, Plane, useFBO } from "@react-three/drei";
-import { Canvas, createPortal, useFrame } from "@react-three/fiber";
-import { Suspense, useMemo, useRef } from "react";
+import { Bvh, Instance, Loader, Plane, useFBO } from "@react-three/drei";
+import {
+  Canvas,
+  createPortal,
+  useFrame,
+  type ThreeEvent,
+} from "@react-three/fiber";
+import { Suspense, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import useMncaStore from "../../../stores/useMncaStore";
 import CustomStatsComponent from "../../misc/CustomStatsComponent";
 import ClockDisplay from "./ClockDisplay";
 import useGPGPU from "./useGPGPU";
 
-function GameOfLife() {
+// Thanks to Acerola for the inspiration.
+// https://www.youtube.com/watch?v=I1JBiZrZ_XM
+
+function NeighborhoodTile({
+  ruleIndex,
+  x,
+  y,
+  isCenter,
+}: {
+  ruleIndex: number;
+  x: number;
+  y: number;
+  isCenter: boolean;
+}) {
+  const instanceRef = useRef<typeof Instance>(null!);
+  const [hovered, setHovered] = useState(false);
+  const [alive, setAlive] = useState(
+    useMncaStore.getState().rules[ruleIndex].neighborhood[y][x] === 1,
+  );
+  const color = new THREE.Color("#808080");
+
+  function handleOnPointer(e: ThreeEvent<PointerEvent>, isHovered: boolean) {
+    if (isHovered) {
+      e.stopPropagation();
+    }
+    setHovered(isHovered);
+  }
+
+  useFrame(() => {
+    if (!instanceRef.current) return;
+    if (isCenter) return;
+    // @ts-expect-error this is probably fine
+    instanceRef.current.color.lerp(
+      color.set(
+        alive
+          ? hovered
+            ? "#c2c2c2"
+            : "#ffffff"
+          : hovered
+            ? "#454545"
+            : "#1a1a1a",
+      ),
+      0.1,
+    );
+  });
+
+  return (
+    <Instance
+      ref={instanceRef}
+      onPointerOver={(e) => handleOnPointer(e, true)}
+      onPointerOut={(e) => handleOnPointer(e, false)}
+    />
+  );
+}
+
+function NeighborhoodCanvas({ ruleIndex }: { ruleIndex: number }) {
+  return null;
+}
+
+function MNCA() {
   const clockTextureRef = useRef<THREE.Texture>(new THREE.Texture());
   const gpgpu = useGPGPU({ clockTextureRef });
   const displayPlaneRef = useRef<THREE.Mesh>(null!);
@@ -50,6 +115,10 @@ function GameOfLife() {
   return (
     <>
       {createPortal(<ClockDisplay />, clockScene)}
+      <Bvh firstHitOnly>
+        <NeighborhoodCanvas ruleIndex={0} />
+        <NeighborhoodCanvas ruleIndex={1} />
+      </Bvh>
       <Plane ref={displayPlaneRef} args={[2, 2]} rotation={[0, 0, 0]}>
         <meshBasicMaterial />
       </Plane>
@@ -57,7 +126,7 @@ function GameOfLife() {
   );
 }
 
-export default function GameOfLifeScene() {
+export default function MNCAScene() {
   return (
     <>
       <Canvas
@@ -78,14 +147,8 @@ export default function GameOfLifeScene() {
       >
         <CustomStatsComponent />
         <Suspense fallback={null}>
-          {/* <Environment preset="city" resolution={2048} /> */}
-          {/* <Environment
-              files="./environments/photo_studio_loft_hall_4k.exr"
-              resolution={2048}
-            /> */}
           <ambientLight intensity={0.1} />
-          <GameOfLife />
-          {/* <OrbitControls makeDefault /> */}
+          <MNCA />
         </Suspense>
       </Canvas>
       <Loader />
