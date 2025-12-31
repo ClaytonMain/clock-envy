@@ -7,7 +7,4 @@ export type Rules = {
 
 export interface MncaStore {
   rules: Rules[];
-  gameTextureSize: number;
-  gameSpeed: number;
-  neighborhoodSizeRange: [number, number]; // In number of cells from center.
 }
