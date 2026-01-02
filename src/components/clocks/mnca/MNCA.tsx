@@ -21,7 +21,7 @@ import ClockDisplay from "./ClockDisplay";
 import { NEIGHBORHOOD_SIZE_RANGE } from "./constants/constants";
 import useGPGPU from "./useGPGPU";
 
-// Thanks to Acerola for the inspiration.
+// Thanks to Acerola for the inspiration (and for introducing me to MNCA):
 // https://www.youtube.com/watch?v=I1JBiZrZ_XM
 
 function NeighborhoodTile({
@@ -62,9 +62,13 @@ function NeighborhoodTile({
     const currentRules = [...useMncaStore.getState().rules];
     const currentRule = currentRules[ruleIndex];
     currentRule.neighborhood[y][x] = newAlive ? 1 : 0;
+    const activeCount = currentRule.neighborhood
+      .flat()
+      .reduce((acc, val) => acc + val, 0);
+    currentRule.activeCount = activeCount;
     const newRules = [...currentRules];
     newRules[ruleIndex] = currentRule;
-    useMncaStore.setState({ rules: newRules });
+    useMncaStore.setState({ rules: newRules, rulesUpdatedAt: Date.now() });
     setAlive(newAlive);
   }
 
@@ -141,9 +145,13 @@ function NeighborhoodCanvas({ ruleIndex }: { ruleIndex: number }) {
 
     currentRule.neighborhood = newNeighborhood;
     currentRule.size = size;
+    const activeCount = newNeighborhood
+      .flat()
+      .reduce((acc, val) => acc + val, 0);
+    currentRule.activeCount = activeCount;
     const newRules = [...currentRules];
     newRules[ruleIndex] = currentRule;
-    useMncaStore.setState({ rules: newRules });
+    useMncaStore.setState({ rules: newRules, rulesUpdatedAt: Date.now() });
   }
 
   useControls(`MNCA Neighborhood ${ruleIndex + 1} Rules`, {
@@ -157,29 +165,29 @@ function NeighborhoodCanvas({ ruleIndex }: { ruleIndex: number }) {
     bornRange: {
       value: useMncaStore((state) => state.rules[ruleIndex].born),
       min: 0,
-      max: 1,
-      step: 0.001,
+      max: 255,
+      step: 1,
       onChange: (value) => {
         const currentRules = [...useMncaStore.getState().rules];
         const currentRule = currentRules[ruleIndex];
         currentRule.born = value as [number, number];
         const newRules = [...currentRules];
         newRules[ruleIndex] = currentRule;
-        useMncaStore.setState({ rules: newRules });
+        useMncaStore.setState({ rules: newRules, rulesUpdatedAt: Date.now() });
       },
     },
     stableRange: {
       value: useMncaStore((state) => state.rules[ruleIndex].stable),
       min: 0,
-      max: 1,
-      step: 0.001,
+      max: 255,
+      step: 1,
       onChange: (value) => {
         const currentRules = [...useMncaStore.getState().rules];
         const currentRule = currentRules[ruleIndex];
         currentRule.stable = value as [number, number];
         const newRules = [...currentRules];
         newRules[ruleIndex] = currentRule;
-        useMncaStore.setState({ rules: newRules });
+        useMncaStore.setState({ rules: newRules, rulesUpdatedAt: Date.now() });
       },
     },
   });
@@ -260,13 +268,13 @@ function MNCA() {
   return (
     <>
       {createPortal(<ClockDisplay />, clockScene)}
+      <Plane ref={displayPlaneRef} args={[2, 2]} rotation={[0, 0, 0]}>
+        <meshBasicMaterial />
+      </Plane>
       <Bvh firstHitOnly>
         <NeighborhoodCanvas ruleIndex={0} />
         <NeighborhoodCanvas ruleIndex={1} />
       </Bvh>
-      <Plane ref={displayPlaneRef} args={[2, 2]} rotation={[0, 0, 0]}>
-        <meshBasicMaterial />
-      </Plane>
     </>
   );
 }
