@@ -1,62 +1,52 @@
-import { Text } from "@react-three/drei";
-import { useEffect, useMemo, useRef, useState } from "react";
-import * as THREE from "three";
+import { useEffect, useMemo } from "react";
 import useAppStore from "../../../stores/useAppStore";
+import clockFragmentShader from "./shaders/clock/clock.frag";
+import clockVertexShader from "./shaders/clock/clock.vert";
 
-function getDigitSpace(index: number, digitSpace: number, colonSpace: number) {
-  const adjustedIndex = Math.floor(Math.abs(index - 3.5));
-  const sign = index - 3.5 >= 0 ? 1 : -1;
-  return (
-    sign *
-    (digitSpace / 2 +
-      Math.min(adjustedIndex, 2) * colonSpace +
-      Math.floor(adjustedIndex / 3) * digitSpace)
-  );
+function getActiveSegments(): number[] {
+  const timeValue = useAppStore.getState().currentTimeValue;
+  const segments: number[] = [];
+  for (let i = 0; i < 6; i++) {
+    const char = timeValue.toFormat("HHmmss").charAt(i);
+    const segmentMap: Record<string, number[]> = {
+      "0": [1, 1, 1, 1, 1, 1, 0],
+      "1": [0, 1, 1, 0, 0, 0, 0],
+      "2": [1, 1, 0, 1, 1, 0, 1],
+      "3": [1, 1, 1, 1, 0, 0, 1],
+      "4": [0, 1, 1, 0, 0, 1, 1],
+      "5": [1, 0, 1, 1, 0, 1, 1],
+      "6": [1, 0, 1, 1, 1, 1, 1],
+      "7": [1, 1, 1, 0, 0, 0, 0],
+      "8": [1, 1, 1, 1, 1, 1, 1],
+      "9": [1, 1, 1, 1, 0, 1, 1],
+    };
+    segments.push(...(segmentMap[char] || [0, 0, 0, 0, 0, 0, 0]));
+  }
+  return segments;
 }
 
-// const FONT_URL = "./fonts/Roboto_Mono/static/RobotoMono-Regular.ttf";
-// const FONT_URL = "./fonts/Six_Caps/SixCaps-Regular.ttf";
-const FONT_URL = "./fonts/Teko/static/Teko-Light.ttf";
-const CHARACTERS = "0123456789:";
+function getUniforms() {
+  return {
+    uActive: { value: getActiveSegments() },
+  };
+}
 
-function Char({ index }: { index: number }) {
-  const isSemicolon = [2, 5].includes(index);
-
-  const groupPosition = useMemo(() => {
-    const x = getDigitSpace(index, 0.062, 0.042);
-    return [x, 0, 0] as [number, number, number];
-  }, [index]);
-
-  const [text00Char, setText00Char] = useState(
-    isSemicolon
-      ? ":"
-      : useAppStore
-          .getState()
-          .currentTimeValue.toFormat("HH:mm:ss")
-          .charAt(index),
-  );
-
-  const initializedRef = useRef(false);
+export default function ClockDisplay() {
+  const uniforms = useMemo(() => {
+    return getUniforms();
+  }, []);
 
   useEffect(() => {
     const unsubCurrentTimeValue = useAppStore.subscribe(
       (state) => state.currentTimeValue,
       (value, previousValue) => {
-        if (isSemicolon && initializedRef.current) return;
+        const timeString = value.toFormat("HHmmss");
+        const prevTimeString = previousValue.toFormat("HHmmss");
 
-        const char = value.toFormat("HH:mm:ss").charAt(index);
-        const previousChar = previousValue.toFormat("HH:mm:ss").charAt(index);
+        if (timeString === prevTimeString) return;
 
-        if (char === previousChar && initializedRef.current) return;
-
-        if (!initializedRef.current) initializedRef.current = true;
-
-        setTimeout(
-          () => {
-            setText00Char(char);
-          },
-          (7 - index) * 100,
-        );
+        const newUniforms = getUniforms();
+        uniforms.uActive.value = newUniforms.uActive.value;
       },
     );
     return () => {
@@ -66,43 +56,13 @@ function Char({ index }: { index: number }) {
   }, []);
 
   return (
-    <group position={groupPosition}>
-      <Text
-        font={FONT_URL}
-        fontSize={0.18}
-        textAlign="center"
-        characters={CHARACTERS}
-        position={[0, 0, 0]}
-        outlineWidth={0.001}
-        outlineColor={"#fff"}
-      >
-        {text00Char}
-        <meshBasicMaterial color={"#000"} />
-      </Text>
-    </group>
-  );
-}
-
-export default function Digits({
-  position = [0, 0, 0],
-}: {
-  position?: [number, number, number];
-}) {
-  const groupRef = useRef<THREE.Group>(null!);
-  // useEffect(() => {
-  //   groupRef.current.scale.set(
-  //     0.3,
-  //     window.innerHeight * 0.3,
-  //     1,
-  //   );
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, []);
-  return (
-    <group ref={groupRef} position={position} scale={[600, 600, 1]}>
-      {Array.from({ length: 8 }).map((_, index) => {
-        // return <ClockPositionCharGroup key={`digit-${index}`} index={index} />;
-        return <Char key={`digit-${index}`} index={index} />;
-      })}
-    </group>
+    <mesh>
+      <planeGeometry args={[2, 2]} />
+      <shaderMaterial
+        uniforms={uniforms}
+        vertexShader={clockVertexShader}
+        fragmentShader={clockFragmentShader}
+      />
+    </mesh>
   );
 }

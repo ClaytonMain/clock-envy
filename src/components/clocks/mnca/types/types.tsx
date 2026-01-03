@@ -1,3 +1,5 @@
+import * as THREE from "three";
+
 export type Rules = {
   born: [number, number]; // Avg. in range [0, 1].
   stable: [number, number]; // Avg. in range [0, 1].
@@ -10,3 +12,20 @@ export interface MncaStore {
   rulesUpdatedAt: number;
   rules: Rules[];
 }
+
+export type MncaRuleUniforms = {
+  uNbhood01: { value: number[] };
+  uNbhood02: { value: number[] };
+  uNbhoodBornRange01: { value: THREE.Vector2 };
+  uNbhoodBornRange02: { value: THREE.Vector2 };
+  uNbhoodStableRange01: { value: THREE.Vector2 };
+  uNbhoodStableRange02: { value: THREE.Vector2 };
+};
+
+export type MncaUniforms = MncaRuleUniforms & {
+  uDelta: { value: number };
+  uDecayRate: { value: number };
+  uResolution: { value: THREE.Vector2 };
+  uPreviousTexture: { value: THREE.Texture };
+  uClockTexture: { value: THREE.Texture };
+};
