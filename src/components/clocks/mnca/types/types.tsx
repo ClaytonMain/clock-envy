@@ -24,7 +24,8 @@ export type MncaRuleUniforms = {
 
 export type MncaUniforms = MncaRuleUniforms & {
   uDelta: { value: number };
-  uDecayRate: { value: number };
+  uIntensityLambda: { value: number };
+  uColorTimeLambda: { value: number };
   uResolution: { value: THREE.Vector2 };
   uPreviousTexture: { value: THREE.Texture };
   uClockTexture: { value: THREE.Texture };

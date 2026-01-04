@@ -67,7 +67,8 @@ void main() {
     for (int j = 0; j < 7; j++) {
       d = opSmoothUnion(d, getSegmentDistance(i, j, pos) + float((1 - uActive[i * 7 + j]) * 999), 0.004);
     }
-    color.r += step(abs(d), 0.001);
+    color.r += step(abs(d), 0.002);
+    // color.r += step(d, 0.0);
   }
 
   gl_FragColor = color;

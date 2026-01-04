@@ -3,34 +3,67 @@ import { Canvas, createPortal, useFrame } from "@react-three/fiber";
 import { Suspense, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import useMncaStore from "../../../stores/useMncaStore";
+import { getDisplayScale } from "../../../utils/utils";
 import CustomStatsComponent from "../../misc/CustomStatsComponent";
 import ClockDisplay from "./ClockDisplay";
 import { GAME_SPEED, GAME_TEXTURE_SIZE } from "./constants/constants";
 import MncaComponent from "./MncaComponent";
 import { NeighborhoodCanvas } from "./NeighborhoodCanvas";
+import displayPlaneFragmentShader from "./shaders/display/display.frag";
+import displayPlaneVertexShader from "./shaders/display/display.vert";
 import { type MncaUniforms } from "./types/types";
 import { getRuleUniforms } from "./utils/utils";
 
 // Thanks to Acerola for the inspiration (and for introducing me to MNCA):
 // https://www.youtube.com/watch?v=I1JBiZrZ_XM
 
+function getInitialPreviousTexture() {
+  const size = GAME_TEXTURE_SIZE;
+  const data = new Float32Array(4 * size * size);
+  for (let i = 0; i < size * size; i++) {
+    const i4 = i * 4;
+    // data[i4 + 0] = Math.random() > 0.75 ? 1 : 0; // cell state
+    data[i4 + 0] = Math.random() > 0.65 ? 1 : 0; // cell state
+    data[i4 + 1] = 0;
+    data[i4 + 2] = 0;
+    data[i4 + 3] = 0;
+  }
+  const texture = new THREE.DataTexture(
+    data,
+    size,
+    size,
+    THREE.RGBAFormat,
+    THREE.FloatType,
+  );
+  texture.needsUpdate = true;
+  return texture;
+}
+
 function MNCA() {
-  const displayPlaneRef = useRef<THREE.Mesh>(null!);
   const sharedCamera = useMemo(
     () => new THREE.OrthographicCamera(-1, 1, 1, -1, 1 / Math.pow(2, 53), 1),
     [],
   );
+
+  // Display plane setup.
+  const displayPlaneUniforms = useMemo(() => {
+    return {
+      uDisplayScale: { value: getDisplayScale({ targetAspect: 1 }) },
+      uGameTexture: { value: new THREE.Texture() },
+    };
+  }, []);
 
   // MNCA setup.
   const mncaUniforms: MncaUniforms = useMemo(() => {
     const ruleUniforms = getRuleUniforms();
     const uniforms = {
       uDelta: { value: 0 },
-      uDecayRate: { value: 0.1 },
+      uIntensityLambda: { value: 0.05 },
+      uColorTimeLambda: { value: 0.5 },
       uResolution: {
         value: new THREE.Vector2(GAME_TEXTURE_SIZE, GAME_TEXTURE_SIZE),
       },
-      uPreviousTexture: { value: new THREE.Texture() },
+      uPreviousTexture: { value: getInitialPreviousTexture() },
       uClockTexture: { value: new THREE.Texture() },
       uNbhood01: ruleUniforms.uNbhood01,
       uNbhood02: ruleUniforms.uNbhood02,
@@ -120,19 +153,21 @@ function MNCA() {
       gl.render(mncaSceneA, sharedCamera);
 
       mncaUniforms.uPreviousTexture.value = mncaRenderTargetA.texture;
-      (displayPlaneRef.current.material as THREE.MeshBasicMaterial).map =
-        mncaRenderTargetA.texture;
+      displayPlaneUniforms.uGameTexture.value = mncaRenderTargetA.texture;
     } else {
       gl.setRenderTarget(mncaRenderTargetB);
       gl.clear();
       gl.render(mncaSceneB, sharedCamera);
 
       mncaUniforms.uPreviousTexture.value = mncaRenderTargetB.texture;
-      (displayPlaneRef.current.material as THREE.MeshBasicMaterial).map =
-        mncaRenderTargetB.texture;
+      displayPlaneUniforms.uGameTexture.value = mncaRenderTargetB.texture;
     }
 
     pingPongRef.current = !pingPongRef.current;
+
+    displayPlaneUniforms.uDisplayScale.value = getDisplayScale({
+      targetAspect: 1,
+    });
 
     gl.setRenderTarget(null);
   });
@@ -142,8 +177,15 @@ function MNCA() {
       {createPortal(<ClockDisplay />, clockScene)}
       {createPortal(<MncaComponent uniforms={mncaUniforms} />, mncaSceneA)}
       {createPortal(<MncaComponent uniforms={mncaUniforms} />, mncaSceneB)}
-      <Plane ref={displayPlaneRef} args={[2, 2]} rotation={[0, 0, 0]}>
-        <meshBasicMaterial />
+      <Plane>
+        <shaderMaterial
+          uniforms={displayPlaneUniforms}
+          vertexShader={displayPlaneVertexShader}
+          fragmentShader={displayPlaneFragmentShader}
+          transparent
+          depthTest={false}
+          depthWrite={false}
+        />
       </Plane>
       <Bvh firstHitOnly>
         <NeighborhoodCanvas ruleIndex={0} />
