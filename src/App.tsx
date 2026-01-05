@@ -4,7 +4,7 @@ import "./App.css";
 import ArchdukeVonOrbenScene from "./components/clocks/archduke-von-orben/ArchdukeVonOrben";
 import CavityScene from "./components/clocks/cavity/Cavity";
 import FourierScene from "./components/clocks/fourier/Fourier";
-import GameOfLifeScene from "./components/clocks/game-of-life/GameOfLife";
+import MNCAScene from "./components/clocks/mnca/MNCA";
 import NixieScene from "./components/clocks/nixie/Nixie";
 import Timekeeper from "./components/misc/Timekeeper";
 import FullscreenHandleComponent from "./components/ui/FullscreenHandleComponent";
@@ -34,7 +34,7 @@ function App() {
             />
             <Route path="/Cavity" element={<CavityScene />} />
             <Route path="/Fourier" element={<FourierScene />} />
-            <Route path="/GameOfLife" element={<GameOfLifeScene />} />
+            <Route path="/MNCA" element={<MNCAScene />} />
             <Route path="/Nixie" element={<NixieScene />} />
             <Route path="*" element={<ArchdukeVonOrbenScene />} />
           </Routes>

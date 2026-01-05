@@ -6,7 +6,7 @@ import CustomStatsComponent from "../../misc/CustomStatsComponent";
 import ClockDisplay from "./ClockDisplay";
 import useGPGPU from "./useGPGPU";
 
-function GameOfLife() {
+function Bugs() {
   const clockTextureRef = useRef<THREE.Texture>(new THREE.Texture());
   const gpgpu = useGPGPU({ clockTextureRef });
   const displayPlaneRef = useRef<THREE.Mesh>(null!);
@@ -57,7 +57,7 @@ function GameOfLife() {
   );
 }
 
-export default function GameOfLifeScene() {
+export default function BugsScene() {
   return (
     <>
       <Canvas
@@ -84,7 +84,7 @@ export default function GameOfLifeScene() {
               resolution={2048}
             /> */}
           <ambientLight intensity={0.1} />
-          <GameOfLife />
+          <Bugs />
           {/* <OrbitControls makeDefault /> */}
         </Suspense>
       </Canvas>
