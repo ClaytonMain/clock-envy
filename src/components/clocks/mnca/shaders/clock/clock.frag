@@ -2,6 +2,10 @@ uniform int[42] uActive;
 
 varying vec2 vUv;
 
+float random(vec2 st) {
+  return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
+}
+
 float sdChamferBox(in vec2 p, in vec2 b, in float chamfer) {
   p = abs(p) - b;
 
@@ -18,18 +22,18 @@ float sdChamferBox(in vec2 p, in vec2 b, in float chamfer) {
   return length(p);
 }
 
-float[6] digitCenterOffsets = float[6](-0.375, -0.225, -0.075, 0.075, 0.225, 0.375);
+float[6] digitCenterOffsets = float[6](-5.0 * 5.0 / 64.0, -3.0 * 5.0 / 64.0, -1.0 * 5.0 / 64.0, 1.0 * 5.0 / 64.0, 3.0 * 5.0 / 64.0, 5.0 * 5.0 / 64.0);
 vec2 segmentOffsets[7] = vec2[7](// _
-vec2(0.0, 0.1),    // A
-vec2(0.05, 0.05),   // B
-vec2(0.05, -0.05),  // C
-vec2(0.0, -0.1),   // D
-vec2(-0.05, -0.05), // E
-vec2(-0.05, 0.05),  // F
-vec2(0.0, 0.0)     // G
+vec2(0.0, 6.0 / 64.0),          // A
+vec2(3.0 / 64.0, 3.0 / 64.0),   // B
+vec2(3.0 / 64.0, -3.0 / 64.0),  // C
+vec2(0.0, -6.0 / 64.0),         // D
+vec2(-3.0 / 64.0, -3.0 / 64.0), // E
+vec2(-3.0 / 64.0, 3.0 / 64.0),  // F
+vec2(0.0, 0.0)                  // G
 );
-#define hSegmentSize vec2(0.05, 0.015)
-#define vSegmentSize vec2(0.015, 0.05)
+#define hSegmentSize vec2(3.0 / 64.0, 1.0 / 64.0)
+#define vSegmentSize vec2(1.0 / 64.0, 3.0 / 64.0)
 vec2 segmentSizes[7] = vec2[7](// _
 hSegmentSize,    // A
 vSegmentSize,    // B
@@ -49,7 +53,7 @@ vec2 getSegmentPosition(int digitIndex, int segmentIndex) {
 
 float getSegmentDistance(int digitIndex, int segmentIndex, vec2 p) {
   vec2 segmentPos = getSegmentPosition(digitIndex, segmentIndex);
-  return sdChamferBox(p - segmentPos, segmentSizes[segmentIndex], 0.01);
+  return sdChamferBox(p - segmentPos, segmentSizes[segmentIndex], 5.0 / 512.0);
 }
 
 float opSmoothUnion(float d1, float d2, float k) {
@@ -65,10 +69,9 @@ void main() {
   for (int i = 0; i < 6; i++) {
     d = 9001.0;
     for (int j = 0; j < 7; j++) {
-      d = opSmoothUnion(d, getSegmentDistance(i, j, pos) + float((1 - uActive[i * 7 + j]) * 999), 0.004);
+      d = opSmoothUnion(d, getSegmentDistance(i, j, pos) + float((1 - uActive[i * 7 + j]) * 999), 1.0 / 256.0);
     }
-    color.r += step(abs(d), 0.002);
-    // color.r += step(d, 0.0);
+    color.r += step(d, 0.0);
   }
 
   gl_FragColor = color;

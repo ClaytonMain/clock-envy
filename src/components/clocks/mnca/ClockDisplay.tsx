@@ -1,5 +1,7 @@
 import { useEffect, useMemo } from "react";
+import * as THREE from "three";
 import useAppStore from "../../../stores/useAppStore";
+import { GAME_TEXTURE_SIZE } from "./constants/constants";
 import clockFragmentShader from "./shaders/clock/clock.frag";
 import clockVertexShader from "./shaders/clock/clock.vert";
 
@@ -28,6 +30,9 @@ function getActiveSegments(): number[] {
 function getUniforms() {
   return {
     uActive: { value: getActiveSegments() },
+    uResolution: {
+      value: new THREE.Vector2(GAME_TEXTURE_SIZE, GAME_TEXTURE_SIZE),
+    },
   };
 }
 
@@ -57,7 +62,7 @@ export default function ClockDisplay() {
 
   return (
     <mesh>
-      <planeGeometry args={[2, 2]} />
+      <planeGeometry />
       <shaderMaterial
         uniforms={uniforms}
         vertexShader={clockVertexShader}

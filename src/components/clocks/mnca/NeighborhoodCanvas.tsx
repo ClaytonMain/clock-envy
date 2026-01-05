@@ -6,6 +6,58 @@ import * as THREE from "three";
 import useMncaStore from "../../../stores/useMncaStore";
 import { NEIGHBORHOOD_SIZE_RANGE } from "./constants/constants";
 
+function getNeighborhoodRanges(
+  ruleIndex: number,
+  activeCount: number,
+): { born: [number, number]; stable: [number, number] } {
+  const baseRangeRatios = {
+    0: {
+      born: [6 / 20, 17 / 20],
+      stable: [2 / 20, 65 / 20],
+    },
+    1: {
+      born: [255 / 76, 255 / 76],
+      stable: [12 / 76, 23 / 76],
+    },
+  };
+  if (!Object.keys(baseRangeRatios).includes(ruleIndex.toString()))
+    return { born: [1, 1], stable: [1, 1] };
+  const typedIndex = ruleIndex as keyof typeof baseRangeRatios;
+  const born = [
+    Math.min(
+      Math.max(
+        Math.round(baseRangeRatios[typedIndex].born[0] * activeCount),
+        1,
+      ),
+      255,
+    ),
+    Math.min(
+      Math.max(
+        Math.round(baseRangeRatios[typedIndex].born[1] * activeCount),
+        1,
+      ),
+      255,
+    ),
+  ] as [number, number];
+  const stable = [
+    Math.min(
+      Math.max(
+        Math.round(baseRangeRatios[typedIndex].stable[0] * activeCount),
+        1,
+      ),
+      255,
+    ),
+    Math.min(
+      Math.max(
+        Math.round(baseRangeRatios[typedIndex].stable[1] * activeCount),
+        1,
+      ),
+      255,
+    ),
+  ] as [number, number];
+  return { born, stable };
+}
+
 function NeighborhoodTile({
   ruleIndex,
   x,
@@ -48,6 +100,9 @@ function NeighborhoodTile({
       .flat()
       .reduce((acc, val) => acc + val, 0);
     currentRule.activeCount = activeCount;
+    const autoUpdatedRanges = getNeighborhoodRanges(ruleIndex, activeCount);
+    currentRule.born = autoUpdatedRanges.born;
+    currentRule.stable = autoUpdatedRanges.stable;
     const newRules = [...currentRules];
     newRules[ruleIndex] = currentRule;
     useMncaStore.setState({ rules: newRules, rulesUpdatedAt: Date.now() });
@@ -86,6 +141,7 @@ function NeighborhoodTile({
 }
 
 export function NeighborhoodCanvas({ ruleIndex }: { ruleIndex: number }) {
+  const currRule = useMncaStore((state) => state.rules[ruleIndex]);
   const ruleSize = useMncaStore((state) => state.rules[ruleIndex].size);
   const ruleNeighborhood = useMncaStore(
     (state) => state.rules[ruleIndex].neighborhood,
@@ -146,7 +202,7 @@ export function NeighborhoodCanvas({ ruleIndex }: { ruleIndex: number }) {
       onChange: updateNeighborhoodSize,
     },
     bornRange: {
-      value: useMncaStore((state) => state.rules[ruleIndex].born),
+      value: currRule.born,
       min: 0,
       max: 255,
       step: 1,
@@ -156,11 +212,14 @@ export function NeighborhoodCanvas({ ruleIndex }: { ruleIndex: number }) {
         currentRule.born = value as [number, number];
         const newRules = [...currentRules];
         newRules[ruleIndex] = currentRule;
-        useMncaStore.setState({ rules: newRules, rulesUpdatedAt: Date.now() });
+        useMncaStore.setState({
+          rules: newRules,
+          rulesUpdatedAt: Date.now(),
+        });
       },
     },
     stableRange: {
-      value: useMncaStore((state) => state.rules[ruleIndex].stable),
+      value: currRule.stable,
       min: 0,
       max: 255,
       step: 1,
@@ -170,7 +229,10 @@ export function NeighborhoodCanvas({ ruleIndex }: { ruleIndex: number }) {
         currentRule.stable = value as [number, number];
         const newRules = [...currentRules];
         newRules[ruleIndex] = currentRule;
-        useMncaStore.setState({ rules: newRules, rulesUpdatedAt: Date.now() });
+        useMncaStore.setState({
+          rules: newRules,
+          rulesUpdatedAt: Date.now(),
+        });
       },
     },
   });

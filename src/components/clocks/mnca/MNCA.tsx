@@ -1,4 +1,4 @@
-import { Bvh, Loader, Plane, useFBO } from "@react-three/drei";
+import { Loader, Plane, useFBO } from "@react-three/drei";
 import { Canvas, createPortal, useFrame } from "@react-three/fiber";
 import { Suspense, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
@@ -8,7 +8,6 @@ import CustomStatsComponent from "../../misc/CustomStatsComponent";
 import ClockDisplay from "./ClockDisplay";
 import { GAME_SPEED, GAME_TEXTURE_SIZE } from "./constants/constants";
 import MncaComponent from "./MncaComponent";
-import { NeighborhoodCanvas } from "./NeighborhoodCanvas";
 import displayPlaneFragmentShader from "./shaders/display/display.frag";
 import displayPlaneVertexShader from "./shaders/display/display.vert";
 import { type MncaUniforms } from "./types/types";
@@ -22,8 +21,8 @@ function getInitialPreviousTexture() {
   const data = new Float32Array(4 * size * size);
   for (let i = 0; i < size * size; i++) {
     const i4 = i * 4;
-    // data[i4 + 0] = Math.random() > 0.75 ? 1 : 0; // cell state
-    data[i4 + 0] = Math.random() > 0.65 ? 1 : 0; // cell state
+    data[i4 + 0] = Math.random() > 0.75 ? 1 : 0; // cell state
+    // data[i4 + 0] = Math.random() > 0.0 ? 1 : 0; // cell state
     data[i4 + 1] = 0;
     data[i4 + 2] = 0;
     data[i4 + 3] = 0;
@@ -187,10 +186,10 @@ function MNCA() {
           depthWrite={false}
         />
       </Plane>
-      <Bvh firstHitOnly>
+      {/* <Bvh firstHitOnly>
         <NeighborhoodCanvas ruleIndex={0} />
         <NeighborhoodCanvas ruleIndex={1} />
-      </Bvh>
+      </Bvh> */}
     </>
   );
 }

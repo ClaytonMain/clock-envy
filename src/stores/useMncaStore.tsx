@@ -12,7 +12,7 @@ const useMncaStore = create<MncaStore>()(
           born: [8, 17],
           stable: [2, 65],
           size: 7,
-          activeCount: 36,
+          activeCount: 20,
           neighborhood: [
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
