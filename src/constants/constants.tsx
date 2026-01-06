@@ -7,6 +7,7 @@ export const CLOCK_NAMES = [
   // "Hex",
   "MNCA",
   "Nixie",
+  "Pool Room",
   // "Shadow Box",
   // "Viva",
   // "Word",
