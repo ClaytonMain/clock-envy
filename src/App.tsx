@@ -5,8 +5,9 @@ import ArchdukeVonOrbenScene from "./components/clocks/archduke-von-orben/Archdu
 import CavityScene from "./components/clocks/cavity/Cavity";
 import FourierScene from "./components/clocks/fourier/Fourier";
 import MNCAScene from "./components/clocks/mnca/MNCA";
-import NixieScene from "./components/clocks/nixie/Nixie";
-import PoolRoomScene from "./components/clocks/pool-room/PoolRoom";
+// import NixieScene from "./components/clocks/nixie/Nixie";
+// import PoolRoomScene from "./components/clocks/pool-room/PoolRoom";
+import VoxelAttractorScene from "./components/clocks/voxel-attractor/VoxelAttractorScene";
 import Timekeeper from "./components/misc/Timekeeper";
 import FullscreenHandleComponent from "./components/ui/FullscreenHandleComponent";
 import InteractionListener from "./components/ui/InteractionListener";
@@ -36,8 +37,9 @@ function App() {
             <Route path="/Cavity" element={<CavityScene />} />
             <Route path="/Fourier" element={<FourierScene />} />
             <Route path="/MNCA" element={<MNCAScene />} />
-            <Route path="/Nixie" element={<NixieScene />} />
-            <Route path="/PoolRoom" element={<PoolRoomScene />} />
+            {/* <Route path="/Nixie" element={<NixieScene />} /> */}
+            {/* <Route path="/PoolRoom" element={<PoolRoomScene />} /> */}
+            <Route path="/VoxelAttractor" element={<VoxelAttractorScene />} />
             <Route path="*" element={<ArchdukeVonOrbenScene />} />
           </Routes>
         </div>
