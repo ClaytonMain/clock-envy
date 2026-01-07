@@ -77,7 +77,7 @@ export default function VoxelAttractorScene() {
         shadows
         dpr={Math.min(window.devicePixelRatio, 2)}
         camera={{
-          position: [0, 0, 50],
+          position: [0, 5, 10],
           fov: FOV,
         }}
         style={{
@@ -88,6 +88,7 @@ export default function VoxelAttractorScene() {
         <Suspense fallback={null}>
           {/* <Environment preset="lobby" resolution={2048} /> */}
           <VoxelAttractor />
+          {/* <IDontReallyUnderstandVoxels /> */}
         </Suspense>
         <OrbitControls makeDefault />
       </Canvas>

@@ -6,7 +6,10 @@ uniform float uGlZ;
 
 varying mat4 vViewMatrix;
 
-int MAX_STEPS = 128;
+int MAX_STEPS = 64;
+float VOXEL_SIZE = 1.0 / 32.0;
+
+#include ../../../../../shaders/includes/simplexNoise4d.glsl
 
 float sdRoundBox(vec3 p, vec3 b, float r) {
   vec3 q = abs(p) - b + r;
@@ -14,48 +17,79 @@ float sdRoundBox(vec3 p, vec3 b, float r) {
 }
 
 float getRawMap(vec3 p) {
-  mat4 rotationX = mat4(1.0, 0.0, 0.0, 0.0, 0.0, cos(uTime * 0.2), -sin(uTime * 0.2), 0.0, 0.0, sin(uTime * 0.2), cos(uTime * 0.2), 0.0, 0.0, 0.0, 0.0, 1.0);
-  mat4 rotationY = mat4(cos(uTime * 0.3), 0.0, sin(uTime * 0.3), 0.0, 0.0, 1.0, 0.0, 0.0, -sin(uTime * 0.3), 0.0, cos(uTime * 0.3), 0.0, 0.0, 0.0, 0.0, 1.0);
-  mat4 rotation = rotationX * rotationY;
-  p = (inverse(rotation) * vec4(p, 1.0)).xyz;
+  // mat4 rotationX = mat4(1.0, 0.0, 0.0, 0.0, 0.0, cos(uTime * 0.2), -sin(uTime * 0.2), 0.0, 0.0, sin(uTime * 0.2), cos(uTime * 0.2), 0.0, 0.0, 0.0, 0.0, 1.0);
+  // mat4 rotationY = mat4(cos(uTime * 0.3), 0.0, sin(uTime * 0.3), 0.0, 0.0, 1.0, 0.0, 0.0, -sin(uTime * 0.3), 0.0, cos(uTime * 0.3), 0.0, 0.0, 0.0, 0.0, 1.0);
+  // mat4 rotation = rotationX * rotationY;
+  // p = (inverse(rotation) * vec4(p, 1.0)).xyz;
 
-  float boxDist = sdRoundBox(p - vec3(0.0, 0.0, 0.0), vec3(10.0, 5.0, 8.0), 0.5);
-  return boxDist;
+  // float boxDist = sdRoundBox(p - vec3(0.0, 0.0, 0.0), vec3(10.0, 0.5, 8.0), 0.2);
+  // return boxDist;
+
+  return length(p - vec3(clamp(p.x, -5.0, 5.0), simplexNoise4d(vec4(p.x, 0.0, p.z, uTime * 0.1)) * 0.2, clamp(p.z, -5.0, 5.0)));
+}
+
+float getMapAndDistance(in vec3 p, out float rawDistance) {
+  float d = getRawMap(p + 0.5 * VOXEL_SIZE);
+  rawDistance = getRawMap(p);
+  return step(d, 0.5 * VOXEL_SIZE);
 }
 
 // I think this is returning 1.0 if inside a voxel, 0.0 if outside.
-float getMap(vec3 p) {
-  return step(getRawMap(p + 0.5), 0.5);
+float getMap(in vec3 p) {
+  return step(getRawMap(p + 0.5 * VOXEL_SIZE), 0.5 * VOXEL_SIZE);
 }
 
-float raycast(in vec3 rayOrigin, in vec3 rayDirection, out vec3 oVoxelIntersectionPosition, out vec3 oVoxelFaceDirection) {
-  vec3 pos = floor(rayOrigin);
+float raycast(in vec3 rayOrigin, in vec3 rayDirection, out vec3 oVoxelIntersectionPosition, out vec3 oVoxelFaceDirection, out vec3 oNewRayOrigin) {
+  vec3 newRayOrigin = rayOrigin;
+
+  vec3 pos = floor(newRayOrigin / VOXEL_SIZE) * VOXEL_SIZE;
   vec3 rayInverse = 1.0 / rayDirection;
   vec3 raySign = sign(rayDirection);
-  vec3 distanceVector = (pos - rayOrigin + 0.5 + raySign * 0.5) * rayInverse;
+  vec3 distanceVector = (pos - newRayOrigin + 0.5 * VOXEL_SIZE + raySign * 0.5 * VOXEL_SIZE) * rayInverse;
 
   // Was called "res" before. Maybe stands for "result"?
   // Possibly indicates whether a hit was detected (-1.0 for no hit).
   float result = -1.0;
   vec3 mask = vec3(0.0);
+  float rawDistance = 0.0;
+  float totalDistance = 0.0;
+  float minDistance = 99999.0;
   for (int i = 0; i < MAX_STEPS; i++) {
-    if (getMap(pos) > 0.5) {
+    if (getMapAndDistance(pos, rawDistance) > 0.5) {
       result = 1.0;
       break;
     }
 
-    // DDA implemented here.
-    // Since this is DDA, this step() * step() thing must be figuring out
-    // which axis we step along next, but...
-    // TODO: Understand why this works.
-    mask = step(distanceVector.xyz, distanceVector.yzx) * step(distanceVector.xyz, distanceVector.zxy);
-    distanceVector += mask * raySign * rayInverse;
-    pos += mask * raySign;
+    // if (rawDistance > 1000.0) {
+    //   mask = step(distanceVector.xyz, distanceVector.yzx) * step(distanceVector.xyz, distanceVector.zxy);
+    //   distanceVector += mask * raySign * VOXEL_SIZE * rayInverse;
+    //   pos += mask * raySign * VOXEL_SIZE;
+    //   break;
+    // }
+
+    minDistance = min(minDistance, rawDistance);
+    // minDistance = rawDistance;
+    if (minDistance > VOXEL_SIZE) {
+      totalDistance += rawDistance;
+      newRayOrigin = rayOrigin + rayDirection * (totalDistance - VOXEL_SIZE * 1.5);
+      pos = floor(newRayOrigin / VOXEL_SIZE) * VOXEL_SIZE;
+      distanceVector = (pos - newRayOrigin + 0.5 * VOXEL_SIZE + raySign * 0.5 * VOXEL_SIZE) * rayInverse;
+    } else {
+      // DDA implemented here.
+      // Since this is DDA, this step() * step() thing is probably figuring out
+      // which axis we step along next, but...
+      // TODO: Understand why this step() * step() thing works.
+      mask = step(distanceVector.xyz, distanceVector.yzx) * step(distanceVector.xyz, distanceVector.zxy);
+      distanceVector += mask * raySign * VOXEL_SIZE * rayInverse;
+      pos += mask * raySign * VOXEL_SIZE;
+    }
   }
+
+  oNewRayOrigin = newRayOrigin;
 
   // I think this bit calculates the exact intersection point along the ray.
   // Not 100% sure though.
-  vec3 mini = (pos - rayOrigin + 0.5 - 0.5 * vec3(raySign)) * rayInverse;
+  vec3 mini = (pos - newRayOrigin + 0.5 * VOXEL_SIZE - 0.5 * VOXEL_SIZE * vec3(raySign)) * rayInverse;
   float t = max(mini.x, max(mini.y, mini.z));
 
   oVoxelFaceDirection = mask;
@@ -70,13 +104,14 @@ vec3 render(vec3 rayOrigin, vec3 rayDirection) {
   // Raymarching
   vec3 voxPosition; // The point where we intersected the voxel (probably).
   vec3 voxDirection;  // The direction of the face of the voxel we hit (probably).
-  float t = raycast(rayOrigin, rayDirection, voxPosition, voxDirection);
+  vec3 newRayOrigin;
+  float t = raycast(rayOrigin, rayDirection, voxPosition, voxDirection, newRayOrigin);
 
   // If we hit a voxel (I think is what this means)
   if (t > 0.0) {
     // 
     vec3 normal = -voxDirection * sign(rayDirection);
-    vec3 pos = rayOrigin + rayDirection * t;
+    vec3 pos = newRayOrigin + rayDirection * t;
     // TODO: Figure out what uvw is used for and what it means.
     vec3 uvw = pos - voxPosition;
 
