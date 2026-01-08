@@ -11,20 +11,20 @@ import {
 import * as THREE from "three";
 
 function getMapAndDistance(
-  p: THREE.Vector3,
+  c: THREE.Vector3,
   voxelSize: number,
 ): {
   returnValue: number;
   rawDistance: number;
 } {
-  // Sphere sdf
-  const d =
-    p
-      .clone()
-      .add(new THREE.Vector3(0.5 * voxelSize, 0.5 * voxelSize, 0.5 * voxelSize))
-      .length() - 1.5;
+  const p = c
+    .clone()
+    .add(new THREE.Vector3(0.5 * voxelSize, 0.5 * voxelSize, 0.5 * voxelSize));
+  const sphereCenter = new THREE.Vector3(0, 0, 0);
+  const sphereRadius = 1.5;
+  const d = p.distanceTo(sphereCenter) - sphereRadius;
   return {
-    returnValue: d < 0.5 * voxelSize ? 1 : 0,
+    returnValue: 0.5 * voxelSize < d ? 0 : 1,
     rawDistance: d,
   };
 }
@@ -33,15 +33,20 @@ function RayArrow({
   origin,
   direction,
   length,
+  color,
 }: {
   origin: THREE.Vector3;
   direction: THREE.Vector3;
   length: number;
+  color: string;
 }) {
   return (
     <Line
-      points={[origin, origin.clone().addScaledVector(direction, length)]}
-      color="blue"
+      points={[
+        origin,
+        origin.clone().addScaledVector(direction.clone().normalize(), length),
+      ]}
+      color={color}
       lineWidth={2}
     />
   );
@@ -58,108 +63,86 @@ function RayDot({
   voxelSize: number;
   incrementRef: RefObject<number>;
 }) {
+  const [, setUpdatedAt] = useState(Date.now());
   const currentIncrementRef = useRef(incrementRef.current);
   const meshRef = useRef<THREE.Mesh>(null!);
   const htmlRef = useRef(null!);
-  const rayOrigin = useMemo(() => {
-    return new THREE.Vector3(
+  const vals = useMemo(() => {
+    const rayOrigin = new THREE.Vector3(
       -5,
       yBounds[0] + (rayIndex / 4) * (yBounds[1] - yBounds[0]),
       0,
     );
-  }, [rayIndex, yBounds]);
-  const rayDirection = useMemo(() => {
-    const dir = new THREE.Vector3(1, Math.random() * 0.2 - 0.1, 0);
-    dir.normalize();
-    return dir;
-  }, []);
-
-  const [htmlContent, setHtmlContent] = useState<JSX.Element>(
-    <div>Ray {rayIndex}</div>,
-  );
-
-  const [vals, setVals] = useState(() => {
-    return {
-      rayOrigin: rayOrigin.clone(),
+    const newRayOrigin = rayOrigin.clone();
+    const rayDirection = new THREE.Vector3(
+      1,
+      Math.random() * 0.2 - 0.1,
+      0,
+    ).normalize();
+    const pos = new THREE.Vector3(
+      Math.floor(rayOrigin.x / voxelSize) * voxelSize,
+      Math.floor(rayOrigin.y / voxelSize) * voxelSize,
+      Math.floor(rayOrigin.z / voxelSize) * voxelSize,
+    );
+    const rayInverse = new THREE.Vector3(
+      rayDirection.x !== 0 ? 1.0 / rayDirection.x : 9999999.0,
+      rayDirection.y !== 0 ? 1.0 / rayDirection.y : 9999999.0,
+      rayDirection.z !== 0 ? 1.0 / rayDirection.z : 9999999.0,
+    );
+    const raySign = new THREE.Vector3(
+      Math.sign(rayDirection.x),
+      Math.sign(rayDirection.y),
+      Math.sign(rayDirection.z),
+    );
+    const distanceVector = new THREE.Vector3(
+      (pos.x - newRayOrigin.x + 0.5 * voxelSize + raySign.x * 0.5 * voxelSize) *
+        rayInverse.x,
+      (pos.y - newRayOrigin.y + 0.5 * voxelSize + raySign.y * 0.5 * voxelSize) *
+        rayInverse.y,
+      (pos.z - newRayOrigin.z + 0.5 * voxelSize + raySign.z * 0.5 * voxelSize) *
+        rayInverse.z,
+    );
+    const values = {
       increment: incrementRef.current,
-      newRayOrigin: rayOrigin.clone(),
+      rayOrigin: rayOrigin.clone(),
+      newRayOrigin: newRayOrigin.clone(),
       rayDirection: rayDirection.clone(),
-      pos: new THREE.Vector3(
-        Math.floor(rayOrigin.x / voxelSize) * voxelSize,
-        Math.floor(rayOrigin.y / voxelSize) * voxelSize,
-        Math.floor(rayOrigin.z / voxelSize) * voxelSize,
-      ),
-      rayInverse: new THREE.Vector3(
-        1.0 / rayDirection.x,
-        1.0 / rayDirection.y,
-        1.0 / rayDirection.z,
-      ),
-      raySign: new THREE.Vector3(
-        Math.sign(rayDirection.x),
-        Math.sign(rayDirection.y),
-        Math.sign(rayDirection.z),
-      ),
-      distanceVector: new THREE.Vector3(
-        (Math.floor(rayOrigin.x / voxelSize) * voxelSize -
-          rayOrigin.x +
-          0.5 * voxelSize +
-          Math.sign(rayDirection.x) * 0.5 * voxelSize) *
-          (1.0 / rayDirection.x),
-        (Math.floor(rayOrigin.y / voxelSize) * voxelSize -
-          rayOrigin.y +
-          0.5 * voxelSize +
-          Math.sign(rayDirection.y) * 0.5 * voxelSize) *
-          (1.0 / rayDirection.y),
-        (Math.floor(rayOrigin.z / voxelSize) * voxelSize -
-          rayOrigin.z +
-          0.5 * voxelSize +
-          Math.sign(rayDirection.z) * 0.5 * voxelSize) *
-          (1.0 / rayDirection.z),
-      ),
+      pos: pos.clone(),
+      rayInverse: rayInverse.clone(),
+      raySign: raySign.clone(),
+      distanceVector: distanceVector.clone(),
       result: -1,
       mask: new THREE.Vector3(0, 0, 0),
       rawDistance: 0,
       totalDistance: 0,
       minDistance: Infinity,
       break: false,
+      tooFar: false,
     };
-  });
+    return values;
+  }, []);
 
   useFrame(() => {
-    if (vals.break) return;
     if (currentIncrementRef.current === incrementRef.current) return;
     currentIncrementRef.current = incrementRef.current;
 
     const incMod = currentIncrementRef.current % 10000;
 
-    if (incMod === 1) {
+    if (incMod <= 20 && !vals.break) {
       const { returnValue, rawDistance } = getMapAndDistance(
         vals.pos,
         voxelSize,
       );
-      setVals((vals) => {
-        return {
-          ...vals,
-          result: returnValue,
-          rawDistance: rawDistance,
-          break: returnValue > 0.5,
-          minDistance: Math.min(vals.minDistance, rawDistance),
-        };
-      });
-      setHtmlContent(
-        <div>
-          Result: {returnValue}
-          <br />
-          Raw Distance: {rawDistance.toFixed(2)}
-          <br />
-          Break: {returnValue > 0.5}
-          <br />
-          Min distance: {Math.min(vals.minDistance, rawDistance).toFixed(2)}
-        </div>,
-      );
-    } else {
-      const tooFar = vals.minDistance > Math.ceil(3.0 * voxelSize);
-      if (tooFar) {
+      const minDistance = Math.min(vals.minDistance, rawDistance);
+
+      vals.result = returnValue;
+      vals.rawDistance = rawDistance;
+      vals.break = returnValue > 0.5;
+      vals.minDistance = minDistance;
+
+      const tooFar = vals.minDistance > voxelSize;
+      vals.tooFar = tooFar;
+      if (tooFar && !vals.break) {
         const totalDistance = vals.totalDistance + vals.rawDistance;
         const newRayOrigin = vals.rayOrigin
           .clone()
@@ -186,30 +169,57 @@ function RayDot({
             vals.raySign.z * 0.5 * voxelSize) *
             vals.rayInverse.z,
         );
-        meshRef.current!.position.copy(newRayOrigin);
-        setVals((vals) => ({
-          ...vals,
-          totalDistance: totalDistance,
-          newRayOrigin: newRayOrigin,
-          pos: pos,
-          distanceVector: distanceVector,
-        }));
+        vals.newRayOrigin.copy(newRayOrigin);
+        vals.pos.copy(pos);
+        vals.distanceVector.copy(distanceVector);
+        vals.totalDistance = totalDistance;
+      } else if (!vals.break) {
+        const dv = vals.distanceVector;
+        vals.mask.set(
+          (dv.y < dv.x ? 0 : 1) * (dv.z < dv.x ? 0 : 1),
+          (dv.z < dv.y ? 0 : 1) * (dv.x < dv.y ? 0 : 1),
+          (dv.x < dv.z ? 0 : 1) * (dv.y < dv.z ? 0 : 1),
+        );
+        console.log(vals.mask);
+        vals.distanceVector.add(
+          new THREE.Vector3(
+            vals.mask.x * voxelSize * vals.raySign.x * vals.rayInverse.x,
+            vals.mask.y * voxelSize * vals.raySign.y * vals.rayInverse.y,
+            vals.mask.z * voxelSize * vals.raySign.z * vals.rayInverse.z,
+          ),
+        );
+        console.log(vals.mask.x, vals.raySign.x, vals.rayInverse.x);
+        vals.pos.add(
+          new THREE.Vector3(
+            vals.mask.x * voxelSize * vals.raySign.x,
+            vals.mask.y * voxelSize * vals.raySign.y,
+            vals.mask.z * voxelSize * vals.raySign.z,
+          ),
+        );
       }
+      meshRef.current!.position.copy(vals.pos);
+      setUpdatedAt(Date.now());
     }
   });
 
   return (
     <>
-      <mesh ref={meshRef} position={vals.pos}>
+      <mesh ref={meshRef} position={vals.pos} onClick={() => console.log(vals)}>
         <circleGeometry args={[0.05]} />
         <meshBasicMaterial color="red" />
       </mesh>
-      <RayArrow origin={vals.pos} direction={vals.rayDirection} length={5} />
-      <Html ref={htmlRef} position={vals.pos}>
-        <div style={{ color: "white", fontSize: "0.6rem", width: "10rem" }}>
-          {htmlContent}
-        </div>
-      </Html>
+      <RayArrow
+        origin={vals.pos}
+        direction={vals.rayDirection}
+        length={5}
+        color="blue"
+      />
+      <RayArrow
+        origin={vals.pos}
+        direction={vals.distanceVector}
+        length={1}
+        color="orange"
+      />
     </>
   );
 }
@@ -244,7 +254,7 @@ export default function IDontReallyUnderstandVoxels() {
         />
       ))}
       <Sphere args={[1.5, 16, 16]} position={[0, 0, 0]}>
-        <meshBasicMaterial color="green" />
+        <meshBasicMaterial color="green" wireframe />
       </Sphere>
       <Grid
         args={[10, 10]}

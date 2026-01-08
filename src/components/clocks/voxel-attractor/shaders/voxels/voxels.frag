@@ -43,7 +43,11 @@ float raycast(in vec3 rayOrigin, in vec3 rayDirection, out vec3 oVoxelIntersecti
   vec3 newRayOrigin = rayOrigin;
 
   vec3 pos = floor(newRayOrigin / VOXEL_SIZE) * VOXEL_SIZE;
-  vec3 rayInverse = 1.0 / rayDirection;
+  vec3 rayInverse = vec3(
+    rayDirection.x != 0.0 ? 1.0 / rayDirection.x : 0.0,
+    rayDirection.y != 0.0 ? 1.0 / rayDirection.y : 0.0,
+    rayDirection.z != 0.0 ? 1.0 / rayDirection.z : 0.0
+  );
   vec3 raySign = sign(rayDirection);
   vec3 distanceVector = (pos - newRayOrigin + 0.5 * VOXEL_SIZE + raySign * 0.5 * VOXEL_SIZE) * rayInverse;
 

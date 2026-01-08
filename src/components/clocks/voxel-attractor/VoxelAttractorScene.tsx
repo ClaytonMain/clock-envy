@@ -5,6 +5,7 @@ import * as THREE from "three";
 import useAppStore from "../../../stores/useAppStore";
 import CustomStatsComponent from "../../misc/CustomStatsComponent";
 import { FOV } from "./constants/constants";
+import IDontReallyUnderstandVoxels from "./IDontReallyUnderstandVoxels";
 import voxelsFragmentShader from "./shaders/voxels/voxels.frag";
 import voxelsVertexShader from "./shaders/voxels/voxels.vert";
 
@@ -77,7 +78,8 @@ export default function VoxelAttractorScene() {
         shadows
         dpr={Math.min(window.devicePixelRatio, 2)}
         camera={{
-          position: [0, 5, 10],
+          // position: [0, 5, 10],
+          position: [0, 0, 10],
           fov: FOV,
         }}
         style={{
@@ -87,8 +89,8 @@ export default function VoxelAttractorScene() {
         <CustomStatsComponent />
         <Suspense fallback={null}>
           {/* <Environment preset="lobby" resolution={2048} /> */}
-          <VoxelAttractor />
-          {/* <IDontReallyUnderstandVoxels /> */}
+          {/* <VoxelAttractor /> */}
+          <IDontReallyUnderstandVoxels />
         </Suspense>
         <OrbitControls makeDefault />
       </Canvas>
