@@ -10,6 +10,10 @@ import {
 } from "react";
 import * as THREE from "three";
 
+const VOXEL_SIZE = 0.5;
+const NUM_RAYS = 20;
+const RAY_Y_BOUNDS: [number, number] = [-2, 2];
+
 function getMapAndDistance(
   c: THREE.Vector3,
   voxelSize: number,
@@ -57,11 +61,13 @@ function RayDot({
   yBounds,
   voxelSize,
   incrementRef,
+  numRays,
 }: {
   rayIndex: number;
   yBounds: [number, number];
   voxelSize: number;
   incrementRef: RefObject<number>;
+  numRays: number;
 }) {
   const [, setUpdatedAt] = useState(Date.now());
   const currentIncrementRef = useRef(incrementRef.current);
@@ -70,13 +76,14 @@ function RayDot({
   const vals = useMemo(() => {
     const rayOrigin = new THREE.Vector3(
       -5,
-      yBounds[0] + (rayIndex / 4) * (yBounds[1] - yBounds[0]),
+      yBounds[0] + (rayIndex / numRays) * (yBounds[1] - yBounds[0]),
       0,
     );
     const newRayOrigin = rayOrigin.clone();
     const rayDirection = new THREE.Vector3(
       1,
-      Math.random() * 0.2 - 0.1,
+      // Math.random() * 0.2 - 0.1,
+      0,
       0,
     ).normalize();
     const pos = new THREE.Vector3(
@@ -142,7 +149,7 @@ function RayDot({
 
       const tooFar = vals.minDistance > voxelSize;
       vals.tooFar = tooFar;
-      if (tooFar && !vals.break) {
+      if (tooFar && !vals.break && false) {
         const totalDistance = vals.totalDistance + vals.rawDistance;
         const newRayOrigin = vals.rayOrigin
           .clone()
@@ -225,10 +232,6 @@ function RayDot({
 }
 
 export default function IDontReallyUnderstandVoxels() {
-  const VOXEL_SIZE = 0.2;
-  const NUM_RAYS = 5;
-  const RAY_Y_BOUNDS: [number, number] = [-2, 2];
-
   const incrementRef = useRef(0);
   const maxSteps = 100;
 
@@ -251,6 +254,7 @@ export default function IDontReallyUnderstandVoxels() {
           yBounds={RAY_Y_BOUNDS}
           voxelSize={VOXEL_SIZE}
           incrementRef={incrementRef}
+          numRays={NUM_RAYS}
         />
       ))}
       <Sphere args={[1.5, 16, 16]} position={[0, 0, 0]}>
