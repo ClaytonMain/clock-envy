@@ -6,13 +6,15 @@ uniform float uGlZ;
 
 varying mat4 vViewMatrix;
 
-int MAX_STEPS = 128;
-float VOXEL_SIZE = 1.0 / 16.0;
-float MAX_STEP_TRAVEL_DIST = 100.0;
+const int MAX_STEPS = 256;
+const float VOXEL_SIZE = 1.0 / 16.0;
+const float MAX_TRAVEL_DIST = 500.0;
+const vec3 LIGHT_COLOR = vec3(1.0, 0.95, 0.75) * 2.0;
+const vec3 LIGHT_DIR = normalize(vec3(0.85, 1.2, 0.8));
 
 #include ../../../../../shaders/includes/simplexNoise3d.glsl
 
-// HUUUUUUUUGE shoutout to Shadertoy user "gelami" for their
+// HUGE shoutout to Shadertoy user "gelami" for their
 // "Hybrid SDF-Voxel Traversal" shader:
 // https://www.shadertoy.com/view/dtVSzw
 // This shader's raycast function is heavily based on the one from that shader.
@@ -23,19 +25,26 @@ float sdRoundBox(vec3 p, vec3 b, float r) {
 }
 
 float getMap(vec3 p) {
-  float planeDistance = dot(p, vec3(0.0, 1.0, 0.0)) + simplexNoise3d(vec3(p.x * 0.5, uTime * 0.2, p.z * 0.5)) * 0.5;
-  float boxDistance = sdRoundBox(p - vec3(0.0, 0.0, 0.0), vec3(5.0, 2.0, 5.0), 0.0);
+  // float planeDistance = dot(p, vec3(0.0, 1.0, 0.0)) + simplexNoise3d(vec3(p.x * 0.5, uTime * 0.2, p.z * 0.5)) * 0.5;
+  // float boxDistance = sdRoundBox(p - vec3(0.0, 0.0, 0.0), vec3(5.0, 2.0, 3.0), 0.75);
 
   // opIntersection
-  return max(planeDistance, boxDistance);
+  // return max(planeDistance, boxDistance);
+
+  mat4 rotationX = mat4(1.0, 0.0, 0.0, 0.0, 0.0, cos(uTime * 0.02), -sin(uTime * 0.02), 0.0, 0.0, sin(uTime * 0.02), cos(uTime * 0.02), 0.0, 0.0, 0.0, 0.0, 1.0);
+  mat4 rotationY = mat4(cos(uTime * 0.03), 0.0, sin(uTime * 0.03), 0.0, 0.0, 1.0, 0.0, 0.0, -sin(uTime * 0.03), 0.0, cos(uTime * 0.03), 0.0, 0.0, 0.0, 0.0, 1.0);
+  mat4 rotation = rotationX * rotationY;
+  p = (inverse(rotation) * vec4(p, 1.0)).xyz;
+
+  float boxDist = sdRoundBox(p - vec3(0.0, 0.0, 0.0), vec3(5.0, 2.0, 3.0), 0.75);
+  return boxDist;
 }
 
-// TODO: Comment this or come up with more human-readable names.
 struct HitInfo {
   float t;
-  vec3 n;
-  vec3 id;
-  int i;
+  vec3 normal;
+  vec3 voxelPos;
+  int voxelIndex;
 };
 
 vec3 getVoxelPosition(vec3 p, float s) {
@@ -65,7 +74,7 @@ bool raycast(in vec3 rayOrigin, in vec3 rayDir, out HitInfo oHitInfo, const floa
   for (int i = 0; i < MAX_STEPS; i++) {
     vec3 pos = rayOrigin + rayDir * t;
 
-    float d = map(voxel ? voxelPos : pos);
+    float d = getMap(voxel ? voxelPos : pos);
 
     if (!voxel) {
       t += d;
@@ -74,70 +83,107 @@ bool raycast(in vec3 rayOrigin, in vec3 rayDir, out HitInfo oHitInfo, const floa
         voxel = true;
         voxelIndex = 0;
       }
-    } else
-      {
-    vec3 n = () }
+    } else {
+      // What is `n`?
+      vec3 n = (rayOrigin - voxelPos) * invRayDir;
+      // What is `k`?
+      vec3 k = absRayDir * voxSize * 0.5;
+
+      vec3 t1 = -n + k;
+
+      float tF = min(min(t1.x, t1.y), t1.z);
+
+      vec3 nrd = signInvRayDir * step(t1, t1.yzx) * step(t1, t1.zxy);
+
+      if (d < 0.0) {
+        oHitInfo.t = t;
+        oHitInfo.voxelPos = voxelPos;
+        oHitInfo.normal = -prd;
+        oHitInfo.voxelIndex = voxelIndex;
+        return true;
+      } else if (d > voxSwitchDist && voxelIndex > 2) {
+        voxel = false;
+        t = tF + voxSwitchDist;
+        continue;
+      }
+
+      voxelPos += nrd * voxSize;
+      prd = nrd;
+      t = tF;
+      voxelIndex += 1;
+    }
+    if (t >= tMax) {
+      return false;
+    }
+  }
+
+  return false;
 }
+
+vec3 gradient(vec3 p) {
+  // Why?
+  const vec2 e = vec2(0.0, 0.05);
+  return (getMap(p) - vec3(getMap(p - e.yxx), getMap(p - e.xyx), getMap(p - e.xxy))) / e.y;
+}
+
+vec3 shade(vec3 pos, vec3 lightDir, HitInfo hitInfo) {
+  vec3 voxelPos = hitInfo.voxelPos;
+
+  vec3 grad = gradient(voxelPos);
+  float gradLength = length(grad);
+  vec3 gradNormalized = grad / gradLength;
+
+  vec3 normal = hitInfo.normal;
+
+  float diffuse = max(dot(normal, lightDir), 0.0);
+
+  if (diffuse > 0.0) {
+    pos += normal * 0.001;
+    HitInfo hitLight;
+    bool isHitLight = raycast(pos, lightDir, hitLight, 12.0);
+
+    diffuse *= float(!isHitLight);
+  }
+
+  vec3 color = vec3(0.81, 0.16, 0.04) * exp(-0.04 * hitInfo.t);
+  float ao = smoothstep(-0.1, 0.01, getMap(pos) / length(gradient(pos)));
+
+  color *= (diffuse * 0.5 + 0.5) * LIGHT_COLOR;
+  color *= ao * 0.5 + 0.5;
+
+  return color;
 }
 
 vec3 render(vec3 rayOrigin, vec3 rayDirection) {
-vec3 color = vec3(0.0);
+  HitInfo hitInfo;
+  bool isHit = raycast(rayOrigin, rayDirection, hitInfo, MAX_TRAVEL_DIST);
 
-  // Raymarching
-vec3 voxPosition;
-vec3 voxDirection;
-float t = raycast(rayOrigin, rayDirection, voxPosition, voxDirection);
+  float t = hitInfo.t;
 
-if (t > 0.0) {
-vec3 normal = - voxDirection * sign(rayDirection);
-    // vec3 pos = newRayOrigin + rayDirection * t;
-    // // TODO: Figure out what uvw is used for and what it means.
-    // vec3 uvw = pos - voxPosition;
+  vec3 pos = rayOrigin + rayDirection * t;
+  vec3 voxelPos = hitInfo.voxelPos;
 
-    // // TODO: Figure out why he separated all this out so much,
-    // // and what all this is doing.
-    // vec3 v1 = voxPosition + normal + voxDirection.yzx;
-    // vec3 v2 = voxPosition + normal - voxDirection.yzx;
-    // vec3 v3 = voxPosition + normal + voxDirection.zxy;
-    // vec3 v4 = voxPosition + normal - voxDirection.zxy;
-    // vec3 v5 = voxPosition + normal + voxDirection.yzx + voxDirection.zxy;
-    // vec3 v6 = voxPosition + normal - voxDirection.yzx + voxDirection.zxy;
-    // vec3 v7 = voxPosition + normal - voxDirection.yzx - voxDirection.zxy;
-    // vec3 v8 = voxPosition + normal + voxDirection.yzx - voxDirection.zxy;
-    // vec3 v9 = voxPosition + voxDirection.yzx;
-    // vec3 v10 = voxPosition - voxDirection.yzx;
-    // vec3 v11 = voxPosition + voxDirection.zxy;
-    // vec3 v12 = voxPosition - voxDirection.zxy;
-    // vec3 v13 = voxPosition + voxDirection.yzx + voxDirection.zxy;
-    // vec3 v14 = voxPosition - voxDirection.yzx + voxDirection.zxy;
-    // vec3 v15 = voxPosition - voxDirection.yzx - voxDirection.zxy;
-    // vec3 v16 = voxPosition + voxDirection.yzx - voxDirection.zxy;
+  vec3 color = shade(pos, LIGHT_DIR, hitInfo);
+  if (!isHit) {
+    color = vec3(0.1, 0.05, 0.04);
+  }
 
-    // // Ok, but seriously, why this particular order?
-    // vec4 vc = vec4(getMap(v1), getMap(v2), getMap(v3), getMap(v4));
-    // vec4 vd = vec4(getMap(v5), getMap(v6), getMap(v7), getMap(v8));
-    // vec4 va = vec4(getMap(v9), getMap(v10), getMap(v11), getMap(v12));
-    // vec4 vb = vec4(getMap(v13), getMap(v14), getMap(v15), getMap(v16));
+  // vec3 color = vec3(float(hitInfo.voxelIndex) / float(MAX_STEPS));
+  // color = vec3(hitInfo.normal);
 
-    // Ight, skipping a bunch of stuff wherein the above values are used to compute
-    // lighting, "wireframe" effects, and ambient occlusion.
-    // Just going to set color based on normal and distance for now.
-color = (normal * 0.5 + 0.5) * exp(- 0.04 * t);
-}
-
-return color;
+  return color;
 }
 
 void main() {
-vec2 uv = gl_FragCoord.xy / uResolution.xy;
-uv -= 0.5;
-uv.x *= uResolution.x / uResolution.y;
+  vec2 uv = gl_FragCoord.xy / uResolution.xy;
+  uv -= 0.5;
+  uv.x *= uResolution.x / uResolution.y;
 
-vec3 rayOrigin = uCameraPosition;
-vec4 directionOffset = inverse(vViewMatrix) * vec4(uv.x, uv.y, uGlZ, 1.0);
-vec3 rayDirection = normalize(directionOffset.xyz - rayOrigin);
+  vec3 rayOrigin = uCameraPosition;
+  vec4 directionOffset = inverse(vViewMatrix) * vec4(uv.x, uv.y, uGlZ, 1.0);
+  vec3 rayDirection = normalize(directionOffset.xyz - rayOrigin);
 
-vec3 color = render(rayOrigin, rayDirection);
+  vec3 color = render(rayOrigin, rayDirection);
 
-gl_FragColor = vec4(color, 1.0);
+  gl_FragColor = vec4(color, 1.0);
 }
