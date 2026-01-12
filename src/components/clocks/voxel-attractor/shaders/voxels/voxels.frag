@@ -6,9 +6,9 @@ uniform float uGlZ;
 
 varying mat4 vViewMatrix;
 
-const int MAX_STEPS = 256;
+const int MAX_STEPS = 128;
 const float VOXEL_SIZE = 1.0 / 16.0;
-const float MAX_TRAVEL_DIST = 500.0;
+const float MAX_TRAVEL_DIST = 200.0;
 const vec3 LIGHT_COLOR = vec3(1.0, 0.95, 0.75) * 2.0;
 const vec3 LIGHT_DIR = normalize(vec3(0.85, 1.2, 0.8));
 
