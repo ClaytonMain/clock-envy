@@ -3,12 +3,13 @@ uniform float uTime;
 uniform vec3 uCameraPosition;
 uniform vec2 uResolution;
 uniform float uGlZ;
+uniform vec3[126] uParticlePositions;
 
 varying mat4 vViewMatrix;
 
-const int MAX_STEPS = 128;
-const float VOXEL_SIZE = 1.0 / 16.0;
-const float MAX_TRAVEL_DIST = 200.0;
+const int MAX_STEPS = 32;
+const float VOXEL_SIZE = 1.0 / 8.0;
+const float MAX_TRAVEL_DIST = 20.0;
 const vec3 LIGHT_COLOR = vec3(1.0, 0.95, 0.75) * 2.0;
 const vec3 LIGHT_DIR = normalize(vec3(0.85, 1.2, 0.8));
 
@@ -19,9 +20,13 @@ const vec3 LIGHT_DIR = normalize(vec3(0.85, 1.2, 0.8));
 // https://www.shadertoy.com/view/dtVSzw
 // This shader's raycast function is heavily based on the one from that shader.
 
-float sdRoundBox(vec3 p, vec3 b, float r) {
-  vec3 q = abs(p) - b + r;
-  return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0) - r;
+// float sdRoundBox(vec3 p, vec3 b, float r) {
+//   vec3 q = abs(p) - b + r;
+//   return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0) - r;
+// }
+
+float sdSphere(vec3 p, float r) {
+  return length(p) - r;
 }
 
 float getMap(vec3 p) {
@@ -31,13 +36,21 @@ float getMap(vec3 p) {
   // opIntersection
   // return max(planeDistance, boxDistance);
 
-  mat4 rotationX = mat4(1.0, 0.0, 0.0, 0.0, 0.0, cos(uTime * 0.02), -sin(uTime * 0.02), 0.0, 0.0, sin(uTime * 0.02), cos(uTime * 0.02), 0.0, 0.0, 0.0, 0.0, 1.0);
-  mat4 rotationY = mat4(cos(uTime * 0.03), 0.0, sin(uTime * 0.03), 0.0, 0.0, 1.0, 0.0, 0.0, -sin(uTime * 0.03), 0.0, cos(uTime * 0.03), 0.0, 0.0, 0.0, 0.0, 1.0);
-  mat4 rotation = rotationX * rotationY;
-  p = (inverse(rotation) * vec4(p, 1.0)).xyz;
+  // mat4 rotationX = mat4(1.0, 0.0, 0.0, 0.0, 0.0, cos(uTime * 0.02), -sin(uTime * 0.02), 0.0, 0.0, sin(uTime * 0.02), cos(uTime * 0.02), 0.0, 0.0, 0.0, 0.0, 1.0);
+  // mat4 rotationY = mat4(cos(uTime * 0.03), 0.0, sin(uTime * 0.03), 0.0, 0.0, 1.0, 0.0, 0.0, -sin(uTime * 0.03), 0.0, cos(uTime * 0.03), 0.0, 0.0, 0.0, 0.0, 1.0);
+  // mat4 rotation = rotationX * rotationY;
+  // p = (inverse(rotation) * vec4(p, 1.0)).xyz;
 
-  float boxDist = sdRoundBox(p - vec3(0.0, 0.0, 0.0), vec3(5.0, 2.0, 3.0), 0.75);
-  return boxDist;
+  // float boxDist = sdRoundBox(p - vec3(0.0, 0.0, 0.0), vec3(5.0, 2.0, 3.0), 0.75);
+  // return boxDist;
+
+  float minDist = 1e10;
+  for (int i = 0; i < 126; i++) {
+    vec3 particlePos = uParticlePositions[i];
+    float d = sdSphere(p - particlePos, 0.2);
+    minDist = min(minDist, d);
+  }
+  return minDist;
 }
 
 struct HitInfo {

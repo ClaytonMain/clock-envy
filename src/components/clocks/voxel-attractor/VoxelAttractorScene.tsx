@@ -1,20 +1,16 @@
-import {
-  Icosahedron,
-  Instance,
-  Instances,
-  Loader,
-  OrbitControls,
-} from "@react-three/drei";
+import { Instance, Instances, Loader, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import useAppStore from "../../../stores/useAppStore";
+import useVoxelAttractorStore from "../../../stores/useVoxelAttractorStore";
 import CustomStatsComponent from "../../misc/CustomStatsComponent";
 import { FOV } from "./constants/constants";
 import voxelsFragmentShader from "./shaders/voxels/voxels.frag";
 import voxelsVertexShader from "./shaders/voxels/voxels.vert";
+import { getActiveSegments } from "./utils/utils";
 
-const OFFSET_SCALE = 1.2;
+const OFFSET_SCALE = 1.3;
 const DIGIT_CENTER_OFFSETS = [
   -5.0 * OFFSET_SCALE,
   -3.0 * OFFSET_SCALE,
@@ -35,141 +31,46 @@ const SEGMENT_OFFSETS = [
   new THREE.Vector2(0.0, 0.0),
 ];
 const SEGMENT_ORIENTATIONS = ["H", "V", "V", "H", "V", "V", "H"];
-const SEGMENT_RADIUS = 0.2;
+const SUB_SEGMENT_COUNT = 3;
+const SUB_SEGMENT_RADIUS = 0.2;
 
-const PARTICLE_COUNT = 500;
+const PARTICLE_COUNT = 6 * 7 * SUB_SEGMENT_COUNT;
 
-function sdgSegment(
-  p: THREE.Vector3,
-  a: THREE.Vector3,
-  b: THREE.Vector3,
-  r: number,
-): THREE.Vector4 {
-  const ba = b.clone().sub(a);
-  const pa = p.clone().sub(a);
-  const h = Math.max(0.0, Math.min(1.0, pa.clone().dot(ba) / ba.lengthSq()));
-  const q = pa.clone().sub(ba.clone().multiplyScalar(h));
-  const d = q.length();
-  return new THREE.Vector4(d - r, q.x / d, q.y / d, q.z / d);
-}
-
-function getActiveSegments(): number[] {
-  const timeValue = useAppStore.getState().currentTimeValue;
-  const segments: number[] = [];
-  for (let i = 0; i < 6; i++) {
-    const char = timeValue.toFormat("HHmmss").charAt(i);
-    const segmentMap: Record<string, number[]> = {
-      "0": [1, 1, 1, 1, 1, 1, 0],
-      "1": [0, 1, 1, 0, 0, 0, 0],
-      "2": [1, 1, 0, 1, 1, 0, 1],
-      "3": [1, 1, 1, 1, 0, 0, 1],
-      "4": [0, 1, 1, 0, 0, 1, 1],
-      "5": [1, 0, 1, 1, 0, 1, 1],
-      "6": [1, 0, 1, 1, 1, 1, 1],
-      "7": [1, 1, 1, 0, 0, 0, 0],
-      "8": [1, 1, 1, 1, 1, 1, 1],
-      "9": [1, 1, 1, 1, 0, 1, 1],
-    };
-    segments.push(...(segmentMap[char] || [0, 0, 0, 0, 0, 0, 0]));
-  }
-  return segments;
-}
-
-function getClockSdg(
-  p: THREE.Vector3,
-  activeSegments: number[],
-  pDigitIndex: number,
-  pSegmentIndex: number,
-): THREE.Vector4 {
-  // const minSdg = new THREE.Vector4(Infinity, 0, 0, 0);
-  // let minDigitOffset = 9999;
-  // let minDigitOffsetIndex = -1;
-  // for (let digitIndex = 0; digitIndex < 6; digitIndex++) {
-  //   const digitOffset = DIGIT_CENTER_OFFSETS[digitIndex];
-  //   const distanceToDigit = p.distanceTo(new THREE.Vector3(digitOffset, 0, 0));
-  //   if (distanceToDigit < minDigitOffset) {
-  //     minDigitOffset = distanceToDigit;
-  //     minDigitOffsetIndex = digitIndex;
-  //   }
-  // }
-
-  // const digitOffset = DIGIT_CENTER_OFFSETS[minDigitOffsetIndex];
-  // for (let segmentIndex = 0; segmentIndex < 7; segmentIndex++) {
-  //   if (activeSegments[minDigitOffsetIndex * 7 + segmentIndex] === 0) continue;
-
-  //   const segmentPos = new THREE.Vector3(
-  //     digitOffset + SEGMENT_OFFSETS[segmentIndex].x,
-  //     SEGMENT_OFFSETS[segmentIndex].y,
-  //     0,
-  //   );
-  //   const orientation = SEGMENT_ORIENTATIONS[segmentIndex];
-  //   const segmentOffset = new THREE.Vector3(
-  //     orientation === "H" ? -SEGMENT_X_OFFSET : 0,
-  //     orientation === "V" ? -SEGMENT_Y_OFFSET / 2 : 0,
-  //     0,
-  //   );
-  //   const sdg = sdgSegment(
-  //     p,
-  //     segmentPos.clone().add(segmentOffset),
-  //     segmentPos.clone().sub(segmentOffset),
-  //     SEGMENT_RADIUS,
-  //   );
-  //   if (sdg.x < minSdg.x) {
-  //     minSdg.copy(sdg);
-  //   }
-  // }
-
-  const digitOffset = DIGIT_CENTER_OFFSETS[pDigitIndex];
-  const activeDigitSegments = activeSegments.slice(
-    pDigitIndex * 7,
-    pDigitIndex * 7 + 7,
-  );
-  let useSegmentIndex = pSegmentIndex;
-  while (activeDigitSegments[useSegmentIndex] === 0) {
-    useSegmentIndex = (useSegmentIndex + 1) % 7;
+function getParticleTargetPosition(
+  digitIndex: number,
+  segmentIndex: number,
+  subSegmentIndex: number,
+  increment: number,
+): THREE.Vector3 {
+  const digitOffset = DIGIT_CENTER_OFFSETS[digitIndex];
+  const activeSegments = useVoxelAttractorStore
+    .getState()
+    .activeSegments.slice(digitIndex * 7, digitIndex * 7 + 7);
+  let targetSegmentIndex = segmentIndex;
+  while (activeSegments[targetSegmentIndex] === 0) {
+    targetSegmentIndex = (targetSegmentIndex + 7 + increment) % 7;
   }
   const segmentPos = new THREE.Vector3(
-    digitOffset + SEGMENT_OFFSETS[useSegmentIndex].x,
-    SEGMENT_OFFSETS[useSegmentIndex].y,
+    digitOffset + SEGMENT_OFFSETS[targetSegmentIndex].x,
+    SEGMENT_OFFSETS[targetSegmentIndex].y,
     0,
   );
-  const orientation = SEGMENT_ORIENTATIONS[useSegmentIndex];
-  const segmentOffset = new THREE.Vector3(
-    orientation === "H" ? -SEGMENT_X_OFFSET : 0,
-    orientation === "V" ? -SEGMENT_Y_OFFSET / 2 : 0,
+  const orientation = SEGMENT_ORIENTATIONS[targetSegmentIndex];
+  const subSegmentOffset = new THREE.Vector3(
+    orientation === "H"
+      ? (subSegmentIndex / (SUB_SEGMENT_COUNT - 1) - 0.5) *
+        SEGMENT_X_OFFSET *
+        0.75 *
+        2
+      : 0,
+    orientation === "V"
+      ? (subSegmentIndex / (SUB_SEGMENT_COUNT - 1) - 0.5) *
+        SEGMENT_Y_OFFSET *
+        0.75
+      : 0,
     0,
   );
-  const sdg = sdgSegment(
-    p,
-    segmentPos.clone().add(segmentOffset),
-    segmentPos.clone().sub(segmentOffset),
-    SEGMENT_RADIUS,
-  );
-
-  return sdg;
-}
-
-function DigitAttractor({
-  digitIndex,
-  visible = false,
-}: {
-  digitIndex: number;
-  visible?: boolean;
-}) {
-  return (
-    <group
-      position={[DIGIT_CENTER_OFFSETS[digitIndex], 0, 0]}
-      visible={visible}
-    >
-      {SEGMENT_OFFSETS.map((offset, segmentIndex) => (
-        <Icosahedron
-          key={segmentIndex}
-          args={[0.1, 0]}
-          position={[offset.x, offset.y, 0]}
-        />
-      ))}
-    </group>
-  );
+  return segmentPos.clone().add(subSegmentOffset);
 }
 
 function Particle({
@@ -177,38 +78,91 @@ function Particle({
   velocity,
   digitIndex,
   segmentIndex,
+  subSegmentIndex,
+  uniformPosition,
 }: {
   position: THREE.Vector3;
   velocity: THREE.Vector3;
   digitIndex: number;
   segmentIndex: number;
+  subSegmentIndex: number;
+  uniformPosition: THREE.Vector3;
 }) {
   const particleRef = useRef<THREE.Mesh>(null!);
   const particleVelocityRef = useRef(velocity);
 
-  useFrame((_, delta) => {
-    const sdg = getClockSdg(
-      particleRef.current.position,
-      getActiveSegments(),
+  const increment = useMemo(() => {
+    return Math.floor(Math.random() * 2 + 1) * (Math.random() < 0.5 ? -1 : 1);
+  }, []);
+
+  const randVectorRef = useRef(
+    new THREE.Vector3(
+      Math.random() * 0.5 - 0.25,
+      Math.random() * 0.5 - 0.25,
+      Math.random() * 0.5 - 0.25,
+    ),
+  );
+  const targetPositionRef = useRef(
+    getParticleTargetPosition(
       digitIndex,
       segmentIndex,
+      subSegmentIndex,
+      increment,
+    ),
+  );
+
+  useFrame((_, delta) => {
+    targetPositionRef.current.copy(
+      getParticleTargetPosition(
+        digitIndex,
+        segmentIndex,
+        subSegmentIndex,
+        increment,
+      ),
     );
-    if (sdg.x > 0) {
-      particleVelocityRef.current.add(
-        new THREE.Vector3(sdg.y, sdg.z, sdg.w).multiplyScalar(
-          -Math.min(delta, 0.1) * sdg.x,
-          // -Math.min(delta, 0.1) * 0.7,
-          // -Math.min(delta, 0.1) * (1 - (1 / Math.exp(sdg.x)) * 5),
-        ),
-      );
+    if (particleRef.current) {
+      const toTarget = targetPositionRef.current
+        .clone()
+        .sub(particleRef.current.position);
+      const distanceToTarget = toTarget.length();
+      if (distanceToTarget > SUB_SEGMENT_RADIUS) {
+        particleVelocityRef.current.add(
+          toTarget
+            .normalize()
+            .multiplyScalar(
+              Math.min(
+                delta * Math.pow(distanceToTarget - SUB_SEGMENT_RADIUS, 0.5),
+                0.5,
+              ),
+            ),
+        );
+      }
     }
+    randVectorRef.current.set(
+      Math.max(
+        -0.1,
+        Math.min(0.1, randVectorRef.current.x + (Math.random() - 0.5) * delta),
+      ),
+      Math.max(
+        -0.1,
+        Math.min(0.1, randVectorRef.current.y + (Math.random() - 0.5) * delta),
+      ),
+      Math.max(
+        -0.1,
+        Math.min(0.1, randVectorRef.current.z + (Math.random() - 0.5) * delta),
+      ),
+    );
+    particleVelocityRef.current.add(
+      randVectorRef.current.clone().multiplyScalar(delta),
+    );
     particleVelocityRef.current.multiplyScalar(
-      0.95 * (1 - Math.min(delta, 0.1)),
+      0.9 * (1 - Math.min(delta, 0.1)),
     );
     particleRef.current.position.add(particleVelocityRef.current);
+    uniformPosition.copy(particleRef.current.position);
   });
 
-  return <Instance ref={particleRef} position={position} />;
+  return <Instance ref={particleRef} position={position} visible={false} />;
 }
 
 function VoxelAttractor() {
@@ -220,6 +174,12 @@ function VoxelAttractor() {
       uResolution: { value: new THREE.Vector2() },
       uGlZ: { value: -1 / (2 * Math.tan(FOV * (Math.PI / 180) * 0.5)) },
       uActiveSegments: { value: getActiveSegments() },
+      uParticlePositions: {
+        value: Array.from(
+          { length: PARTICLE_COUNT },
+          () => new THREE.Vector3(),
+        ),
+      },
     };
   }, []);
 
@@ -262,15 +222,16 @@ function VoxelAttractor() {
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       const digitIndex = i % 6;
       const segmentIndex = Math.floor(i / 6) % 7;
+      const subSegmentIndex = Math.floor(i / (6 * 7)) % SUB_SEGMENT_COUNT;
       const segmentPosition = new THREE.Vector3(
         DIGIT_CENTER_OFFSETS[digitIndex] + SEGMENT_OFFSETS[segmentIndex].x,
         SEGMENT_OFFSETS[segmentIndex].y,
         0,
       );
-
       particles.push({
         segmentIndex: segmentIndex,
         digitIndex: digitIndex,
+        subSegmentIndex: subSegmentIndex,
         position: new THREE.Vector3(
           segmentPosition.x + (Math.random() - 0.5) * 0.5,
           segmentPosition.y + (Math.random() - 0.5) * 0.5,
@@ -298,17 +259,19 @@ function VoxelAttractor() {
             velocity={particle.velocity}
             digitIndex={particle.digitIndex}
             segmentIndex={particle.segmentIndex}
+            subSegmentIndex={particle.subSegmentIndex}
+            uniformPosition={uniforms.uParticlePositions.value[index]}
           />
         ))}
       </Instances>
-      {[0, 1, 2, 3, 4, 5].map((digitIndex) => (
+      {/* {[0, 1, 2, 3, 4, 5].map((digitIndex) => (
         <DigitAttractor
           key={digitIndex}
           digitIndex={digitIndex}
           visible={true}
         />
-      ))}
-      <mesh visible={false}>
+      ))} */}
+      <mesh>
         <planeGeometry />
         <shaderMaterial
           vertexShader={voxelsVertexShader}
@@ -318,6 +281,24 @@ function VoxelAttractor() {
       </mesh>
     </group>
   );
+}
+
+function ActiveSegmentsListener() {
+  useEffect(() => {
+    const unsubCurrentTimeValue = useAppStore.subscribe(
+      (state) => state.currentTimeValue,
+      () => {
+        useVoxelAttractorStore.setState({
+          activeSegments: getActiveSegments(),
+        });
+      },
+    );
+    return () => {
+      unsubCurrentTimeValue();
+    };
+  }, []);
+
+  return null;
 }
 
 export default function VoxelAttractorScene() {
@@ -359,6 +340,7 @@ export default function VoxelAttractorScene() {
         <Suspense fallback={null}>
           {/* <Environment preset="lobby" resolution={2048} /> */}
           <VoxelAttractor />
+          <ActiveSegmentsListener />
         </Suspense>
         <OrbitControls makeDefault />
       </Canvas>
