@@ -19,7 +19,7 @@ const DIGIT_CENTER_OFFSETS = [
   3.0 * OFFSET_SCALE,
   5.0 * OFFSET_SCALE,
 ];
-const SEGMENT_X_OFFSET = 0.7;
+const SEGMENT_X_OFFSET = 0.6;
 const SEGMENT_Y_OFFSET = 1.2;
 const SEGMENT_OFFSETS = [
   new THREE.Vector2(0.0, SEGMENT_Y_OFFSET),
@@ -32,9 +32,9 @@ const SEGMENT_OFFSETS = [
 ];
 const SEGMENT_ORIENTATIONS = ["H", "V", "V", "H", "V", "V", "H"];
 const SUB_SEGMENT_COUNT = 3;
-const SUB_SEGMENT_RADIUS = 0.2;
+const SUB_SEGMENT_RADIUS = 0.15;
 
-const PARTICLE_COUNT = 6 * 7 * SUB_SEGMENT_COUNT;
+const PARTICLE_COUNT = 6 * 7 * SUB_SEGMENT_COUNT * 3;
 
 function getParticleTargetPosition(
   digitIndex: number,
@@ -112,6 +112,7 @@ function Particle({
   );
 
   useFrame((_, delta) => {
+    const clampedDelta = Math.min(delta, 0.1);
     targetPositionRef.current.copy(
       getParticleTargetPosition(
         digitIndex,
@@ -131,7 +132,8 @@ function Particle({
             .normalize()
             .multiplyScalar(
               Math.min(
-                delta * Math.pow(distanceToTarget - SUB_SEGMENT_RADIUS, 0.5),
+                clampedDelta *
+                  Math.pow(distanceToTarget - SUB_SEGMENT_RADIUS, 0.5),
                 0.5,
               ),
             ),
@@ -141,23 +143,30 @@ function Particle({
     randVectorRef.current.set(
       Math.max(
         -0.1,
-        Math.min(0.1, randVectorRef.current.x + (Math.random() - 0.5) * delta),
+        Math.min(
+          0.1,
+          randVectorRef.current.x + (Math.random() - 0.5) * clampedDelta * 0.1,
+        ),
       ),
       Math.max(
         -0.1,
-        Math.min(0.1, randVectorRef.current.y + (Math.random() - 0.5) * delta),
+        Math.min(
+          0.1,
+          randVectorRef.current.y + (Math.random() - 0.5) * clampedDelta * 0.1,
+        ),
       ),
       Math.max(
         -0.1,
-        Math.min(0.1, randVectorRef.current.z + (Math.random() - 0.5) * delta),
+        Math.min(
+          0.1,
+          randVectorRef.current.z + (Math.random() - 0.5) * clampedDelta * 0.1,
+        ),
       ),
     );
     particleVelocityRef.current.add(
-      randVectorRef.current.clone().multiplyScalar(delta),
+      randVectorRef.current.clone().multiplyScalar(clampedDelta),
     );
-    particleVelocityRef.current.multiplyScalar(
-      0.9 * (1 - Math.min(delta, 0.1)),
-    );
+    particleVelocityRef.current.multiplyScalar(0.93 * (1 - clampedDelta));
     particleRef.current.position.add(particleVelocityRef.current);
     uniformPosition.copy(particleRef.current.position);
   });
@@ -251,7 +260,7 @@ function VoxelAttractor() {
     <group>
       <Instances limit={PARTICLE_COUNT} range={PARTICLE_COUNT}>
         <icosahedronGeometry args={[0.05, 0]} />
-        <meshBasicMaterial color="white" wireframe />
+        <meshBasicMaterial color="white" opacity={0} transparent />
         {initialParticles.map((particle, index) => (
           <Particle
             key={index}
@@ -271,7 +280,7 @@ function VoxelAttractor() {
           visible={true}
         />
       ))} */}
-      <mesh>
+      <mesh visible={true}>
         <planeGeometry />
         <shaderMaterial
           vertexShader={voxelsVertexShader}
@@ -328,7 +337,7 @@ export default function VoxelAttractorScene() {
         shadows
         dpr={1}
         camera={{
-          position: [0, 5, 10],
+          position: [0, 1, 10],
           // position: [0, 0, 10],
           fov: FOV,
         }}
