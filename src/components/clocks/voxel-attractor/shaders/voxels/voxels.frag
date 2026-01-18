@@ -5,21 +5,31 @@ uniform vec2 uResolution;
 uniform float uGlZ;
 uniform vec3[6] uBoundingBoxCenters;
 uniform vec3[6] uBoundingBoxBValues;
-uniform int[42] uActiveSegments;
+uniform float[42] uActiveSegments;
 uniform vec3[42] uSegmentAPositions;
 uniform vec3[42] uSegmentBPositions;
+uniform float[6] uDigitSpringScales;
 
 uniform vec3 uLightColor;
 uniform vec3 uMaterialColor;
-uniform vec3 uBackgroundColor;
+uniform vec3 uMaterialSubsurfaceColor;
+uniform vec3 uFogColor;
+uniform vec3 uSkyLowColor;
+uniform vec3 uSkyHighColor;
+uniform vec3 uPlatformColor;
+uniform vec3 uSeaLowColor;
+uniform vec3 uSeaHighColor;
 
 varying mat4 vViewMatrix;
 
-const int MAX_STEPS = 256;
+const int MAX_STEPS = 512;
 const float VOXEL_SIZE = 1.0 / 32.0;
-const float MAX_TRAVEL_DIST = 100.0;
+const float MAX_TRAVEL_DIST = 1000.0;
 // const vec3 LIGHT_COLOR = vec3(1.0, 0.95, 0.75) * 2.0;
 const vec3 LIGHT_DIR = normalize(vec3(0.85, 2.2, 0.8));
+
+const vec3 BOX_CENTER = vec3(0.0, -2.25, 0.0);
+const vec3 BOX_B = vec3(7.0, 0.5, 2.0);
 
 #include ../../../../../shaders/includes/simplexNoise3d.glsl
 
@@ -44,6 +54,37 @@ float sdBox(vec3 p, vec3 b) {
   return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
 }
 
+float sdPlane(vec3 p, vec3 n, float h) {
+  // n must be normalized
+  return dot(p, n) + h;
+}
+
+float sdWaves(vec3 p, vec3 n, float h, int iterations) {
+  // https://www.shadertoy.com/view/MdXyzX
+  // https://www.youtube.com/watch?v=PH9q0HNBjT4
+  float wave = 0.0;
+  float amp = 1.0;
+  float freq = 1.0;
+  float iter = 0.0;
+  vec2 direction;
+  float x;
+  float currentWave;
+  // vec2 direction = vec2(sin(atan(p.x, p.z)), cos(atan(p.x, p.z)));
+  for (int i = 0; i < iterations; i++) {
+    direction = vec2(sin(iter), cos(iter));
+    x = dot(direction, p.xz) * freq + uTime * 0.85;
+    currentWave = exp(sin(x) - 1.0) * 0.17 * amp;
+    wave += currentWave;
+    p.xz += direction * -(currentWave * cos(x)) * amp;
+    amp *= 0.9;
+    freq *= 1.12;
+    iter += 2.7169;
+  }
+  p.y += wave;
+  // n must be normalized
+  return max(dot(p, n) + h, -p.z - 50.0);
+}
+
 float opSmoothUnion(float d1, float d2, float k) {
   k *= 4.0;
   float h = max(k - abs(d1 - d2), 0.0);
@@ -52,8 +93,10 @@ float opSmoothUnion(float d1, float d2, float k) {
 
 float getMap(vec3 p) {
   // Using bounding boxes.
-  // float minDist = sdRoundBox(p - vec3(0.0, 0.0, -2.25), vec3(8.0, 2.5, 2.0), 0.25);
-  float minDist = sdRoundBox(p - vec3(0.0, -2.25, 0.0), vec3(7.0, 0.5, 2.0), 0.25);
+  // float minDist = sdRoundBox(p - vec3(0.0, -2.25, 0.0), vec3(7.0, 0.5, 2.0), 0.25);
+  float minDist = sdBox(p - BOX_CENTER, BOX_B);
+  minDist = opSmoothUnion(minDist, sdWaves(p, vec3(0.0, 1.0, 0.0), 2.0, 5), 0.08);
+  // float minDist = 1e5;
   for (int i = 0; i < 6; i++) {
     vec3 boxCenter = uBoundingBoxCenters[i];
     vec3 boxB = uBoundingBoxBValues[i];
@@ -64,89 +107,14 @@ float getMap(vec3 p) {
     }
     if (d < 0.25) {
       for (int j = i * 7; j < (i + 1) * 7; j++) {
-        if (uActiveSegments[j] == 0) {
-          continue;
-        }
-        vec3 aPos = uSegmentAPositions[j];
-        vec3 bPos = uSegmentBPositions[j];
-        float d = opSmoothUnion(sdCapsule(p, aPos, bPos, 0.22), minDist, 0.07);
-        if (d < minDist) {
-          minDist = d;
-        }
+        vec3 aPos = uSegmentAPositions[j] + (1.0 - uActiveSegments[j]) * vec3(0.0, 9001.0, 0.0);
+        vec3 bPos = uSegmentBPositions[j] + (1.0 - uActiveSegments[j]) * vec3(0.0, 9001.0, 0.0);
+        float scale = smoothstep(0.25, 0.75, uDigitSpringScales[i]) * 0.5 + 0.5;
+        d = opSmoothUnion(sdCapsule(p, aPos, bPos, 0.22 * scale), minDist, 0.07 * scale);
+        minDist = min(minDist, d);
       }
     }
   }
-
-  // // Using bounding boxes.
-  // float minDist = sdRoundBox(p - vec3(0.0, -2.5, 0.0), vec3(7.0, 0.5, 2.0), 0.25);
-  // float minBBoxDist = 1e10;
-  // int bBoxIndex = -1;
-  // for (int i = 0; i < 6; i++) {
-  //   vec3 boxCenter = uBoundingBoxCenters[i];
-  //   vec3 boxB = uBoundingBoxBValues[i];
-  //   vec3 localP = p - boxCenter;
-  //   float d = sdBox(localP, boxB);
-  //   if (d < minBBoxDist) {
-  //     minBBoxDist = d;
-  //     bBoxIndex = i;
-  //   }
-  // }
-  // for (int i = bBoxIndex * 7; i < (bBoxIndex + 1) * 7; i++) {
-  //   if (uActiveSegments[i] == 0) {
-  //     continue;
-  //   }
-  //   vec3 aPos = uSegmentAPositions[i];
-  //   vec3 bPos = uSegmentBPositions[i];
-  //   float d = opSmoothUnion(sdCapsule(p, aPos, bPos, 0.22), minDist, 0.07);
-  //   if (d < minDist) {
-  //     minDist = d;
-  //   }
-  // }
-
-  // // Using bounding boxes.
-  // float minBBoxDist = 1e10;
-  // int bBoxIndex = -1;
-  // for (int i = 0; i < 6; i++) {
-  //   vec3 boxCenter = uBoundingBoxCenters[i];
-  //   vec3 boxB = uBoundingBoxBValues[i];
-  //   vec3 localP = p - boxCenter;
-  //   float d = sdBox(localP, boxB);
-  //   if (d < minBBoxDist) {
-  //     minBBoxDist = d;
-  //     bBoxIndex = i;
-  //   }
-  // }
-  // if (minBBoxDist > VOXEL_SIZE * sqrt(3.0) * 2.0) {
-  //   // return sdRoundBox(p - vec3(0.0, -4.0, 0.0), vec3(7.0, 0.5, 2.0), 0.25);
-  //   return minBBoxDist;
-  // }
-
-  // float minDist = 1e10;
-  // for (int i = bBoxIndex * 7; i < (bBoxIndex + 1) * 7; i++) {
-  //   if (uActiveSegments[i] == 0) {
-  //     continue;
-  //   }
-  //   vec3 aPos = uSegmentAPositions[i];
-  //   vec3 bPos = uSegmentBPositions[i];
-  //   float d = opSmoothUnion(sdCapsule(p, aPos, bPos, 0.22), minDist, 0.07);
-  //   if (d < minDist) {
-  //     minDist = d;
-  //   }
-  // }
-
-  // // Without using bounding boxes.
-  // float minDist = 1e10;
-  // for (int i = 0; i < 42; i++) {
-  //   if (uActiveSegments[i] == 0) {
-  //     continue;
-  //   }
-  //   vec3 aPos = uSegmentAPositions[i];
-  //   vec3 bPos = uSegmentBPositions[i];
-  //   float d = opSmoothUnion(sdCapsule(p, aPos, bPos, 0.22), minDist, 0.075);
-  //   if (d < minDist) {
-  //     minDist = d;
-  //   }
-  // }
 
   return minDist;
 }
@@ -171,7 +139,7 @@ bool raycast(in vec3 rayOrigin, in vec3 rayDir, out HitInfo oHitInfo, const floa
 
   vec3 invRayDir = 1.0 / rayDir;
   // TODO: What's this `iro` mean?
-  vec3 iro = rayOrigin * invRayDir;
+  // vec3 iro = rayOrigin * invRayDir;
   vec3 signInvRayDir = sign(invRayDir);
   vec3 absRayDir = abs(invRayDir);
 
@@ -184,6 +152,10 @@ bool raycast(in vec3 rayOrigin, in vec3 rayDir, out HitInfo oHitInfo, const floa
 
   for (int i = 0; i < MAX_STEPS; i++) {
     vec3 pos = rayOrigin + rayDir * t;
+
+    if (pos.y > 2.0 && rayDir.y > 0.0) {
+      return false;
+    }
 
     float d = getMap(voxel ? voxelPos : pos);
 
@@ -237,12 +209,30 @@ vec3 gradient(vec3 p) {
   return (getMap(p) - vec3(getMap(p - e.yxx), getMap(p - e.xyx), getMap(p - e.xxy))) / e.y;
 }
 
+vec3 getBaseColor(in vec3 p, out int matId) {
+  vec3 color = vec3(0.1);
+  int matIdLocal = 0;
+  if (p.y > BOX_CENTER.y + BOX_B.y + VOXEL_SIZE * 0.5) {
+    color = mix(uPlatformColor, uMaterialColor, pow(smoothstep(BOX_CENTER.y + BOX_B.y, BOX_CENTER.y + BOX_B.y + 0.94, p.y), 2.0));
+    matIdLocal = 1;
+  } else if (p.x <= BOX_CENTER.x + BOX_B.x + VOXEL_SIZE && p.x >= BOX_CENTER.x - BOX_B.x - VOXEL_SIZE &&
+    p.y <= BOX_CENTER.y + BOX_B.y + VOXEL_SIZE && p.y >= BOX_CENTER.y - BOX_B.y - VOXEL_SIZE &&
+    p.z <= BOX_CENTER.z + BOX_B.z + VOXEL_SIZE && p.z >= BOX_CENTER.z - BOX_B.z - VOXEL_SIZE) {
+    color = uPlatformColor;
+  } else {
+    color = mix(uSeaLowColor, uSeaHighColor, pow(smoothstep(-2.75, -2.1, p.y), 2.0));
+    // color = mix(color, uPlatformColor, smoothstep(1.0, 0.0, sdBox(p - BOX_CENTER, BOX_B)));
+  }
+  matId = matIdLocal;
+  return color;
+}
+
 vec3 shade(vec3 pos, vec3 lightDir, HitInfo hitInfo) {
   vec3 voxelPos = hitInfo.voxelPos;
 
   vec3 grad = gradient(voxelPos);
-  float gradLength = length(grad);
-  vec3 gradNormalized = grad / gradLength;
+  // float gradLength = length(grad);
+  // vec3 gradNormalized = grad / gradLength;
 
   vec3 normal = hitInfo.normal;
 
@@ -259,11 +249,24 @@ vec3 shade(vec3 pos, vec3 lightDir, HitInfo hitInfo) {
   // vec3 color = vec3(0.81, 0.16, 0.04) * exp(-0.004 * hitInfo.t);
   // vec3 color = vec3(0.22, 0.01, 0.13) * exp(-0.004 * hitInfo.t);
   // vec3 color = vec3(0.76, 0.14, 0.14) * exp(-0.004 * hitInfo.t);
-  vec3 color = uMaterialColor * exp(-0.004 * hitInfo.t);
+  // vec3 color = uMaterialColor * exp(-0.004 * hitInfo.t);
+  int matId;
+  vec3 color = getBaseColor(pos, matId);
   float ao = smoothstep(-0.1, 0.01, getMap(pos) / length(gradient(pos)));
+  // ao += dot(grad, normalize(1.0 / LIGHT_DIR)) * 0.5 + 0.5;
 
-  color *= (diffuse * 0.3 + 0.7) * uLightColor;
+  color *= (diffuse * 0.6 + 0.4) * uLightColor;
   color *= ao * 0.6 + 0.4;
+
+  // color = mix(color, vec3(0.0, 0.0, 1.0), dot(grad, normalize(1.0 / -LIGHT_DIR)) * 0.1);
+
+  // color = cross(grad, LIGHT_DIR) * 0.5 + 0.5;
+  // color = cross(normalize(grad - uCameraPosition), LIGHT_DIR);
+  if (matId == 1) {
+    color *= (vec3(smoothstep(0.0, 1.0, -dot(normalize(uCameraPosition), grad) * 0.7 + 0.3)) * uMaterialSubsurfaceColor * 1.2) + 1.0;
+    // color = mix(color, uMaterialSubsurfaceColor, -dot(normalize(uCameraPosition), grad)) + 0.2;
+    color += pow(1.0 - diffuse, 3.0) * uMaterialSubsurfaceColor * 0.2;
+  }
 
   return color;
 }
@@ -275,13 +278,13 @@ vec3 render(vec3 rayOrigin, vec3 rayDirection) {
   float t = hitInfo.t;
 
   vec3 pos = rayOrigin + rayDirection * t;
-  vec3 voxelPos = hitInfo.voxelPos;
+  // vec3 voxelPos = hitInfo.voxelPos;
 
   vec3 color = shade(pos, LIGHT_DIR, hitInfo);
   if (!isHit) {
     // color = vec3(0.76, 0.14, 0.14);
     // color = vec3(0.22, 0.01, 0.13);
-    color = uBackgroundColor;
+    color = mix(uSkyLowColor, uSkyHighColor, smoothstep(0.0, 0.2, rayDirection.y));
   }
 
   // vec3 color = vec3(float(hitInfo.voxelIndex) / float(MAX_STEPS));

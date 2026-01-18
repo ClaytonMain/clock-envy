@@ -121,12 +121,14 @@ function SpringyDigit({
   boundingBoxBValues,
   segmentAPositions,
   segmentBPositions,
+  digitSpringScales,
 }: {
   digitIndex: number;
   boundingBoxCenters: THREE.Vector3[];
   boundingBoxBValues: THREE.Vector3[];
   segmentAPositions: THREE.Vector3[];
   segmentBPositions: THREE.Vector3[];
+  digitSpringScales: number[];
 }) {
   const baseGroupRef = useRef<THREE.Group>(null!);
   const innerGroupRef = useRef<THREE.Group>(null!);
@@ -257,10 +259,12 @@ function SpringyDigit({
         baseGroupTargetZRotation.get() +
         Math.sin(timeRef.current * 0.2 + randomValues.z * Math.PI * 2) * 0.02;
     }
-    if (innerGroupRef.current)
+
+    if (innerGroupRef.current) {
       innerGroupRef.current.scale.setScalar(
         Math.max(0.1, innerGroupTargetScale.get()),
       );
+    }
 
     scaleTimeRef.current += deltaRef.current;
 
@@ -289,6 +293,8 @@ function SpringyDigit({
         }
       }
     }
+
+    digitSpringScales[digitIndex] = innerGroupTargetScale.get();
   });
 
   return (
@@ -297,7 +303,7 @@ function SpringyDigit({
       position={initialBaseGroupPosition}
       onClick={() => console.log(baseGroupRef.current)}
     >
-      <Box args={[0.3, 0.3, 0.3]} visible={false} />
+      <Box args={[0.5, 0.5, 0.5]} visible={false} />
       <group ref={innerGroupRef}>
         <Box
           args={[
@@ -371,6 +377,9 @@ function VoxelAttractor() {
       segmentBPositions: segmentBPositionsArray,
     };
   }, []);
+  const digitSpringScales = useMemo(() => {
+    return Array.from({ length: 6 }, () => 1);
+  }, []);
 
   const uniforms = useMemo(() => {
     return {
@@ -384,30 +393,73 @@ function VoxelAttractor() {
       uActiveSegments: { value: getActiveSegments() },
       uSegmentAPositions: { value: segmentAPositions },
       uSegmentBPositions: { value: segmentBPositions },
-      uLightColor: { value: new THREE.Color("#e6fdff") },
-      uMaterialColor: { value: new THREE.Color("#ffffff") },
-      uBackgroundColor: { value: new THREE.Color("#c76b80") },
+      uDigitSpringScales: { value: digitSpringScales },
+      uLightColor: { value: new THREE.Color("#ffe6e6") },
+      uMaterialColor: { value: new THREE.Color("#51ffeb") },
+      uMaterialSubsurfaceColor: { value: new THREE.Color("#beffe9") },
+      uFogColor: { value: new THREE.Color("#c76b80") },
+      uSkyLowColor: { value: new THREE.Color("#c4002e") },
+      uSkyHighColor: { value: new THREE.Color("#000000") },
+      uPlatformColor: { value: new THREE.Color("#be0225") },
+      uSeaLowColor: { value: new THREE.Color("#c73e4e") },
+      uSeaHighColor: { value: new THREE.Color("#02153b") },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useControls({
     lightColor: {
-      value: "#e6fdff",
+      value: "#ffe6e6",
       onChange: (value) => {
         uniforms.uLightColor.value = new THREE.Color(value);
       },
     },
     materialColor: {
-      value: "#ffffff",
+      value: "#51ffeb",
       onChange: (value) => {
         uniforms.uMaterialColor.value = new THREE.Color(value);
       },
     },
-    backgroundColor: {
+    materialSubsurfaceColor: {
+      value: "#beffe9",
+      onChange: (value) => {
+        uniforms.uMaterialSubsurfaceColor.value = new THREE.Color(value);
+      },
+    },
+    fogColor: {
       value: "#c76b80",
       onChange: (value) => {
-        uniforms.uBackgroundColor.value = new THREE.Color(value);
+        uniforms.uFogColor.value = new THREE.Color(value);
+      },
+    },
+    skyLowColor: {
+      value: "#c4002e",
+      onChange: (value) => {
+        uniforms.uSkyLowColor.value = new THREE.Color(value);
+      },
+    },
+    skyHighColor: {
+      value: "#000000",
+      onChange: (value) => {
+        uniforms.uSkyHighColor.value = new THREE.Color(value);
+      },
+    },
+    platformColor: {
+      value: "#be0225",
+      onChange: (value) => {
+        uniforms.uPlatformColor.value = new THREE.Color(value);
+      },
+    },
+    seaLowColor: {
+      value: "#c73e4e",
+      onChange: (value) => {
+        uniforms.uSeaLowColor.value = new THREE.Color(value);
+      },
+    },
+    seaHighColor: {
+      value: "#02153b",
+      onChange: (value) => {
+        uniforms.uSeaHighColor.value = new THREE.Color(value);
       },
     },
   });
@@ -430,6 +482,7 @@ function VoxelAttractor() {
     uniforms.uBoundingBoxBValues.value = boundingBoxBValues;
     uniforms.uSegmentAPositions.value = segmentAPositions;
     uniforms.uSegmentBPositions.value = segmentBPositions;
+    uniforms.uDigitSpringScales.value = digitSpringScales;
   });
 
   useEffect(() => {
@@ -466,6 +519,7 @@ function VoxelAttractor() {
           boundingBoxBValues={boundingBoxBValues}
           segmentAPositions={segmentAPositions}
           segmentBPositions={segmentBPositions}
+          digitSpringScales={digitSpringScales}
         />
       ))}
       <mesh visible={true}>
@@ -525,7 +579,7 @@ export default function VoxelAttractorScene() {
         shadows
         dpr={1}
         camera={{
-          position: [0, 1, 10],
+          position: [-0.1, -1.0, 10],
           // position: [0, 0, 10],
           fov: FOV,
         }}
