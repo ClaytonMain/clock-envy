@@ -386,7 +386,7 @@ function VoxelAttractor() {
       uSegmentBPositions: { value: segmentBPositions },
       uLightColor: { value: new THREE.Color("#e6fdff") },
       uMaterialColor: { value: new THREE.Color("#ffffff") },
-      uBackgroundColor: { value: new THREE.Color("#156b72") },
+      uBackgroundColor: { value: new THREE.Color("#c76b80") },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -405,7 +405,7 @@ function VoxelAttractor() {
       },
     },
     backgroundColor: {
-      value: "#156b72",
+      value: "#c76b80",
       onChange: (value) => {
         uniforms.uBackgroundColor.value = new THREE.Color(value);
       },

@@ -53,16 +53,16 @@ float opSmoothUnion(float d1, float d2, float k) {
 float getMap(vec3 p) {
   // Using bounding boxes.
   // float minDist = sdRoundBox(p - vec3(0.0, 0.0, -2.25), vec3(8.0, 2.5, 2.0), 0.25);
-  float minDist = sdRoundBox(p - vec3(0.0, -2.5, 0.0), vec3(7.0, 0.5, 2.0), 0.25);
+  float minDist = sdRoundBox(p - vec3(0.0, -2.25, 0.0), vec3(7.0, 0.5, 2.0), 0.25);
   for (int i = 0; i < 6; i++) {
     vec3 boxCenter = uBoundingBoxCenters[i];
     vec3 boxB = uBoundingBoxBValues[i];
     vec3 localP = p - boxCenter;
     float d = sdBox(localP, boxB);
-    if (d < minDist && d >= 0.5) {
+    if (d < minDist && d >= 0.25) {
       minDist = d;
     }
-    if (d < 0.5) {
+    if (d < 0.25) {
       for (int j = i * 7; j < (i + 1) * 7; j++) {
         if (uActiveSegments[j] == 0) {
           continue;
