@@ -101,9 +101,10 @@ vec4 sdgMin(vec4 a, vec4 b, float k) {
 //   return min(d1, d2) - h * h * 0.25 / k;
 // }
 
-vec4 getMap(in vec3 p) {
+vec4 getMap(in vec3 p, out int closestMatId) {
   // Distance to the main platform box.
-  vec4 minDist = sdgBox(p - BOX_CENTER, BOX_B, 0.0);
+  vec4 minDist = sdgBox(p - BOX_CENTER, BOX_B, 0.3);
+  closestMatId = 0;
 
   // Distance to the 6 digit boxes and their segments.
   for (int i = 0; i < 6; i++) {
@@ -113,6 +114,7 @@ vec4 getMap(in vec3 p) {
     vec4 d = sdgBox(localP, boxB, 0.0);
     if (d.x < minDist.x && d.x >= 0.25) {
       minDist = d;
+      closestMatId = 1;
     }
     if (d.x < 0.25) {
       for (int j = i * 7; j < (i + 1) * 7; j++) {
@@ -120,7 +122,10 @@ vec4 getMap(in vec3 p) {
         vec3 bPos = uSegmentBPositions[j] + (1.0 - uActiveSegments[j]) * vec3(0.0, 9001.0, 0.0);
         float scale = smoothstep(0.25, 0.75, uDigitSpringScales[i]) * 0.5 + 0.5;
         d = sdgMin(sdgSegment(p, aPos, bPos, 0.22 * scale), minDist, 0.07 * scale);
-        minDist = minDist.x < d.x ? minDist : d;
+        if (d.x < minDist.x) {
+          minDist = d;
+          closestMatId = 1;
+        }
       }
     }
   }
@@ -134,6 +139,7 @@ struct HitInfo {
   vec3 sdfNormal;
   vec3 voxelPos;
   int voxelIndex;
+  int matId;
 };
 
 vec3 getVoxelPosition(vec3 p, float s) {
@@ -160,17 +166,16 @@ bool raycast(in vec3 rayOrigin, in vec3 rayDir, out HitInfo oHitInfo, const floa
   int voxelIndex = 0;
   vec3 prd = vec3(0.0); // TODO: Figure out what this is for.
 
+  vec3 sdfNormal;
   for (int i = 0; i < MAX_STEPS; i++) {
     vec3 pos = rayOrigin + rayDir * t;
 
-    if (pos.y > 2.0 && rayDir.y > 0.0) {
-      return false;
-    }
-
-    vec4 d = getMap(voxel ? voxelPos : pos);
+    int matId;
+    vec4 d = getMap(voxel ? voxelPos : pos, matId);
 
     if (!voxel) {
       t += d.x;
+      sdfNormal = normalize(d.yzw);
       if (d.x < voxSwitchDist) {
         voxelPos = getVoxelPosition(rayOrigin + rayDir * max(t - voxSwitchDist, 0.0), voxSize);
         voxel = true;
@@ -192,8 +197,9 @@ bool raycast(in vec3 rayOrigin, in vec3 rayDir, out HitInfo oHitInfo, const floa
         oHitInfo.t = t;
         oHitInfo.voxelPos = voxelPos;
         oHitInfo.normal = -prd;
-        oHitInfo.sdfNormal = d.yzw;
+        oHitInfo.sdfNormal = sdfNormal;
         oHitInfo.voxelIndex = voxelIndex;
+        oHitInfo.matId = matId;
         return true;
       } else if (d.x > voxSwitchDist && voxelIndex > 2) {
         voxel = false;
@@ -212,26 +218,6 @@ bool raycast(in vec3 rayOrigin, in vec3 rayDir, out HitInfo oHitInfo, const floa
   }
 
   return false;
-}
-
-// TODO: Just collect the hit info in `getMap` instead of using bounds to determine
-// what we hit.
-vec3 getBaseColor(in vec3 p, out int matId) {
-  vec3 color = vec3(0.1);
-  int matIdLocal = 0;
-  if (p.y > BOX_CENTER.y + BOX_B.y + VOXEL_SIZE * 0.5) {
-    color = mix(uPlatformColor, uMaterialColor, pow(smoothstep(BOX_CENTER.y + BOX_B.y, BOX_CENTER.y + BOX_B.y + 0.94, p.y), 2.0));
-    matIdLocal = 1;
-  } else if (p.x <= BOX_CENTER.x + BOX_B.x + VOXEL_SIZE && p.x >= BOX_CENTER.x - BOX_B.x - VOXEL_SIZE &&
-    p.y <= BOX_CENTER.y + BOX_B.y + VOXEL_SIZE && p.y >= BOX_CENTER.y - BOX_B.y - VOXEL_SIZE &&
-    p.z <= BOX_CENTER.z + BOX_B.z + VOXEL_SIZE && p.z >= BOX_CENTER.z - BOX_B.z - VOXEL_SIZE) {
-    color = uPlatformColor;
-  } else {
-    color = mix(uSeaLowColor, uSeaHighColor, pow(smoothstep(-2.75, -2.1, p.y), 2.0));
-    // color = mix(color, uPlatformColor, smoothstep(1.0, 0.0, sdBox(p - BOX_CENTER, BOX_B)));
-  }
-  matId = matIdLocal;
-  return color;
 }
 
 // vec3 shade(vec3 pos, vec3 lightDir, HitInfo hitInfo) {
@@ -284,22 +270,23 @@ vec3 lighting(
 ) {
   vec3 normal = hitInfo.normal;
   vec3 sdfNormal = hitInfo.sdfNormal;
-  normal = mix(normal, sdfNormal, 0.5);
+  // normal = mix(normal, sdfNormal, 0.35);
 
-  float diffuseLambert = dot(normal, lightDir);
+  float diffuseLambert = dot(sdfNormal, lightDir);
+  return vec3(normalize(sdfNormal));
 
-  // if (diffuseLambert > 0.0) {
+  // if (max(diffuseLambert, 0.0) > 0.0) {
   //   vec3 offsetPos = hitInfo.voxelPos + normal * 0.001;
   //   HitInfo hitLight;
   //   bool isHitLight = raycast(offsetPos, lightDir, hitLight, 12.0);
-  //   diffuseLambert *= float(!isHitLight);
+  //   diffuseLambert *= float(!isHitLight) * 0.1;
   // }
 
   float posDiffuseLambert = clamp(diffuseLambert, 0.0, 1.0);
   float negDiffuseLambert = clamp(-diffuseLambert, 0.0, 1.0);
 
   // Subsurface scattering
-  vec3 ssRadius = 2.0 / 3.0 * uSubsurfaceRadius;
+  vec3 ssRadius = uSubsurfaceRadius;
   vec3 sss;
   if (sssType == 0) {
     sss = 0.2 * pow(vec3(1.0 - posDiffuseLambert), 3.0 / (ssRadius + 0.001)) * pow(vec3(1.0 - negDiffuseLambert), 3.0 / (ssRadius + 0.001));
@@ -323,23 +310,35 @@ vec3 lighting(
   f0 = f0 * f0;
   float reflectivity = f0 + (1.0 - f0) * (1.0 - uRoughness) * (1.0 - uRoughness) * pow(fresnel, 5.0);
 
-  vec3 color = vec3(0.0);
-  int matId;
-  vec3 diffuseColor = getBaseColor(hitInfo.voxelPos, matId);
-  
+  // vec3 diffuseColor = vec3(0.0);
+  // if (hitInfo.matId == 0) {
+  //   diffuseColor = uPlatformColor;
+  //   return diffuseColor;
+  // } else if (hitInfo.matId == 1) {
+  //   diffuseColor = uMaterialColor;
+  // }
+
+  vec3 diffuseColor = vec3(0.5, 0.6, 0.2);
+  // diffuseColor *= (posDiffuseLambert * 0.5 + 0.5) * lightColor;
+
   vec3 returnColor = vec3(0.0);
   // Diffuse + sss + specular.
   returnColor = lightColor * (
     posDiffuseLambert * (
       diffuseColor + reflectivity * ggx
     )
-    + diffuseColor * uMaterialSubsurfaceColor * ssRadius * sss
+    // + diffuseColor * uMaterialSubsurfaceColor * ssRadius * sss
+    + diffuseColor * vec3(0.0) * ssRadius * sss
   );
+
+  // int unusedMatId;
+  // float ao = smoothstep(-0.08, 0.04, getMap(hitInfo.voxelPos, unusedMatId).x / length(hitInfo.sdfNormal));
+  // returnColor *= ao * 0.6 + 0.4;
 
   // // Apply fog.
   // float fogAmount = 1.0 - exp(-0.02 * hitInfo.t * hitInfo.t);
   // returnColor = mix(returnColor, uFogColor, fogAmount);
-
+  
   return returnColor;
 }
 
@@ -353,7 +352,7 @@ vec3 render(vec3 rayOrigin, vec3 rayDirection) {
   // vec3 voxelPos = hitInfo.voxelPos;
 
   // vec3 color = shade(pos, LIGHT_DIR, hitInfo);
-  // vec3 color = lighting(1, hitInfo, rayDirection, LIGHT_DIR, uLightColor) + lighting(1, hitInfo, rayDirection, LIGHT_DIR_02, LIGHT_COLOR_02);
+  // vec3 color = lighting(0, hitInfo, rayDirection, LIGHT_DIR, uLightColor) + lighting(0, hitInfo, rayDirection, LIGHT_DIR_02, LIGHT_COLOR_02);
   vec3 color = lighting(0, hitInfo, rayDirection, LIGHT_DIR, uLightColor);
   // Tone mapping. Why tho?
   color = 2.0 * color / (0.8 + 2.5 * color);
@@ -383,4 +382,7 @@ void main() {
   vec3 color = render(rayOrigin, rayDirection);
 
   gl_FragColor = vec4(color, 1.0);
+ 
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
 }

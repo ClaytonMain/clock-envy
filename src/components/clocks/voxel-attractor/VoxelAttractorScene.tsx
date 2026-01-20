@@ -394,10 +394,10 @@ function VoxelAttractor() {
       uSegmentAPositions: { value: segmentAPositions },
       uSegmentBPositions: { value: segmentBPositions },
       uDigitSpringScales: { value: digitSpringScales },
-      uLightColor: { value: new THREE.Color("#ffe6e6") },
-      uMaterialColor: { value: new THREE.Color("#51ffeb") },
-      uMaterialSubsurfaceColor: { value: new THREE.Color("#beffe9") },
-      uSubsurfaceRadius: { value: new THREE.Vector3(0.6, 1.0, 0.06) },
+      uLightColor: { value: new THREE.Color("#ffffff") },
+      uMaterialColor: { value: new THREE.Color("#d8d8d8") },
+      uMaterialSubsurfaceColor: { value: new THREE.Color("#f8eded") },
+      uSubsurfaceRadius: { value: new THREE.Vector3(7, 7, 7) },
       uRoughness: { value: 0.1 },
       uRefractionIndex: { value: 1.5 },
       uFogColor: { value: new THREE.Color("#c76b80") },
@@ -412,25 +412,26 @@ function VoxelAttractor() {
 
   useControls({
     lightColor: {
-      value: "#ffe6e6",
+      value: "#ffffff",
       onChange: (value) => {
         uniforms.uLightColor.value = new THREE.Color(value);
       },
     },
     materialColor: {
-      value: "#51ffeb",
+      value: "#d8d8d8",
       onChange: (value) => {
         uniforms.uMaterialColor.value = new THREE.Color(value);
       },
     },
     materialSubsurfaceColor: {
-      value: "#beffe9",
+      value: "#f8eded",
       onChange: (value) => {
         uniforms.uMaterialSubsurfaceColor.value = new THREE.Color(value);
       },
     },
     subsurfaceRadius: {
-      value: [0.6, 1.0, 0.06],
+      // value: [0.6, 1.0, 0.06],
+      value: [7, 7, 7],
       min: 0,
       max: 10,
       step: 0.01,
@@ -439,7 +440,7 @@ function VoxelAttractor() {
       },
     },
     roughness: {
-      value: 0.5,
+      value: 0.1,
       min: 0,
       max: 1,
       step: 0.01,
@@ -558,6 +559,7 @@ function VoxelAttractor() {
           vertexShader={voxelsVertexShader}
           fragmentShader={voxelsFragmentShader}
           uniforms={uniforms}
+          toneMapped={false}
         />
       </mesh>
     </group>
@@ -615,6 +617,10 @@ export default function VoxelAttractorScene() {
         }}
         style={{
           touchAction: "none",
+        }}
+        gl={{
+          toneMapping: THREE.LinearToneMapping,
+          outputColorSpace: THREE.LinearSRGBColorSpace,
         }}
       >
         <CustomStatsComponent />
