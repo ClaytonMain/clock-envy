@@ -395,9 +395,9 @@ function VoxelAttractor() {
       uSegmentBPositions: { value: segmentBPositions },
       uDigitSpringScales: { value: digitSpringScales },
       uLightColor: { value: new THREE.Color("#ffffff") },
-      uMaterialColor: { value: new THREE.Color("#d8d8d8") },
-      uMaterialSubsurfaceColor: { value: new THREE.Color("#f8eded") },
-      uSubsurfaceRadius: { value: new THREE.Vector3(7, 7, 7) },
+      uMaterialColor: { value: new THREE.Color("#809933") },
+      uMaterialSubsurfaceColor: { value: new THREE.Color("#99ff0f") },
+      uSubsurfaceRadius: { value: 0.6 },
       uRoughness: { value: 0.1 },
       uRefractionIndex: { value: 1.5 },
       uFogColor: { value: new THREE.Color("#c76b80") },
@@ -406,6 +406,9 @@ function VoxelAttractor() {
       uPlatformColor: { value: new THREE.Color("#be0225") },
       uSeaLowColor: { value: new THREE.Color("#c73e4e") },
       uSeaHighColor: { value: new THREE.Color("#02153b") },
+      uNormalMix: { value: 0.5 },
+      uSkyRangeMin: { value: 0.0 },
+      uSkyRangeMax: { value: 0.2 },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -418,25 +421,24 @@ function VoxelAttractor() {
       },
     },
     materialColor: {
-      value: "#d8d8d8",
+      value: "#809933",
       onChange: (value) => {
         uniforms.uMaterialColor.value = new THREE.Color(value);
       },
     },
     materialSubsurfaceColor: {
-      value: "#f8eded",
+      value: "#99ff0f",
       onChange: (value) => {
         uniforms.uMaterialSubsurfaceColor.value = new THREE.Color(value);
       },
     },
     subsurfaceRadius: {
-      // value: [0.6, 1.0, 0.06],
-      value: [7, 7, 7],
+      value: 0.6,
       min: 0,
       max: 10,
       step: 0.01,
       onChange: (value) => {
-        uniforms.uSubsurfaceRadius.value = new THREE.Vector3(...value);
+        uniforms.uSubsurfaceRadius.value = value;
       },
     },
     roughness: {
@@ -455,6 +457,15 @@ function VoxelAttractor() {
       step: 0.01,
       onChange: (value) => {
         uniforms.uRefractionIndex.value = value;
+      },
+    },
+    normalMix: {
+      value: 0.5,
+      min: 0,
+      max: 1,
+      step: 0.01,
+      onChange: (value) => {
+        uniforms.uNormalMix.value = value;
       },
     },
     fogColor: {
@@ -491,6 +502,24 @@ function VoxelAttractor() {
       value: "#02153b",
       onChange: (value) => {
         uniforms.uSeaHighColor.value = new THREE.Color(value);
+      },
+    },
+    skyRangeMin: {
+      value: 0.0,
+      min: 0,
+      max: 5,
+      step: 0.01,
+      onChange: (value) => {
+        uniforms.uSkyRangeMin.value = value;
+      },
+    },
+    skyRangeMax: {
+      value: 0.2,
+      min: 0,
+      max: 5,
+      step: 0.01,
+      onChange: (value) => {
+        uniforms.uSkyRangeMax.value = value;
       },
     },
   });
@@ -622,6 +651,8 @@ export default function VoxelAttractorScene() {
           toneMapping: THREE.LinearToneMapping,
           outputColorSpace: THREE.LinearSRGBColorSpace,
         }}
+        linear
+        flat
       >
         <CustomStatsComponent />
         <Suspense fallback={null}>
