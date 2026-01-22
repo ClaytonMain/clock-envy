@@ -10,7 +10,8 @@ uniform vec3[42] uSegmentAPositions;
 uniform vec3[42] uSegmentBPositions;
 uniform float[6] uDigitSpringScales;
 
-uniform vec3 uLightColor;
+uniform vec3 uLightColor01;
+uniform vec3 uLightColor02;
 uniform vec3 uMaterialColor;
 uniform vec3 uMaterialSubsurfaceColor;
 uniform float uSubsurfaceRadius;
@@ -31,32 +32,22 @@ varying mat4 vViewMatrix;
 const int MAX_STEPS = 128;
 const float VOXEL_SIZE = 1.0 / 16.0;
 const float MAX_TRAVEL_DIST = 100.0;
-// const vec3 LIGHT_COLOR = vec3(1.0, 0.95, 0.75) * 2.0;
-// const vec3 LIGHT_DIR = normalize(vec3(0.85, 2.2, 0.8));
-const vec3 LIGHT_DIR = normalize(vec3(1.0, 1.0, 1.0));
-const vec3 LIGHT_DIR_02 = normalize(vec3(-0.02, -0.2, -1.0));
-const vec3 LIGHT_COLOR_02 = vec3(0.25);
+// const vec3 LIGHT_DIR = normalize(vec3(1.0, 1.0, 1.0));
+const vec3 LIGHT_DIR = normalize(vec3(0.1, -0.28, -2.0));
+const vec3 LIGHT_DIR_02 = normalize(vec3(-0.1, -0.3, -2.0));
+// const vec3 LIGHT_COLOR_02 = vec3(0.25);
 
 const vec3 BOX_CENTER = vec3(0.0, -12.2, 0.0);
 const vec3 BOX_B = vec3(8.0, 10.5, 1.25);
 
-#include ../../../../../shaders/includes/simplexNoise3d.glsl
+const vec3 SEA_HEIGHT = vec3(0.0, -2.2, 0.0);
+
+#include ../../../../../shaders/includes/simplexNoise4d.glsl
 
 // HUGE shoutout to Shadertoy user "gelami" for their
 // "Hybrid SDF-Voxel Traversal" shader:
 // https://www.shadertoy.com/view/dtVSzw
 // This shader's raycast function is heavily based on the one from that shader.
-
-// float sdRoundBox(vec3 p, vec3 b, float r) {
-//   vec3 q = abs(p) - b + r;
-//   return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0) - r;
-// }
-
-// float sdCapsule(vec3 p, vec3 a, vec3 b, float r) {
-//   vec3 pa = p - a, ba = b - a;
-//   float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
-//   return length(pa - ba * h) - r;
-// }
 
 vec4 sdgSegment(in vec3 p, in vec3 a, in vec3 b, in float r) {
   vec3 ba = b - a;
@@ -84,33 +75,18 @@ vec4 sdgMin(vec4 a, vec4 b, float k) {
   return vec4(min(a.x, b.x) - m, mix(a.yzw, b.yzw, (a.x < b.x) ? n : 1.0 - n));
 }
 
-// float sdBox(vec3 p, vec3 b) {
-//   vec3 q = abs(p) - b;
-//   return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
-// }
-
-// float sdPlane(vec3 p, vec3 n, float h) {
-//   // n must be normalized
-//   return dot(p, n) + h;
-// }
-
-// float opSmoothUnion(float d1, float d2, float k) {
-//   k *= 4.0;
-//   float h = max(k - abs(d1 - d2), 0.0);
-//   return min(d1, d2) - h * h * 0.25 / k;
-// }
-
 vec4 getMap(in vec3 p, out int closestMatId) {
   // Distance to the main platform box.
-  vec4 minDist = sdgBox(p - BOX_CENTER, BOX_B, 0.3);
-  closestMatId = 0;
+  vec4 minDist = vec4(1000.0);
+  closestMatId = -1;
 
   // Distance to the 6 digit boxes and their segments.
+  vec4 d;
   for (int i = 0; i < 6; i++) {
     vec3 boxCenter = uBoundingBoxCenters[i];
     vec3 boxB = uBoundingBoxBValues[i];
     vec3 localP = p - boxCenter;
-    vec4 d = sdgBox(localP, boxB, 0.0);
+    d = sdgBox(localP, boxB, 0.0);
     if (d.x < minDist.x && d.x >= 0.25) {
       minDist = d;
       closestMatId = 1;
@@ -128,6 +104,13 @@ vec4 getMap(in vec3 p, out int closestMatId) {
         }
       }
     }
+  }
+
+  // Distance to the main platform box.
+  d = sdgMin(minDist, sdgBox(p - BOX_CENTER, BOX_B, 0.3), 0.07);
+  if (d.x < minDist.x) {
+    minDist = d;
+    closestMatId = 0;
   }
 
   return minDist;
@@ -155,7 +138,7 @@ bool raycast(in vec3 rayOrigin, in vec3 rayDir, out HitInfo oHitInfo, const floa
   const float voxSwitchDist = voxSize * sqrt(3.0);
 
   vec3 invRayDir = 1.0 / rayDir;
-  // TODO: What's this `iro` mean?
+  // TODO: What's this `iro` mean / used for?
   // vec3 iro = rayOrigin * invRayDir;
   vec3 signInvRayDir = sign(invRayDir);
   vec3 absRayDir = abs(invRayDir);
@@ -221,46 +204,6 @@ bool raycast(in vec3 rayOrigin, in vec3 rayDir, out HitInfo oHitInfo, const floa
 
   return false;
 }
-
-// vec3 shade(vec3 pos, vec3 lightDir, HitInfo hitInfo) {
-//   vec3 voxelPos = hitInfo.voxelPos;
-
-//   vec3 grad = hitInfo.sdfNormal;
-//   // float gradLength = length(grad);
-//   // vec3 gradNormalized = grad / gradLength;
-
-//   vec3 normal = hitInfo.normal;
-
-//   float diffuse = max(dot(normal, lightDir), 0.0);
-
-//   if (diffuse > 0.0) {
-//     pos += normal * 0.001;
-//     HitInfo hitLight;
-//     bool isHitLight = raycast(pos, lightDir, hitLight, 12.0);
-
-//     diffuse *= float(!isHitLight);
-//   }
-
-//   int matId;
-//   vec3 color = getBaseColor(pos, matId);
-//   float ao = smoothstep(-0.1, 0.01, getMap(pos).x / length(hitInfo.sdfNormal));
-//   // ao += dot(grad, normalize(1.0 / LIGHT_DIR)) * 0.5 + 0.5;
-
-//   color *= (diffuse * 0.6 + 0.4) * uLightColor;
-//   color *= ao * 0.6 + 0.4;
-
-//   // color = mix(color, vec3(0.0, 0.0, 1.0), dot(grad, normalize(1.0 / -LIGHT_DIR)) * 0.1);
-
-//   // color = cross(grad, LIGHT_DIR) * 0.5 + 0.5;
-//   // color = cross(normalize(grad - uCameraPosition), LIGHT_DIR);
-//   if (matId == 1) {
-//     color *= (vec3(smoothstep(0.0, 1.0, -dot(normalize(uCameraPosition), grad) * 0.7 + 0.3)) * uMaterialSubsurfaceColor * 1.2) + 1.0;
-//     // color = mix(color, uMaterialSubsurfaceColor, -dot(normalize(uCameraPosition), grad)) + 0.2;
-//     color += pow(1.0 - diffuse, 3.0) * uMaterialSubsurfaceColor * 0.2;
-//   }
-
-//   return color;
-// }
 
 vec3 grad(vec3 p) {
   int ignoreDisId;
@@ -330,17 +273,6 @@ vec3 lighting(
   f0 = f0 * f0;
   float reflectivity = f0 + (1.0 - f0) * (1.0 - roughness) * (1.0 - roughness) * pow(fresnel, 5.0);
 
-  // vec3 diffuseColor = vec3(0.0);
-  // if (hitInfo.matId == 0) {
-  //   diffuseColor = uPlatformColor;
-  //   return diffuseColor;
-  // } else if (hitInfo.matId == 1) {
-  //   diffuseColor = uMaterialColor;
-  // }
-
-  // vec3 diffuseColor = vec3(0.5, 0.6, 0.2);
-  // diffuseColor *= (posDiffuseLambert * 0.5 + 0.5) * lightColor;
-
   vec3 returnColor = vec3(0.0);
   // Diffuse + sss + specular.
   returnColor = lightColor * (posNormalDotLight * (diffuseColor + reflectivity * ggx) + diffuseColor * subsurfaceColor * ssRadiusVec3 * sss);
@@ -360,19 +292,16 @@ vec3 render(vec3 rayOrigin, vec3 rayDirection) {
   HitInfo hitInfo;
   bool isHit = raycast(rayOrigin, rayDirection, hitInfo, MAX_TRAVEL_DIST);
 
+  int hitMatId = hitInfo.matId;
+
   float t = hitInfo.t;
 
-  // vec3 pos = rayOrigin + rayDirection * t;
-  // vec3 voxelPos = hitInfo.voxelPos;
   vec3 color = vec3(0.0);
   if (isHit) {
-    // hitInfo.sdfNormal = vec3(dot(-rayDirection, hitInfo.sdfNormal));
-    // vec3 color = lighting(0, hitInfo, rayDirection, LIGHT_DIR, uLightColor) + lighting(0, hitInfo, rayDirection, LIGHT_DIR_02, LIGHT_COLOR_02);
-    // color = lighting(0, hitInfo, rayDirection, LIGHT_DIR, uLightColor);
     color = lighting(0, // SSS type
     hitInfo, LIGHT_DIR, // Light direction
     rayDirection, // Ray direction
-    uLightColor, // Light color
+    uLightColor01, // Light color
     uMaterialColor, // Diffuse color
     uMaterialSubsurfaceColor, // Subsurface color
     uSubsurfaceRadius, // Subsurface radius
@@ -382,7 +311,7 @@ vec3 render(vec3 rayOrigin, vec3 rayDirection) {
     color += lighting(0, // SSS type
     hitInfo, LIGHT_DIR_02, // Light direction
     rayDirection, // Ray direction
-    LIGHT_COLOR_02, // Light color
+    uLightColor02, // Light color
     uMaterialColor, // Diffuse color
     uMaterialSubsurfaceColor, // Subsurface color
     uSubsurfaceRadius, // Subsurface radius
@@ -390,8 +319,6 @@ vec3 render(vec3 rayOrigin, vec3 rayDirection) {
     uRefractionIndex // Refraction index
     );
   } else {
-    // color = vec3(0.76, 0.14, 0.14);
-    // color = vec3(0.22, 0.01, 0.13);
     color = mix(uSkyLowColor, uSkyHighColor, smoothstep(uSkyRangeMin, uSkyRangeMax, rayDirection.y));
   }
 
@@ -399,9 +326,6 @@ vec3 render(vec3 rayOrigin, vec3 rayDirection) {
   color = 2.0 * color / (0.8 + 2.5 * color);
   // Gamma correction. Also why tho?
   color = pow(color, vec3(0.4545));
-
-  // vec3 color = vec3(float(hitInfo.voxelIndex) / float(MAX_STEPS));
-  // color = vec3(hitInfo.normal);
 
   return color;
 }

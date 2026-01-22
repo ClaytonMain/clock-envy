@@ -244,7 +244,7 @@ function SpringyDigit({
         Math.sin(timeRef.current * 0.5 + randomValues.x * Math.PI * 2) * 0.02;
       baseGroupRef.current.position.y =
         baseGroupTargetYPosition.get() +
-        Math.sin(timeRef.current * 0.5 + randomValues.y * Math.PI * 2) * 0.05;
+        Math.sin(timeRef.current * 0.5 + randomValues.y * Math.PI * 2) * 0.09;
       baseGroupRef.current.position.z =
         baseGroupTargetZPosition.get() +
         Math.sin(timeRef.current * 0.5 + randomValues.z * Math.PI * 2) * 0.02;
@@ -394,19 +394,23 @@ function VoxelAttractor() {
       uSegmentAPositions: { value: segmentAPositions },
       uSegmentBPositions: { value: segmentBPositions },
       uDigitSpringScales: { value: digitSpringScales },
-      uLightColor: { value: new THREE.Color("#101010") },
-      uMaterialColor: { value: new THREE.Color("#b4b4b4") },
+      // uLightColor: { value: new THREE.Color("#101010") },
+      uLightColor01: { value: new THREE.Color("#ffa3a3") },
+      uLightColor02: { value: new THREE.Color("#ffc99d") },
+      // uMaterialColor: { value: new THREE.Color("#b4b4b4") },
+      uMaterialColor: { value: new THREE.Color("#ffffff") },
       uMaterialSubsurfaceColor: { value: new THREE.Color("#ff0039") },
-      uSubsurfaceRadius: { value: 3.07 },
-      uRoughness: { value: 0.09 },
-      uRefractionIndex: { value: 3.0 },
+      // uSubsurfaceRadius: { value: 2.42 },
+      uSubsurfaceRadius: { value: 1.72 },
+      uRoughness: { value: 0.0 },
+      uRefractionIndex: { value: 2.17 },
       uFogColor: { value: new THREE.Color("#c76b80") },
       uSkyLowColor: { value: new THREE.Color("#000000") },
       uSkyHighColor: { value: new THREE.Color("#000000") },
       uPlatformColor: { value: new THREE.Color("#be0225") },
       uSeaLowColor: { value: new THREE.Color("#c73e4e") },
       uSeaHighColor: { value: new THREE.Color("#02153b") },
-      uNormalMix: { value: 0.74 },
+      uNormalMix: { value: 0.68 },
       uSkyRangeMin: { value: 0.0 },
       uSkyRangeMax: { value: 0.2 },
     };
@@ -414,14 +418,20 @@ function VoxelAttractor() {
   }, []);
 
   useControls({
-    lightColor: {
-      value: "#101010",
+    lightColor01: {
+      value: "#ffa3a3",
       onChange: (value) => {
-        uniforms.uLightColor.value = new THREE.Color(value);
+        uniforms.uLightColor01.value = new THREE.Color(value);
+      },
+    },
+    lightColor02: {
+      value: "#ffc99d",
+      onChange: (value) => {
+        uniforms.uLightColor02.value = new THREE.Color(value);
       },
     },
     materialColor: {
-      value: "#b4b4b4",
+      value: "#ffffff",
       onChange: (value) => {
         uniforms.uMaterialColor.value = new THREE.Color(value);
       },
@@ -433,7 +443,7 @@ function VoxelAttractor() {
       },
     },
     subsurfaceRadius: {
-      value: 3.07,
+      value: 1.72,
       min: 0,
       max: 10,
       step: 0.01,
@@ -442,7 +452,7 @@ function VoxelAttractor() {
       },
     },
     roughness: {
-      value: 0.09,
+      value: 0.0,
       min: 0,
       max: 1,
       step: 0.01,
@@ -451,7 +461,7 @@ function VoxelAttractor() {
       },
     },
     refractionIndex: {
-      value: 3.0,
+      value: 2.17,
       min: 1,
       max: 3,
       step: 0.01,
@@ -460,7 +470,7 @@ function VoxelAttractor() {
       },
     },
     normalMix: {
-      value: 0.74,
+      value: 0.84,
       min: 0,
       max: 1,
       step: 0.01,
