@@ -29,7 +29,7 @@ uniform float uSkyRangeMax;
 varying mat4 vViewMatrix;
 
 const int MAX_STEPS = 128;
-const float VOXEL_SIZE = 1.0 / 32.0;
+const float VOXEL_SIZE = 1.0 / 16.0;
 const float MAX_TRAVEL_DIST = 100.0;
 // const vec3 LIGHT_COLOR = vec3(1.0, 0.95, 0.75) * 2.0;
 // const vec3 LIGHT_DIR = normalize(vec3(0.85, 2.2, 0.8));
@@ -58,34 +58,30 @@ const vec3 BOX_B = vec3(8.0, 10.5, 1.25);
 //   return length(pa - ba * h) - r;
 // }
 
-vec4 sdgSegment( in vec3 p, in vec3 a, in vec3 b, in float r ) {
-    vec3 ba = b-a;
-    vec3 pa = p-a;
-    float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
-    vec3  q = pa-h*ba;
-    float d = length(q);
-    return vec4(d-r,q/d);    
+vec4 sdgSegment(in vec3 p, in vec3 a, in vec3 b, in float r) {
+  vec3 ba = b - a;
+  vec3 pa = p - a;
+  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+  vec3 q = pa - h * ba;
+  float d = length(q);
+  return vec4(d - r, q / d);
 }
 
-vec4 sdgBox( in vec3 p, in vec3 b, in float r ) {
-    vec3  w = abs(p)-(b-r);
-    float g = max(w.x,max(w.y,w.z));
-    vec3  q = max(w,0.0);
-    float l = length(q);
-    vec4  f = (g>0.0)?vec4(l, q/l) :
-                      vec4(g, w.x==g?1.0:0.0,
-                              w.y==g?1.0:0.0,
-                              w.z==g?1.0:0.0);
-    return vec4(f.x-r, f.yzw*sign(p));
+vec4 sdgBox(in vec3 p, in vec3 b, in float r) {
+  vec3 w = abs(p) - (b - r);
+  float g = max(w.x, max(w.y, w.z));
+  vec3 q = max(w, 0.0);
+  float l = length(q);
+  vec4 f = (g > 0.0) ? vec4(l, q / l) : vec4(g, w.x == g ? 1.0 : 0.0, w.y == g ? 1.0 : 0.0, w.z == g ? 1.0 : 0.0);
+  return vec4(f.x - r, f.yzw * sign(p));
 }
 
 vec4 sdgMin(vec4 a, vec4 b, float k) {
   k *= 4.0;
-  float h = max(k-abs(a.x-b.x),0.0);
-  float m = 0.25*h*h/k;
-  float n = 0.50*  h/k;
-  return vec4( min(a.x,  b.x) - m, 
-                mix(a.yzw, b.yzw, (a.x<b.x)?n:1.0-n) );
+  float h = max(k - abs(a.x - b.x), 0.0);
+  float m = 0.25 * h * h / k;
+  float n = 0.50 * h / k;
+  return vec4(min(a.x, b.x) - m, mix(a.yzw, b.yzw, (a.x < b.x) ? n : 1.0 - n));
 }
 
 // float sdBox(vec3 p, vec3 b) {
@@ -269,10 +265,7 @@ bool raycast(in vec3 rayOrigin, in vec3 rayDir, out HitInfo oHitInfo, const floa
 vec3 grad(vec3 p) {
   int ignoreDisId;
   const vec2 e = vec2(0, 0.1);
-  return (getMap(p, ignoreDisId).x - vec3(
-        getMap(p - e.yxx, ignoreDisId).x,
-        getMap(p - e.xyx, ignoreDisId).x,
-        getMap(p - e.xxy, ignoreDisId).x)) / e.y;
+  return (getMap(p, ignoreDisId).x - vec3(getMap(p - e.yxx, ignoreDisId).x, getMap(p - e.xyx, ignoreDisId).x, getMap(p - e.xxy, ignoreDisId).x)) / e.y;
 }
 
 // https://www.shadertoy.com/view/dltGWl
@@ -307,7 +300,7 @@ vec3 lighting(
   if (sssType == 0) {
     // Exponential
     sss = 0.2 * pow(vec3(1.0 - posMixedNormalDotLight), 3.0 / (ssRadiusVec3 + 0.001)) *
-                pow(vec3(1.0 - negMixedNormalDotLight), 3.0 / (ssRadiusVec3 + 0.001));
+      pow(vec3(1.0 - negMixedNormalDotLight), 3.0 / (ssRadiusVec3 + 0.001));
   } else {
     // Gaussian
     sss = 0.2 * exp(-3.0 * abs(mixedNormalDotLight) / (ssRadiusVec3 + 0.001));
@@ -350,10 +343,7 @@ vec3 lighting(
 
   vec3 returnColor = vec3(0.0);
   // Diffuse + sss + specular.
-  returnColor = lightColor * (
-    posNormalDotLight * (diffuseColor + reflectivity * ggx)
-    + diffuseColor * subsurfaceColor * ssRadiusVec3 * sss
-  );
+  returnColor = lightColor * (posNormalDotLight * (diffuseColor + reflectivity * ggx) + diffuseColor * subsurfaceColor * ssRadiusVec3 * sss);
 
   int unusedMatId;
   float ao = smoothstep(-0.08, 0.04, getMap(hitInfo.pos, unusedMatId).x / length(grad(hitInfo.pos)));
@@ -362,7 +352,7 @@ vec3 lighting(
   // // Apply fog.
   // float fogAmount = 1.0 - exp(-0.02 * hitInfo.t * hitInfo.t);
   // returnColor = mix(returnColor, uFogColor, fogAmount);
-  
+
   return returnColor;
 }
 
@@ -379,29 +369,25 @@ vec3 render(vec3 rayOrigin, vec3 rayDirection) {
     // hitInfo.sdfNormal = vec3(dot(-rayDirection, hitInfo.sdfNormal));
     // vec3 color = lighting(0, hitInfo, rayDirection, LIGHT_DIR, uLightColor) + lighting(0, hitInfo, rayDirection, LIGHT_DIR_02, LIGHT_COLOR_02);
     // color = lighting(0, hitInfo, rayDirection, LIGHT_DIR, uLightColor);
-    color = lighting(
-      0, // SSS type
-      hitInfo,
-      LIGHT_DIR, // Light direction
-      rayDirection, // Ray direction
-      uLightColor, // Light color
-      uMaterialColor, // Diffuse color
-      uMaterialSubsurfaceColor, // Subsurface color
-      uSubsurfaceRadius, // Subsurface radius
-      uRoughness, // Roughness
-      uRefractionIndex // Refraction index
+    color = lighting(0, // SSS type
+    hitInfo, LIGHT_DIR, // Light direction
+    rayDirection, // Ray direction
+    uLightColor, // Light color
+    uMaterialColor, // Diffuse color
+    uMaterialSubsurfaceColor, // Subsurface color
+    uSubsurfaceRadius, // Subsurface radius
+    uRoughness, // Roughness
+    uRefractionIndex // Refraction index
     );
-    color += lighting(
-      0, // SSS type
-      hitInfo,
-      LIGHT_DIR_02, // Light direction
-      rayDirection, // Ray direction
-      LIGHT_COLOR_02, // Light color
-      uMaterialColor, // Diffuse color
-      uMaterialSubsurfaceColor, // Subsurface color
-      uSubsurfaceRadius, // Subsurface radius
-      uRoughness, // Roughness
-      uRefractionIndex // Refraction index
+    color += lighting(0, // SSS type
+    hitInfo, LIGHT_DIR_02, // Light direction
+    rayDirection, // Ray direction
+    LIGHT_COLOR_02, // Light color
+    uMaterialColor, // Diffuse color
+    uMaterialSubsurfaceColor, // Subsurface color
+    uSubsurfaceRadius, // Subsurface radius
+    uRoughness, // Roughness
+    uRefractionIndex // Refraction index
     );
   } else {
     // color = vec3(0.76, 0.14, 0.14);
@@ -432,7 +418,7 @@ void main() {
   vec3 color = render(rayOrigin, rayDirection);
 
   gl_FragColor = vec4(color, 1.0);
- 
+
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }
