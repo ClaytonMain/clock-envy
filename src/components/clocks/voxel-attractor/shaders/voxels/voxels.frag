@@ -9,6 +9,7 @@ uniform float[28] uActiveSegments;
 uniform vec3[28] uSegmentAPositions;
 uniform vec3[28] uSegmentBPositions;
 uniform vec3[2] uColonCenters;
+uniform float[2] uColonScales;
 
 uniform vec3 uLightColor01;
 uniform vec3 uLightColor02;
@@ -42,16 +43,18 @@ const vec3 BOX_B = vec3(6.0, 10.5, 1.25);
 
 const vec3 SEA_HEIGHT = vec3(0.0, -2.2, 0.0);
 
-#include ../../../../../shaders/includes/simplexNoise4d.glsl
+// #include ../../../../../shaders/includes/simplexNoise4d.glsl
+#include ../../../../../shaders/includes/simplexNoise3d.glsl
+#include ../../../../../shaders/includes/rand2d.glsl
 
 // HUGE shoutout to Shadertoy user "gelami" for their
 // "Hybrid SDF-Voxel Traversal" shader:
 // https://www.shadertoy.com/view/dtVSzw
 // This shader's raycast function is heavily based on the one from that shader.
 
-vec4 sdgSphere( in vec3 p, in float r ) {
+vec4 sdgSphere(in vec3 p, in float r) {
   float l = length(p);
-  return vec4(l-r, p/l);
+  return vec4(l - r, p / l);
 }
 
 vec4 sdgSegment(in vec3 p, in vec3 a, in vec3 b, in float r) {
@@ -70,6 +73,11 @@ vec4 sdgBox(in vec3 p, in vec3 b, in float r) {
   float l = length(q);
   vec4 f = (g > 0.0) ? vec4(l, q / l) : vec4(g, w.x == g ? 1.0 : 0.0, w.y == g ? 1.0 : 0.0, w.z == g ? 1.0 : 0.0);
   return vec4(f.x - r, f.yzw * sign(p));
+}
+
+vec4 sdgTorus(in vec3 p, in float ra, in float rb) {
+  float h = length(p.xz);
+  return vec4(length(vec2(h - ra, p.y)) - rb, normalize(p * vec3(h - ra, h, h - ra)));
 }
 
 vec4 sdgMin(vec4 a, vec4 b, float k) {
@@ -106,6 +114,14 @@ vec4 getMap(in vec3 p, out int closestMatId) {
         }
       }
     }
+
+    // Want to add some extra stuff below the digits.
+    // d = sdgMin(d, sdgTorus(p - vec3(uBoundingBoxCenters[i].x, -1.6 + 0.1 * sin(10.0 * p.x + uTime * 3.0) * sin(10.0 * p.z + uTime * 3.0), 0.0), 0.7, 0.18), 0.07);
+    d = sdgMin(d, sdgTorus(p - vec3(uBoundingBoxCenters[i].x, -1.7 + sin(uTime * 0.8 + rand2d(vec2(float(i)))) * 0.1 + simplexNoise3d(vec3(p.xz * 2.0, uTime * 0.8)) * 0.1, 0.0), 0.75, 0.22), 0.01);
+    if (d.x < minDist.x) {
+      minDist = d;
+      closestMatId = 1;
+    }
   }
 
   // Distance to the main platform box.
@@ -118,7 +134,7 @@ vec4 getMap(in vec3 p, out int closestMatId) {
   // Distance to colons.
   for (int i = 0; i < 2; i++) {
     vec3 colonCenter = uColonCenters[i];
-    d = sdgMin(sdgSphere(p - colonCenter, 0.28), minDist, 0.07);
+    d = sdgMin(sdgSphere(p - colonCenter, 0.3 * uColonScales[i]), minDist, 0.07);
     if (d.x < minDist.x) {
       minDist = d;
       closestMatId = 1;

@@ -1,7 +1,7 @@
 import { Box, Loader, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useControls } from "leva";
-import { useSpring } from "motion/react";
+import { useMotionValue, useSpring } from "motion/react";
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import useAppStore from "../../../stores/useAppStore";
@@ -96,13 +96,7 @@ function getChangedDigitCount(
   return changedCount;
 }
 
-type DigitState =
-  | "display"
-  | "exitWait"
-  | "anticipateExit"
-  | "exit"
-  | "enterWait"
-  | "enter";
+type DigitState = "display" | "exitWait" | "exit" | "enterWait" | "enter";
 
 function getBaseGroupPositionOffsets(digitState: DigitState) {
   const exitYOffset = 4.0;
@@ -140,6 +134,79 @@ function getBaseGroupRotationOffsets() {
   };
 }
 
+// https://easings.net/#easeInOutBack
+function easeInOutBack(x: number): number {
+  const c1 = 1.70158;
+  const c2 = c1 * 1.525;
+
+  return x < 0.5
+    ? (Math.pow(2 * x, 2) * ((c2 + 1) * 2 * x - c2)) / 2
+    : (Math.pow(2 * x - 2, 2) * ((c2 + 1) * (x * 2 - 2) + c2) + 2) / 2;
+}
+
+// https://easings.net/#easeInBack
+function easeInBack(x: number): number {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+
+  return c3 * x * x * x - c1 * x * x;
+}
+
+// https://easings.net/#easeOutBack
+function easeOutBack(x: number): number {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+
+  return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
+}
+
+function getEasedPosition(
+  startPosition: number,
+  endPosition: number,
+  currentTime: number,
+  totalTime: number,
+  easing: "easeInOutBack" | "easeOutBack" | "easeInBack" = "easeInOutBack",
+) {
+  const t = Math.max(0.0, Math.min(1.0, currentTime / totalTime));
+  let factor = t;
+  switch (easing) {
+    case "easeInOutBack":
+      factor = easeInOutBack(t);
+      break;
+    case "easeOutBack":
+      factor = easeOutBack(t);
+      break;
+    case "easeInBack":
+      factor = easeInBack(t);
+      break;
+    default:
+      factor = t;
+      break;
+  }
+  return startPosition + (endPosition - startPosition) * factor;
+}
+
+function getPositionTimeOffset(
+  tValue: number,
+  axis: "x" | "y" | "z",
+  randomValues: { x: number; y: number; z: number },
+): number {
+  const timeScales = {
+    x: 0.5,
+    y: 0.5,
+    z: 0.5,
+  };
+  const amplitudeScales = {
+    x: 0.02,
+    y: 0.09,
+    z: 0.02,
+  };
+  return (
+    Math.sin(tValue * timeScales[axis] + randomValues[axis] * Math.PI * 2) *
+    amplitudeScales[axis]
+  );
+}
+
 function Digit({
   digitIndex,
   boundingBoxCenters,
@@ -167,32 +234,45 @@ function Digit({
     };
   }, []);
 
-  const initialBaseGroupPosition = useMemo(() => {
+  // digitCenter does not change.
+  const digitCenter = useMemo(() => {
     return new THREE.Vector3(DIGIT_CENTER_OFFSETS[digitIndex], 0, 0);
   }, [digitIndex]);
-
-  const baseGroupPositionOffsetsRef = useRef(
-    getBaseGroupPositionOffsets("display"),
+  // We'll update the offsets based on the current animation state.
+  const positionOffsets = useMemo(() => {
+    const offsets = getBaseGroupPositionOffsets("display");
+    return new THREE.Vector3(offsets.x, offsets.y, offsets.z);
+  }, []);
+  // These will be updated while animating, after updating the positionOffsets.
+  const targetPositionX = useRef(digitCenter.x + positionOffsets.x);
+  const targetPositionY = useRef(digitCenter.y + positionOffsets.y);
+  const targetPositionZ = useRef(digitCenter.z + positionOffsets.z);
+  // We'll add the sin offsets to the motion values when they're updated.
+  const motionPositionX = useMotionValue(
+    targetPositionX.current + getPositionTimeOffset(0, "x", randomValues),
   );
-  // const positionSpringConfig = { stiffness: 5, damping: 10 };
-  const positionSpringConfig = { visualDuration: 4.0, bounce: 0.5 };
-  const baseGroupTargetXPosition = useSpring(
-    baseGroupPositionOffsetsRef.current.x,
-    positionSpringConfig,
+  const motionPositionY = useMotionValue(
+    targetPositionY.current + getPositionTimeOffset(0, "y", randomValues),
   );
-  const baseGroupTargetYPosition = useSpring(
-    baseGroupPositionOffsetsRef.current.y,
-    positionSpringConfig,
+  const motionPositionZ = useMotionValue(
+    targetPositionZ.current + getPositionTimeOffset(0, "z", randomValues),
   );
-  const baseGroupTargetZPosition = useSpring(
-    baseGroupPositionOffsetsRef.current.z,
-    positionSpringConfig,
-  );
+  // The spring values we'll use for the actual position.
+  const targetSpringConfig = { stiffness: 50, damping: 20 };
+  const targetSpringX = useSpring(motionPositionX, targetSpringConfig);
+  const targetSpringY = useSpring(motionPositionY, targetSpringConfig);
+  const targetSpringZ = useSpring(motionPositionZ, targetSpringConfig);
+  // We'll need to keep track of our easing positions for each axis
+  // so we can update the motion values during the animation.
+  const easeOffsetsRef = useRef({
+    x: [positionOffsets.x, positionOffsets.x],
+    y: [positionOffsets.y, positionOffsets.y],
+    z: [positionOffsets.z, positionOffsets.z],
+  });
 
   const baseGroupSpringRotationOffsetsRef = useRef(
     getBaseGroupRotationOffsets(),
   );
-  // const rotationSpringConfig = { stiffness: 300, damping: 18 };
   const rotationSpringConfig = { visualDuration: 5.0, bounce: 0.8 };
   const baseGroupTargetXRotation = useSpring(
     baseGroupSpringRotationOffsetsRef.current.x,
@@ -212,9 +292,9 @@ function Digit({
 
   const digitWaitStagger = 0.5;
   const digitWaitTimeRemainingRef = useRef(0);
-  const digitHideBaseDuration = 3.0;
-
-  const anticipateExitDuration = 1.0;
+  const digitHideBaseDuration = 1.0;
+  const digitCurrentEaseTimeRef = useRef(0);
+  const digitTotalEaseTime = 3.0;
 
   const currentChangedDigitCountRef = useRef(0);
   const currentDigitStateRef = useRef<DigitState>("display");
@@ -222,6 +302,7 @@ function Digit({
   useFrame((_, delta) => {
     deltaRef.current = Math.min(delta, 0.1);
     timeRef.current += deltaRef.current;
+
     const targetDigits = getCurrentDigits();
     const currentDigits = currentDigitsRef.current;
     const changedDigitCount = getChangedDigitCount(currentDigits, targetDigits);
@@ -232,7 +313,7 @@ function Digit({
         currentChangedDigitCountRef.current = changedDigitCount;
         currentDigitStateRef.current = "exitWait";
         digitWaitTimeRemainingRef.current =
-          (changedDigitCount - digitIndex) * digitWaitStagger;
+          (currentDigits.length - digitIndex - 1) * digitWaitStagger;
       } else {
         // Digit does not need to change.
         currentChangedDigitCountRef.current = 0;
@@ -241,13 +322,16 @@ function Digit({
 
     // Handle exit wait.
     if (currentDigitStateRef.current === "exitWait") {
-      digitWaitTimeRemainingRef.current -= deltaRef.current;
       if (digitWaitTimeRemainingRef.current <= 0) {
-        currentDigitStateRef.current = "anticipateExit";
-        digitWaitTimeRemainingRef.current = anticipateExitDuration;
+        // Start exit.
+        currentDigitStateRef.current = "exit";
+        digitWaitTimeRemainingRef.current = 0;
 
-        baseGroupPositionOffsetsRef.current.y += 1.5;
-        baseGroupTargetYPosition.set(baseGroupPositionOffsetsRef.current.y);
+        // Find new target position for y.
+        const newPositionOffsets = getBaseGroupPositionOffsets("exit");
+        easeOffsetsRef.current.y = [positionOffsets.y, newPositionOffsets.y];
+
+        digitCurrentEaseTimeRef.current = 0;
 
         const newBaseGroupRotationOffsets = getBaseGroupRotationOffsets();
         baseGroupSpringRotationOffsetsRef.current = newBaseGroupRotationOffsets;
@@ -261,44 +345,46 @@ function Digit({
           baseGroupSpringRotationOffsetsRef.current.z,
         );
       }
-    }
 
-    // Handle anticipate exit.
-    if (currentDigitStateRef.current === "anticipateExit") {
       digitWaitTimeRemainingRef.current -= deltaRef.current;
-      if (digitWaitTimeRemainingRef.current <= 0) {
-        currentDigitStateRef.current = "exit";
-        digitWaitTimeRemainingRef.current = 0;
-      }
     }
 
     // Handle exit.
     if (currentDigitStateRef.current === "exit") {
-      const newBaseGroupPositionOffsets = getBaseGroupPositionOffsets("exit");
-      baseGroupPositionOffsetsRef.current.y = newBaseGroupPositionOffsets.y;
-      baseGroupTargetYPosition.set(baseGroupPositionOffsetsRef.current.y);
-      digitWaitTimeRemainingRef.current =
-        digitHideBaseDuration +
-        (digitIndex -
-          currentDigits.length +
-          currentChangedDigitCountRef.current) *
-          digitWaitStagger;
-      currentDigitStateRef.current = "enterWait";
+      positionOffsets.y = getEasedPosition(
+        easeOffsetsRef.current.y[0],
+        easeOffsetsRef.current.y[1],
+        digitCurrentEaseTimeRef.current,
+        digitTotalEaseTime,
+        "easeInBack",
+      );
+      targetPositionY.current = digitCenter.y + positionOffsets.y;
+      if (digitCurrentEaseTimeRef.current >= digitTotalEaseTime) {
+        // Start enter wait.
+        currentDigitStateRef.current = "enterWait";
+        digitWaitTimeRemainingRef.current =
+          digitHideBaseDuration +
+          (currentChangedDigitCountRef.current -
+            (currentDigits.length - digitIndex - 1)) *
+            digitWaitStagger *
+            2;
+      }
+      digitCurrentEaseTimeRef.current += deltaRef.current;
     }
 
     // Handle enter wait.
     if (currentDigitStateRef.current === "enterWait") {
-      digitWaitTimeRemainingRef.current -= deltaRef.current;
       if (digitWaitTimeRemainingRef.current <= 0) {
         currentDigitStateRef.current = "enter";
         digitWaitTimeRemainingRef.current = 0;
 
-        const newBaseGroupPositionOffsets =
-          getBaseGroupPositionOffsets("display");
-        baseGroupPositionOffsetsRef.current.x = newBaseGroupPositionOffsets.x;
-        baseGroupPositionOffsetsRef.current.z = newBaseGroupPositionOffsets.z;
-        baseGroupTargetXPosition.jump(baseGroupPositionOffsetsRef.current.x);
-        baseGroupTargetZPosition.jump(baseGroupPositionOffsetsRef.current.z);
+        // Find new target position for all.
+        const newPositionOffsets = getBaseGroupPositionOffsets("display");
+        easeOffsetsRef.current.x = [positionOffsets.x, newPositionOffsets.x];
+        easeOffsetsRef.current.y = [positionOffsets.y, newPositionOffsets.y];
+        easeOffsetsRef.current.z = [positionOffsets.z, newPositionOffsets.z];
+
+        digitCurrentEaseTimeRef.current = 0;
 
         const newBaseGroupRotationOffsets = getBaseGroupRotationOffsets();
         baseGroupSpringRotationOffsetsRef.current = newBaseGroupRotationOffsets;
@@ -311,22 +397,48 @@ function Digit({
         baseGroupTargetZRotation.set(
           baseGroupSpringRotationOffsetsRef.current.z,
         );
-
-        currentDigitsRef.current = targetDigits;
       }
+
+      digitWaitTimeRemainingRef.current -= deltaRef.current;
     }
 
     // Handle enter.
     if (currentDigitStateRef.current === "enter") {
-      const newBaseGroupPositionOffsets =
-        getBaseGroupPositionOffsets("display");
-      baseGroupPositionOffsetsRef.current.y = newBaseGroupPositionOffsets.y;
-      baseGroupTargetYPosition.set(baseGroupPositionOffsetsRef.current.y);
-      currentDigitStateRef.current = "display";
+      positionOffsets.x = getEasedPosition(
+        easeOffsetsRef.current.x[0],
+        easeOffsetsRef.current.x[1],
+        digitCurrentEaseTimeRef.current,
+        digitTotalEaseTime,
+        "easeOutBack",
+      );
+      positionOffsets.y = getEasedPosition(
+        easeOffsetsRef.current.y[0],
+        easeOffsetsRef.current.y[1],
+        digitCurrentEaseTimeRef.current,
+        digitTotalEaseTime,
+        "easeOutBack",
+      );
+      positionOffsets.z = getEasedPosition(
+        easeOffsetsRef.current.z[0],
+        easeOffsetsRef.current.z[1],
+        digitCurrentEaseTimeRef.current,
+        digitTotalEaseTime,
+        "easeOutBack",
+      );
+
+      targetPositionX.current = digitCenter.x + positionOffsets.x;
+      targetPositionY.current = digitCenter.y + positionOffsets.y;
+      targetPositionZ.current = digitCenter.z + positionOffsets.z;
+
+      if (digitCurrentEaseTimeRef.current >= digitTotalEaseTime) {
+        currentDigitStateRef.current = "display";
+      }
+
+      digitCurrentEaseTimeRef.current += deltaRef.current;
     }
 
-    // Sanity-check display.
-    if (currentDigitStateRef.current === "display") {
+    // Sanity-check correct digits.
+    if (["display", "enter"].includes(currentDigitStateRef.current)) {
       const currentActiveSegments = getActiveSegments();
       for (let i = digitIndex * 7; i < digitIndex * 7 + 7; i++) {
         if (activeSegments[i] !== currentActiveSegments[i]) {
@@ -338,17 +450,24 @@ function Digit({
       }
     }
 
+    // Update motion values.
+    motionPositionX.set(
+      targetPositionX.current +
+        getPositionTimeOffset(timeRef.current, "x", randomValues),
+    );
+    motionPositionY.set(
+      targetPositionY.current +
+        getPositionTimeOffset(timeRef.current, "y", randomValues),
+    );
+    motionPositionZ.set(
+      targetPositionZ.current +
+        getPositionTimeOffset(timeRef.current, "z", randomValues),
+    );
+
     if (baseGroupRef.current) {
-      baseGroupRef.current.position.x =
-        initialBaseGroupPosition.x +
-        baseGroupTargetXPosition.get() +
-        Math.sin(timeRef.current * 0.5 + randomValues.x * Math.PI * 2) * 0.02;
-      baseGroupRef.current.position.y =
-        baseGroupTargetYPosition.get() +
-        Math.sin(timeRef.current * 0.5 + randomValues.y * Math.PI * 2) * 0.09;
-      baseGroupRef.current.position.z =
-        baseGroupTargetZPosition.get() +
-        Math.sin(timeRef.current * 0.5 + randomValues.z * Math.PI * 2) * 0.02;
+      baseGroupRef.current.position.x = targetSpringX.get();
+      baseGroupRef.current.position.y = targetSpringY.get();
+      baseGroupRef.current.position.z = targetSpringZ.get();
 
       baseGroupRef.current.rotation.x =
         baseGroupTargetXRotation.get() +
@@ -389,11 +508,7 @@ function Digit({
   });
 
   return (
-    <group
-      ref={baseGroupRef}
-      position={initialBaseGroupPosition}
-      onClick={() => console.log(baseGroupRef.current)}
-    >
+    <group ref={baseGroupRef} onClick={() => console.log(baseGroupRef.current)}>
       {/* <Box args={[0.5, 0.5, 0.5]} visible={false} /> */}
       <group ref={innerGroupRef}>
         <Box
@@ -469,7 +584,7 @@ function VoxelAttractor() {
     return getActiveSegments();
   }, []);
   const colonCenters = useMemo(() => {
-    return [new THREE.Vector3(0.0, 0.5, 0), new THREE.Vector3(0.0, -0.5, 0)];
+    return [new THREE.Vector3(0.0, 0.75, 0), new THREE.Vector3(0.0, -0.75, 0)];
   }, []);
 
   const uniforms = useMemo(() => {
@@ -504,6 +619,7 @@ function VoxelAttractor() {
       uSkyRangeMin: { value: 0.0 },
       uSkyRangeMax: { value: 0.2 },
       uColonCenters: { value: colonCenters },
+      uColonScales: { value: [1.0, 1.0] },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -629,9 +745,41 @@ function VoxelAttractor() {
   const uDeltaRef = useRef(0);
   const uTimeRef = useRef(0);
 
+  const secondsRef = useRef(getCurrentDigits("ss"));
+  const secondTimeRef = useRef(0);
+  const colonScaleCount0Ref = useRef(0);
+  const colonScaleCount1Ref = useRef(0);
+  const colonScale0Spring = useSpring(1.0, { damping: 12, stiffness: 130 });
+  const colonScale1Spring = useSpring(1.0, { damping: 12, stiffness: 130 });
+
   useFrame(({ camera }, delta) => {
     uDeltaRef.current = Math.min(delta, 0.1);
     uTimeRef.current += uDeltaRef.current;
+
+    const seconds = getCurrentDigits("ss");
+    if (seconds !== secondsRef.current) {
+      secondsRef.current = seconds;
+      secondTimeRef.current = 0;
+      colonScaleCount0Ref.current = 0;
+      colonScaleCount1Ref.current = 0;
+    }
+    if (colonScaleCount0Ref.current === 0) {
+      colonScale0Spring.set(0.8);
+      colonScaleCount0Ref.current = 1;
+    }
+    if (secondTimeRef.current >= 0.15 && colonScaleCount1Ref.current === 0) {
+      colonScale1Spring.set(0.8);
+      colonScaleCount1Ref.current = 1;
+    }
+    if (secondTimeRef.current >= 0.15 && colonScaleCount0Ref.current === 1) {
+      colonScale0Spring.set(1.0);
+      colonScaleCount0Ref.current = 2;
+    }
+    if (secondTimeRef.current >= 0.3 && colonScaleCount1Ref.current === 1) {
+      colonScale1Spring.set(1.0);
+      colonScaleCount1Ref.current = 2;
+    }
+    secondTimeRef.current += uDeltaRef.current;
 
     camera.getWorldPosition(cameraPosition);
 
@@ -645,15 +793,19 @@ function VoxelAttractor() {
     uniforms.uSegmentBPositions.value = segmentBPositions;
     uniforms.uActiveSegments.value = activeSegments;
 
-    colonCenters[0].x = Math.sin(uTimeRef.current * 0.35) * 0.1;
-    colonCenters[0].y = Math.sin(uTimeRef.current * 0.4) * 0.21 + 0.75;
-    colonCenters[0].z = Math.sin(uTimeRef.current * 0.3) * 0.1;
+    colonCenters[0].x = Math.sin(uTimeRef.current * 0.19) * 0.1;
+    colonCenters[0].y = Math.sin(uTimeRef.current * 0.2) * 0.18 + 0.68;
+    colonCenters[0].z = Math.sin(uTimeRef.current * 0.16) * 0.1;
 
-    colonCenters[1].x = Math.sin(uTimeRef.current * 0.27 + 1.0) * 0.1;
-    colonCenters[1].y = Math.sin(uTimeRef.current * 0.33 + 1.0) * 0.21 - 0.75;
-    colonCenters[1].z = Math.sin(uTimeRef.current * 0.29 + 1.0) * 0.1;
+    colonCenters[1].x = Math.sin(uTimeRef.current * 0.17 + 1.0) * 0.1;
+    colonCenters[1].y = Math.sin(uTimeRef.current * 0.23 + 1.0) * 0.18 - 0.68;
+    colonCenters[1].z = Math.sin(uTimeRef.current * 0.19 + 1.0) * 0.1;
 
     uniforms.uColonCenters.value = colonCenters;
+    uniforms.uColonScales.value = [
+      colonScale0Spring.get(),
+      colonScale1Spring.get(),
+    ];
   });
 
   return (
