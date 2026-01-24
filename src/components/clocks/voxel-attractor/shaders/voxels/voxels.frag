@@ -3,12 +3,12 @@ uniform float uTime;
 uniform vec3 uCameraPosition;
 uniform vec2 uResolution;
 uniform float uGlZ;
-uniform vec3[6] uBoundingBoxCenters;
-uniform vec3[6] uBoundingBoxBValues;
-uniform float[42] uActiveSegments;
-uniform vec3[42] uSegmentAPositions;
-uniform vec3[42] uSegmentBPositions;
-uniform float[6] uDigitSpringScales;
+uniform vec3[4] uBoundingBoxCenters;
+uniform vec3[4] uBoundingBoxBValues;
+uniform float[28] uActiveSegments;
+uniform vec3[28] uSegmentAPositions;
+uniform vec3[28] uSegmentBPositions;
+uniform vec3[2] uColonCenters;
 
 uniform vec3 uLightColor01;
 uniform vec3 uLightColor02;
@@ -38,7 +38,7 @@ const vec3 LIGHT_DIR_02 = normalize(vec3(-0.1, -0.3, -2.0));
 // const vec3 LIGHT_COLOR_02 = vec3(0.25);
 
 const vec3 BOX_CENTER = vec3(0.0, -12.2, 0.0);
-const vec3 BOX_B = vec3(8.0, 10.5, 1.25);
+const vec3 BOX_B = vec3(6.0, 10.5, 1.25);
 
 const vec3 SEA_HEIGHT = vec3(0.0, -2.2, 0.0);
 
@@ -48,6 +48,11 @@ const vec3 SEA_HEIGHT = vec3(0.0, -2.2, 0.0);
 // "Hybrid SDF-Voxel Traversal" shader:
 // https://www.shadertoy.com/view/dtVSzw
 // This shader's raycast function is heavily based on the one from that shader.
+
+vec4 sdgSphere( in vec3 p, in float r ) {
+  float l = length(p);
+  return vec4(l-r, p/l);
+}
 
 vec4 sdgSegment(in vec3 p, in vec3 a, in vec3 b, in float r) {
   vec3 ba = b - a;
@@ -76,13 +81,12 @@ vec4 sdgMin(vec4 a, vec4 b, float k) {
 }
 
 vec4 getMap(in vec3 p, out int closestMatId) {
-  // Distance to the main platform box.
   vec4 minDist = vec4(1000.0);
   closestMatId = -1;
 
   // Distance to the 6 digit boxes and their segments.
   vec4 d;
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < 4; i++) {
     vec3 boxCenter = uBoundingBoxCenters[i];
     vec3 boxB = uBoundingBoxBValues[i];
     vec3 localP = p - boxCenter;
@@ -95,9 +99,7 @@ vec4 getMap(in vec3 p, out int closestMatId) {
       for (int j = i * 7; j < (i + 1) * 7; j++) {
         vec3 aPos = uSegmentAPositions[j] + (1.0 - uActiveSegments[j]) * vec3(0.0, 9001.0, 0.0);
         vec3 bPos = uSegmentBPositions[j] + (1.0 - uActiveSegments[j]) * vec3(0.0, 9001.0, 0.0);
-        float scale = smoothstep(0.25, 0.75, uDigitSpringScales[i]) * 0.5 + 0.5;
-        d = sdgMin(sdgSegment(p, aPos, bPos, 0.22 * scale), minDist, 0.07 * scale);
-        // d = sdgSegment(p, aPos, bPos, 0.22 * scale);
+        d = sdgMin(sdgSegment(p, aPos, bPos, 0.22), minDist, 0.07);
         if (d.x < minDist.x) {
           minDist = d;
           closestMatId = 1;
@@ -111,6 +113,16 @@ vec4 getMap(in vec3 p, out int closestMatId) {
   if (d.x < minDist.x) {
     minDist = d;
     closestMatId = 0;
+  }
+
+  // Distance to colons.
+  for (int i = 0; i < 2; i++) {
+    vec3 colonCenter = uColonCenters[i];
+    d = sdgMin(sdgSphere(p - colonCenter, 0.28), minDist, 0.07);
+    if (d.x < minDist.x) {
+      minDist = d;
+      closestMatId = 1;
+    }
   }
 
   return minDist;

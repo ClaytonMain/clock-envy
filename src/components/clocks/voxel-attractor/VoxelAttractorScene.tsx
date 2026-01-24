@@ -5,7 +5,6 @@ import { useSpring } from "motion/react";
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import useAppStore from "../../../stores/useAppStore";
-import useVoxelAttractorStore from "../../../stores/useVoxelAttractorStore";
 import CustomStatsComponent from "../../misc/CustomStatsComponent";
 import { FOV } from "./constants/constants";
 import voxelsFragmentShader from "./shaders/voxels/voxels.frag";
@@ -14,12 +13,10 @@ import { getActiveSegments } from "./utils/utils";
 
 const OFFSET_SCALE = 1.3;
 const DIGIT_CENTER_OFFSETS = [
-  -5.0 * OFFSET_SCALE,
-  -3.0 * OFFSET_SCALE,
-  -1.0 * OFFSET_SCALE,
-  1.0 * OFFSET_SCALE,
-  3.0 * OFFSET_SCALE,
-  5.0 * OFFSET_SCALE,
+  -3.5 * OFFSET_SCALE,
+  -1.5 * OFFSET_SCALE,
+  1.5 * OFFSET_SCALE,
+  3.5 * OFFSET_SCALE,
 ];
 const SEGMENT_X_OFFSET = 0.6;
 const SEGMENT_Y_OFFSET = 1.5;
@@ -35,11 +32,7 @@ const SEGMENT_OFFSETS = [
 const SEGMENT_ORIENTATIONS = ["H", "V", "V", "H", "V", "V", "H"];
 const SEGMENT_THICKNESS = 0.2;
 
-function SpringyDigitSegmentObjects({
-  segmentIndex,
-}: {
-  segmentIndex: number;
-}) {
+function DigitSegmentObjects({ segmentIndex }: { segmentIndex: number }) {
   const segmentPosition = useMemo(
     () =>
       new THREE.Vector3(
@@ -83,29 +76,61 @@ function SpringyDigitSegmentObjects({
   );
 }
 
-function getCurrentDigitAtIndex(digitIndex: number): number {
+function getCurrentDigits(format: string = "HHmm"): string {
   const timeValue = useAppStore.getState().currentTimeValue;
-  const char = timeValue.toFormat("HHmmss").charAt(digitIndex);
-  return parseInt(char, 10);
+  const digits = timeValue.toFormat(format);
+  return digits;
 }
 
-function getBaseGroupPositionOffsets() {
-  const bounds = {
-    x: [-0.1, 0.1],
-    y: [-0.3, 0.3],
-    z: [-0.05, 0.05],
-  };
+function getChangedDigitCount(
+  currentDigits: string,
+  targetDigits: string,
+): number {
+  let changedCount = 0;
+  for (let i = 0; i < currentDigits.length; i++) {
+    if (currentDigits[i] !== targetDigits[i]) {
+      changedCount = currentDigits.length - i;
+      break;
+    }
+  }
+  return changedCount;
+}
+
+type DigitState =
+  | "display"
+  | "exitWait"
+  | "anticipateExit"
+  | "exit"
+  | "enterWait"
+  | "enter";
+
+function getBaseGroupPositionOffsets(digitState: DigitState) {
+  const exitYOffset = 4.0;
+  const bounds = [
+    [-0.1, 0.1],
+    [-0.3, 0.3],
+    [-0.05, 0.05],
+  ];
+  const returnVals = [];
+  for (let i = 0; i < 3; i++) {
+    let targetValue =
+      Math.random() * (bounds[i][1] - bounds[i][0]) + bounds[i][0];
+    if (digitState === "exit" && i === 1) {
+      targetValue -= exitYOffset;
+    }
+    returnVals.push(targetValue);
+  }
   return {
-    x: Math.random() * (bounds.x[1] - bounds.x[0]) + bounds.x[0],
-    y: Math.random() * (bounds.y[1] - bounds.y[0]) + bounds.y[0],
-    z: Math.random() * (bounds.z[1] - bounds.z[0]) + bounds.z[0],
+    x: returnVals[0],
+    y: returnVals[1],
+    z: returnVals[2],
   };
 }
 
 function getBaseGroupRotationOffsets() {
   const bounds = {
     x: [-0.1, 0.1],
-    y: [-0.05, 0.05],
+    y: [-0.08, 0.08],
     z: [-0.05, 0.05],
   };
   return {
@@ -115,24 +140,24 @@ function getBaseGroupRotationOffsets() {
   };
 }
 
-function SpringyDigit({
+function Digit({
   digitIndex,
   boundingBoxCenters,
   boundingBoxBValues,
   segmentAPositions,
   segmentBPositions,
-  digitSpringScales,
+  activeSegments,
 }: {
   digitIndex: number;
   boundingBoxCenters: THREE.Vector3[];
   boundingBoxBValues: THREE.Vector3[];
   segmentAPositions: THREE.Vector3[];
   segmentBPositions: THREE.Vector3[];
-  digitSpringScales: number[];
+  activeSegments: number[];
 }) {
   const baseGroupRef = useRef<THREE.Group>(null!);
   const innerGroupRef = useRef<THREE.Group>(null!);
-  const currentDigitRef = useRef(getCurrentDigitAtIndex(digitIndex));
+  const currentDigitsRef = useRef(getCurrentDigits());
 
   const randomValues = useMemo(() => {
     return {
@@ -146,8 +171,11 @@ function SpringyDigit({
     return new THREE.Vector3(DIGIT_CENTER_OFFSETS[digitIndex], 0, 0);
   }, [digitIndex]);
 
-  const baseGroupPositionOffsetsRef = useRef(getBaseGroupPositionOffsets());
-  const positionSpringConfig = { stiffness: 350, damping: 20 };
+  const baseGroupPositionOffsetsRef = useRef(
+    getBaseGroupPositionOffsets("display"),
+  );
+  // const positionSpringConfig = { stiffness: 5, damping: 10 };
+  const positionSpringConfig = { visualDuration: 4.0, bounce: 0.5 };
   const baseGroupTargetXPosition = useSpring(
     baseGroupPositionOffsetsRef.current.x,
     positionSpringConfig,
@@ -161,11 +189,11 @@ function SpringyDigit({
     positionSpringConfig,
   );
 
-  const baseGroupSpringRotationsRef = useRef({ x: 0, y: 0, z: 0 });
   const baseGroupSpringRotationOffsetsRef = useRef(
     getBaseGroupRotationOffsets(),
   );
-  const rotationSpringConfig = { stiffness: 300, damping: 18 };
+  // const rotationSpringConfig = { stiffness: 300, damping: 18 };
+  const rotationSpringConfig = { visualDuration: 5.0, bounce: 0.8 };
   const baseGroupTargetXRotation = useSpring(
     baseGroupSpringRotationOffsetsRef.current.x,
     rotationSpringConfig,
@@ -179,62 +207,135 @@ function SpringyDigit({
     rotationSpringConfig,
   );
 
-  const innerGroupTargetScale = useSpring(1, { stiffness: 350, damping: 26 });
-
   const deltaRef = useRef(0);
   const timeRef = useRef(0);
-  const scaleTimeRef = useRef(0);
-  const scaleShrinkDuration = 0.1;
+
+  const digitWaitStagger = 0.5;
+  const digitWaitTimeRemainingRef = useRef(0);
+  const digitHideBaseDuration = 3.0;
+
+  const anticipateExitDuration = 1.0;
+
+  const currentChangedDigitCountRef = useRef(0);
+  const currentDigitStateRef = useRef<DigitState>("display");
+
   useFrame((_, delta) => {
     deltaRef.current = Math.min(delta, 0.1);
     timeRef.current += deltaRef.current;
-    const targetDigit = getCurrentDigitAtIndex(digitIndex);
-    const currentDigit = currentDigitRef.current;
-    if (currentDigit !== targetDigit) {
-      currentDigitRef.current = targetDigit;
-      const newBaseGroupPositionOffsets = getBaseGroupPositionOffsets();
-      const offsetDiffs = {
-        x:
-          newBaseGroupPositionOffsets.x - baseGroupPositionOffsetsRef.current.x,
-        y:
-          newBaseGroupPositionOffsets.y - baseGroupPositionOffsetsRef.current.y,
-        z:
-          newBaseGroupPositionOffsets.z - baseGroupPositionOffsetsRef.current.z,
-      };
-      baseGroupPositionOffsetsRef.current = newBaseGroupPositionOffsets;
-      baseGroupTargetXPosition.set(baseGroupPositionOffsetsRef.current.x);
-      baseGroupTargetYPosition.set(baseGroupPositionOffsetsRef.current.y);
-      baseGroupTargetZPosition.set(baseGroupPositionOffsetsRef.current.z);
+    const targetDigits = getCurrentDigits();
+    const currentDigits = currentDigitsRef.current;
+    const changedDigitCount = getChangedDigitCount(currentDigits, targetDigits);
 
-      const newBaseGroupRotationOffsets = getBaseGroupRotationOffsets();
-      baseGroupSpringRotationOffsetsRef.current = newBaseGroupRotationOffsets;
-      if (Math.abs(offsetDiffs.y) > 0.4) {
-        baseGroupSpringRotationsRef.current.x +=
-          Math.sign(offsetDiffs.y) * Math.PI * 2;
-      } else if (Math.abs(offsetDiffs.x) > 0.1) {
-        baseGroupSpringRotationsRef.current.y +=
-          Math.sign(offsetDiffs.x) * Math.PI * 2;
+    if (changedDigitCount > 0 && currentDigitStateRef.current === "display") {
+      if (digitIndex >= currentDigits.length - changedDigitCount) {
+        // Digit needs to change after stagger.
+        currentChangedDigitCountRef.current = changedDigitCount;
+        currentDigitStateRef.current = "exitWait";
+        digitWaitTimeRemainingRef.current =
+          (changedDigitCount - digitIndex) * digitWaitStagger;
+      } else {
+        // Digit does not need to change.
+        currentChangedDigitCountRef.current = 0;
       }
-      baseGroupTargetXRotation.set(
-        baseGroupSpringRotationOffsetsRef.current.x +
-          baseGroupSpringRotationsRef.current.x,
-      );
-      baseGroupTargetYRotation.set(
-        baseGroupSpringRotationOffsetsRef.current.y +
-          baseGroupSpringRotationsRef.current.y,
-      );
-      baseGroupTargetZRotation.set(
-        baseGroupSpringRotationOffsetsRef.current.z +
-          baseGroupSpringRotationsRef.current.z,
-      );
-
-      innerGroupTargetScale.set(-1);
-      scaleTimeRef.current = 0;
     }
 
-    if (scaleTimeRef.current >= scaleShrinkDuration) {
-      innerGroupTargetScale.set(1);
-      scaleTimeRef.current = -99999;
+    // Handle exit wait.
+    if (currentDigitStateRef.current === "exitWait") {
+      digitWaitTimeRemainingRef.current -= deltaRef.current;
+      if (digitWaitTimeRemainingRef.current <= 0) {
+        currentDigitStateRef.current = "anticipateExit";
+        digitWaitTimeRemainingRef.current = anticipateExitDuration;
+
+        baseGroupPositionOffsetsRef.current.y += 1.5;
+        baseGroupTargetYPosition.set(baseGroupPositionOffsetsRef.current.y);
+
+        const newBaseGroupRotationOffsets = getBaseGroupRotationOffsets();
+        baseGroupSpringRotationOffsetsRef.current = newBaseGroupRotationOffsets;
+        baseGroupTargetXRotation.set(
+          baseGroupSpringRotationOffsetsRef.current.x,
+        );
+        baseGroupTargetYRotation.set(
+          baseGroupSpringRotationOffsetsRef.current.y,
+        );
+        baseGroupTargetZRotation.set(
+          baseGroupSpringRotationOffsetsRef.current.z,
+        );
+      }
+    }
+
+    // Handle anticipate exit.
+    if (currentDigitStateRef.current === "anticipateExit") {
+      digitWaitTimeRemainingRef.current -= deltaRef.current;
+      if (digitWaitTimeRemainingRef.current <= 0) {
+        currentDigitStateRef.current = "exit";
+        digitWaitTimeRemainingRef.current = 0;
+      }
+    }
+
+    // Handle exit.
+    if (currentDigitStateRef.current === "exit") {
+      const newBaseGroupPositionOffsets = getBaseGroupPositionOffsets("exit");
+      baseGroupPositionOffsetsRef.current.y = newBaseGroupPositionOffsets.y;
+      baseGroupTargetYPosition.set(baseGroupPositionOffsetsRef.current.y);
+      digitWaitTimeRemainingRef.current =
+        digitHideBaseDuration +
+        (digitIndex -
+          currentDigits.length +
+          currentChangedDigitCountRef.current) *
+          digitWaitStagger;
+      currentDigitStateRef.current = "enterWait";
+    }
+
+    // Handle enter wait.
+    if (currentDigitStateRef.current === "enterWait") {
+      digitWaitTimeRemainingRef.current -= deltaRef.current;
+      if (digitWaitTimeRemainingRef.current <= 0) {
+        currentDigitStateRef.current = "enter";
+        digitWaitTimeRemainingRef.current = 0;
+
+        const newBaseGroupPositionOffsets =
+          getBaseGroupPositionOffsets("display");
+        baseGroupPositionOffsetsRef.current.x = newBaseGroupPositionOffsets.x;
+        baseGroupPositionOffsetsRef.current.z = newBaseGroupPositionOffsets.z;
+        baseGroupTargetXPosition.jump(baseGroupPositionOffsetsRef.current.x);
+        baseGroupTargetZPosition.jump(baseGroupPositionOffsetsRef.current.z);
+
+        const newBaseGroupRotationOffsets = getBaseGroupRotationOffsets();
+        baseGroupSpringRotationOffsetsRef.current = newBaseGroupRotationOffsets;
+        baseGroupTargetXRotation.set(
+          baseGroupSpringRotationOffsetsRef.current.x,
+        );
+        baseGroupTargetYRotation.set(
+          baseGroupSpringRotationOffsetsRef.current.y,
+        );
+        baseGroupTargetZRotation.set(
+          baseGroupSpringRotationOffsetsRef.current.z,
+        );
+
+        currentDigitsRef.current = targetDigits;
+      }
+    }
+
+    // Handle enter.
+    if (currentDigitStateRef.current === "enter") {
+      const newBaseGroupPositionOffsets =
+        getBaseGroupPositionOffsets("display");
+      baseGroupPositionOffsetsRef.current.y = newBaseGroupPositionOffsets.y;
+      baseGroupTargetYPosition.set(baseGroupPositionOffsetsRef.current.y);
+      currentDigitStateRef.current = "display";
+    }
+
+    // Sanity-check display.
+    if (currentDigitStateRef.current === "display") {
+      const currentActiveSegments = getActiveSegments();
+      for (let i = digitIndex * 7; i < digitIndex * 7 + 7; i++) {
+        if (activeSegments[i] !== currentActiveSegments[i]) {
+          activeSegments[i] = currentActiveSegments[i];
+        }
+      }
+      if (currentDigitsRef.current !== targetDigits) {
+        currentDigitsRef.current = targetDigits;
+      }
     }
 
     if (baseGroupRef.current) {
@@ -254,19 +355,11 @@ function SpringyDigit({
         Math.sin(timeRef.current * 0.2 + randomValues.x * Math.PI * 2) * 0.07;
       baseGroupRef.current.rotation.y =
         baseGroupTargetYRotation.get() +
-        Math.sin(timeRef.current * 0.2 + randomValues.y * Math.PI * 2) * 0.08;
+        Math.sin(timeRef.current * 0.22 + randomValues.y * Math.PI * 2) * 0.18;
       baseGroupRef.current.rotation.z =
         baseGroupTargetZRotation.get() +
         Math.sin(timeRef.current * 0.2 + randomValues.z * Math.PI * 2) * 0.02;
     }
-
-    if (innerGroupRef.current) {
-      innerGroupRef.current.scale.setScalar(
-        Math.max(0.1, innerGroupTargetScale.get()),
-      );
-    }
-
-    scaleTimeRef.current += deltaRef.current;
 
     if (baseGroupRef.current) {
       boundingBoxCenters[digitIndex].copy(baseGroupRef.current.position);
@@ -293,8 +386,6 @@ function SpringyDigit({
         }
       }
     }
-
-    digitSpringScales[digitIndex] = innerGroupTargetScale.get();
   });
 
   return (
@@ -303,7 +394,7 @@ function SpringyDigit({
       position={initialBaseGroupPosition}
       onClick={() => console.log(baseGroupRef.current)}
     >
-      <Box args={[0.5, 0.5, 0.5]} visible={false} />
+      {/* <Box args={[0.5, 0.5, 0.5]} visible={false} /> */}
       <group ref={innerGroupRef}>
         <Box
           args={[
@@ -314,10 +405,7 @@ function SpringyDigit({
           visible={false}
         />
         {Array.from({ length: 7 }, (_, segmentIndex) => (
-          <SpringyDigitSegmentObjects
-            key={segmentIndex}
-            segmentIndex={segmentIndex}
-          />
+          <DigitSegmentObjects key={segmentIndex} segmentIndex={segmentIndex} />
         ))}
       </group>
     </group>
@@ -326,15 +414,15 @@ function SpringyDigit({
 
 function VoxelAttractor() {
   const boundingBoxCenters = useMemo(() => {
-    return Array.from({ length: 6 }, () => new THREE.Vector3());
+    return Array.from({ length: 4 }, () => new THREE.Vector3());
   }, []);
   const boundingBoxBValues = useMemo(() => {
-    return Array.from({ length: 6 }, () => new THREE.Vector3());
+    return Array.from({ length: 4 }, () => new THREE.Vector3());
   }, []);
   const { segmentAPositions, segmentBPositions } = useMemo(() => {
     const segmentAPositionsArray: THREE.Vector3[] = [];
     const segmentBPositionsArray: THREE.Vector3[] = [];
-    for (let digitIndex = 0; digitIndex < 6; digitIndex++) {
+    for (let digitIndex = 0; digitIndex < 4; digitIndex++) {
       const digitOffset = DIGIT_CENTER_OFFSETS[digitIndex];
       for (let segmentIndex = 0; segmentIndex < 7; segmentIndex++) {
         const segmentPos = new THREE.Vector3(
@@ -377,8 +465,11 @@ function VoxelAttractor() {
       segmentBPositions: segmentBPositionsArray,
     };
   }, []);
-  const digitSpringScales = useMemo(() => {
-    return Array.from({ length: 6 }, () => 1);
+  const activeSegments = useMemo(() => {
+    return getActiveSegments();
+  }, []);
+  const colonCenters = useMemo(() => {
+    return [new THREE.Vector3(0.0, 0.5, 0), new THREE.Vector3(0.0, -0.5, 0)];
   }, []);
 
   const uniforms = useMemo(() => {
@@ -390,10 +481,9 @@ function VoxelAttractor() {
       uGlZ: { value: -1 / (2 * Math.tan(FOV * (Math.PI / 180) * 0.5)) },
       uBoundingBoxCenters: { value: boundingBoxCenters },
       uBoundingBoxBValues: { value: boundingBoxBValues },
-      uActiveSegments: { value: getActiveSegments() },
+      uActiveSegments: { value: activeSegments },
       uSegmentAPositions: { value: segmentAPositions },
       uSegmentBPositions: { value: segmentBPositions },
-      uDigitSpringScales: { value: digitSpringScales },
       // uLightColor: { value: new THREE.Color("#101010") },
       uLightColor01: { value: new THREE.Color("#ffa3a3") },
       uLightColor02: { value: new THREE.Color("#ffc99d") },
@@ -413,6 +503,7 @@ function VoxelAttractor() {
       uNormalMix: { value: 0.68 },
       uSkyRangeMin: { value: 0.0 },
       uSkyRangeMax: { value: 0.2 },
+      uColonCenters: { value: colonCenters },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -552,44 +643,30 @@ function VoxelAttractor() {
     uniforms.uBoundingBoxBValues.value = boundingBoxBValues;
     uniforms.uSegmentAPositions.value = segmentAPositions;
     uniforms.uSegmentBPositions.value = segmentBPositions;
-    uniforms.uDigitSpringScales.value = digitSpringScales;
+    uniforms.uActiveSegments.value = activeSegments;
+
+    colonCenters[0].x = Math.sin(uTimeRef.current * 0.35) * 0.1;
+    colonCenters[0].y = Math.sin(uTimeRef.current * 0.4) * 0.21 + 0.75;
+    colonCenters[0].z = Math.sin(uTimeRef.current * 0.3) * 0.1;
+
+    colonCenters[1].x = Math.sin(uTimeRef.current * 0.27 + 1.0) * 0.1;
+    colonCenters[1].y = Math.sin(uTimeRef.current * 0.33 + 1.0) * 0.21 - 0.75;
+    colonCenters[1].z = Math.sin(uTimeRef.current * 0.29 + 1.0) * 0.1;
+
+    uniforms.uColonCenters.value = colonCenters;
   });
-
-  useEffect(() => {
-    const unsubCurrentTimeValue = useAppStore.subscribe(
-      (state) => state.currentTimeValue,
-      (value, previousValue) => {
-        const timeString = value.toFormat("HHmmss");
-        const prevTimeString = previousValue.toFormat("HHmmss");
-
-        if (timeString === prevTimeString) return;
-
-        const timeoutId = setTimeout(() => {
-          uniforms.uActiveSegments.value = getActiveSegments();
-        }, 100);
-
-        return () => {
-          clearTimeout(timeoutId);
-        };
-      },
-    );
-    return () => {
-      unsubCurrentTimeValue();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <group>
-      {[0, 1, 2, 3, 4, 5].map((digitIndex) => (
-        <SpringyDigit
+      {[0, 1, 2, 3].map((digitIndex) => (
+        <Digit
           key={digitIndex}
           digitIndex={digitIndex}
           boundingBoxCenters={boundingBoxCenters}
           boundingBoxBValues={boundingBoxBValues}
           segmentAPositions={segmentAPositions}
           segmentBPositions={segmentBPositions}
-          digitSpringScales={digitSpringScales}
+          activeSegments={activeSegments}
         />
       ))}
       <mesh visible={true}>
@@ -603,24 +680,6 @@ function VoxelAttractor() {
       </mesh>
     </group>
   );
-}
-
-function ActiveSegmentsListener() {
-  useEffect(() => {
-    const unsubCurrentTimeValue = useAppStore.subscribe(
-      (state) => state.currentTimeValue,
-      () => {
-        useVoxelAttractorStore.setState({
-          activeSegments: getActiveSegments(),
-        });
-      },
-    );
-    return () => {
-      unsubCurrentTimeValue();
-    };
-  }, []);
-
-  return null;
 }
 
 export default function VoxelAttractorScene() {
@@ -668,7 +727,6 @@ export default function VoxelAttractorScene() {
         <Suspense fallback={null}>
           {/* <Environment preset="lobby" resolution={2048} /> */}
           <VoxelAttractor />
-          <ActiveSegmentsListener />
         </Suspense>
         <OrbitControls makeDefault />
       </Canvas>
