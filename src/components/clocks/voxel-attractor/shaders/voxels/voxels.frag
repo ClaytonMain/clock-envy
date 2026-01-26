@@ -27,6 +27,7 @@ uniform vec3 uSeaHighColor;
 uniform float uNormalMix;
 uniform float uSkyRangeMin;
 uniform float uSkyRangeMax;
+uniform float uMinutePercent;
 
 varying mat4 vViewMatrix;
 
@@ -38,8 +39,8 @@ const vec3 LIGHT_DIR = normalize(vec3(0.1, -0.28, -2.0));
 const vec3 LIGHT_DIR_02 = normalize(vec3(-0.1, -0.3, -2.0));
 // const vec3 LIGHT_COLOR_02 = vec3(0.25);
 
-const vec3 BOX_CENTER = vec3(0.0, -12.2, 0.0);
-const vec3 BOX_B = vec3(6.0, 10.5, 1.25);
+const vec3 BOX_CENTER = vec3(0.0, -2.2, 0.0);
+const vec3 BOX_B = vec3(6.0, 0.5, 1.25);
 
 const vec3 SEA_HEIGHT = vec3(0.0, -2.2, 0.0);
 
@@ -95,6 +96,8 @@ vec4 getMap(in vec3 p, out int closestMatId) {
   // Distance to the 6 digit boxes and their segments.
   vec4 d;
   for (int i = 0; i < 4; i++) {
+    if (p.y < BOX_CENTER.y)
+      break;
     vec3 boxCenter = uBoundingBoxCenters[i];
     vec3 boxB = uBoundingBoxBValues[i];
     vec3 localP = p - boxCenter;
@@ -117,11 +120,12 @@ vec4 getMap(in vec3 p, out int closestMatId) {
 
     // Want to add some extra stuff below the digits.
     // d = sdgMin(d, sdgTorus(p - vec3(uBoundingBoxCenters[i].x, -1.6 + 0.1 * sin(10.0 * p.x + uTime * 3.0) * sin(10.0 * p.z + uTime * 3.0), 0.0), 0.7, 0.18), 0.07);
-    d = sdgMin(d, sdgTorus(p - vec3(uBoundingBoxCenters[i].x, -1.7 + sin(uTime * 0.8 + rand2d(vec2(float(i)))) * 0.1 + simplexNoise3d(vec3(p.xz * 2.0, uTime * 0.8)) * 0.1, 0.0), 0.75, 0.22), 0.01);
-    if (d.x < minDist.x) {
-      minDist = d;
-      closestMatId = 1;
-    }
+    // d = sdgMin(d, sdgTorus(p - vec3(uBoundingBoxCenters[i].x, -1.7 + sin(uTime * 0.8 + rand2d(vec2(float(i)))) * 0.1 + simplexNoise3d(vec3(p.xz * 2.0, uTime * 0.8)) * 0.1, 0.0), 0.75, 0.22), 0.01);
+    // d = sdgMin(d, sdgSphere(p - vec3(uBoundingBoxCenters[i].x, -1.7 + sin(uTime * 0.8 + rand2d(vec2(float(i)))) * 0.1 + simplexNoise3d(vec3(p.xz * 2.0, uTime * 0.8)) * 0.1, 0.0), 0.75), 0.01);
+    // if (d.x < minDist.x) {
+    //   minDist = d;
+    //   closestMatId = 1;
+    // }
   }
 
   // Distance to the main platform box.

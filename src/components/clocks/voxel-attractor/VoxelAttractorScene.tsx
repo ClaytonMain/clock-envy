@@ -620,6 +620,7 @@ function VoxelAttractor() {
       uSkyRangeMax: { value: 0.2 },
       uColonCenters: { value: colonCenters },
       uColonScales: { value: [1.0, 1.0] },
+      uMinutePercent: { value: 0 },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -806,6 +807,9 @@ function VoxelAttractor() {
       colonScale0Spring.get(),
       colonScale1Spring.get(),
     ];
+
+    const secondsValue = parseInt(secondsRef.current);
+    uniforms.uMinutePercent.value = secondsValue / 60.0;
   });
 
   return (
