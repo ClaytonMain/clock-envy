@@ -102,7 +102,7 @@ function getBaseGroupPositionOffsets(digitState: DigitState) {
   const exitYOffset = 4.0;
   const bounds = [
     [-0.1, 0.1],
-    [-0.3, 0.3],
+    [-0.3, 0.4],
     [-0.05, 0.05],
   ];
   const returnVals = [];
@@ -111,6 +111,12 @@ function getBaseGroupPositionOffsets(digitState: DigitState) {
       Math.random() * (bounds[i][1] - bounds[i][0]) + bounds[i][0];
     if (digitState === "exit" && i === 1) {
       targetValue -= exitYOffset;
+    } else if (i === 1) {
+      if (targetValue >= -0.01 && targetValue < 0.09) {
+        targetValue -= 0.1;
+      } else if (targetValue >= 0.09 && targetValue < 0.17) {
+        targetValue += 0.1;
+      }
     }
     returnVals.push(targetValue);
   }
@@ -207,6 +213,13 @@ function getPositionTimeOffset(
   );
 }
 
+function getInnerGroupXOffset(digitChar: string): number {
+  if (digitChar === "1") {
+    return -SEGMENT_X_OFFSET;
+  }
+  return 0;
+}
+
 function Digit({
   digitIndex,
   boundingBoxCenters,
@@ -214,6 +227,7 @@ function Digit({
   segmentAPositions,
   segmentBPositions,
   activeSegments,
+  rippleTimes,
 }: {
   digitIndex: number;
   boundingBoxCenters: THREE.Vector3[];
@@ -221,10 +235,14 @@ function Digit({
   segmentAPositions: THREE.Vector3[];
   segmentBPositions: THREE.Vector3[];
   activeSegments: number[];
+  rippleTimes: number[];
 }) {
   const baseGroupRef = useRef<THREE.Group>(null!);
   const innerGroupRef = useRef<THREE.Group>(null!);
   const currentDigitsRef = useRef(getCurrentDigits());
+  const innerGroupXOffset = useRef(
+    getInnerGroupXOffset(currentDigitsRef.current[digitIndex]),
+  );
 
   const randomValues = useMemo(() => {
     return {
@@ -301,7 +319,13 @@ function Digit({
 
   useFrame((_, delta) => {
     deltaRef.current = Math.min(delta, 0.1);
-    timeRef.current += deltaRef.current;
+    timeRef.current = (timeRef.current + deltaRef.current) % 100000;
+
+    rippleTimes[digitIndex] =
+      (rippleTimes[digitIndex] +
+        deltaRef.current *
+          (1.0 + Math.abs(targetSpringY.getVelocity()) * 2.0)) %
+      100000;
 
     const targetDigits = getCurrentDigits();
     const currentDigits = currentDigitsRef.current;
@@ -448,6 +472,9 @@ function Digit({
       if (currentDigitsRef.current !== targetDigits) {
         currentDigitsRef.current = targetDigits;
       }
+      innerGroupXOffset.current = getInnerGroupXOffset(
+        currentDigitsRef.current[digitIndex],
+      );
     }
 
     // Update motion values.
@@ -480,6 +507,10 @@ function Digit({
         Math.sin(timeRef.current * 0.2 + randomValues.z * Math.PI * 2) * 0.02;
     }
 
+    if (innerGroupRef.current) {
+      innerGroupRef.current.position.x = innerGroupXOffset.current;
+    }
+
     if (baseGroupRef.current) {
       boundingBoxCenters[digitIndex].copy(baseGroupRef.current.position);
       boundingBoxBValues[digitIndex].copy(
@@ -508,26 +539,34 @@ function Digit({
   });
 
   return (
-    <group ref={baseGroupRef} onClick={() => console.log(baseGroupRef.current)}>
-      {/* <Box args={[0.5, 0.5, 0.5]} visible={false} /> */}
-      <group ref={innerGroupRef}>
-        <Box
-          args={[
-            SEGMENT_X_OFFSET * 2 + SEGMENT_THICKNESS,
-            SEGMENT_Y_OFFSET * 2 + SEGMENT_THICKNESS,
-            SEGMENT_THICKNESS,
-          ]}
-          visible={false}
-        />
-        {Array.from({ length: 7 }, (_, segmentIndex) => (
-          <DigitSegmentObjects key={segmentIndex} segmentIndex={segmentIndex} />
-        ))}
+    <>
+      <group
+        ref={baseGroupRef}
+        onClick={() => console.log(baseGroupRef.current.position.y)}
+      >
+        {/* <Box args={[0.5, 0.5, 0.5]} visible={false} /> */}
+        <group ref={innerGroupRef}>
+          <Box
+            args={[
+              SEGMENT_X_OFFSET * 2 + SEGMENT_THICKNESS,
+              SEGMENT_Y_OFFSET * 2 + SEGMENT_THICKNESS,
+              SEGMENT_THICKNESS,
+            ]}
+            visible={false}
+          />
+          {Array.from({ length: 7 }, (_, segmentIndex) => (
+            <DigitSegmentObjects
+              key={segmentIndex}
+              segmentIndex={segmentIndex}
+            />
+          ))}
+        </group>
       </group>
-    </group>
+    </>
   );
 }
 
-function VoxelAttractor() {
+function Voxus() {
   const boundingBoxCenters = useMemo(() => {
     return Array.from({ length: 4 }, () => new THREE.Vector3());
   }, []);
@@ -586,6 +625,9 @@ function VoxelAttractor() {
   const colonCenters = useMemo(() => {
     return [new THREE.Vector3(0.0, 0.75, 0), new THREE.Vector3(0.0, -0.75, 0)];
   }, []);
+  const rippleTimes = useMemo(() => {
+    return [0.0, 0.0, 0.0, 0.0];
+  }, []);
 
   const uniforms = useMemo(() => {
     return {
@@ -620,7 +662,7 @@ function VoxelAttractor() {
       uSkyRangeMax: { value: 0.2 },
       uColonCenters: { value: colonCenters },
       uColonScales: { value: [1.0, 1.0] },
-      uMinutePercent: { value: 0 },
+      uRippleTimes: { value: rippleTimes },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -750,12 +792,12 @@ function VoxelAttractor() {
   const secondTimeRef = useRef(0);
   const colonScaleCount0Ref = useRef(0);
   const colonScaleCount1Ref = useRef(0);
-  const colonScale0Spring = useSpring(1.0, { damping: 12, stiffness: 130 });
-  const colonScale1Spring = useSpring(1.0, { damping: 12, stiffness: 130 });
+  const colonScale0Spring = useSpring(1.0, { damping: 7, stiffness: 80 });
+  const colonScale1Spring = useSpring(1.0, { damping: 7, stiffness: 80 });
 
   useFrame(({ camera }, delta) => {
     uDeltaRef.current = Math.min(delta, 0.1);
-    uTimeRef.current += uDeltaRef.current;
+    uTimeRef.current = (uTimeRef.current + uDeltaRef.current) % 100000;
 
     const seconds = getCurrentDigits("ss");
     if (seconds !== secondsRef.current) {
@@ -765,11 +807,11 @@ function VoxelAttractor() {
       colonScaleCount1Ref.current = 0;
     }
     if (colonScaleCount0Ref.current === 0) {
-      colonScale0Spring.set(0.8);
+      colonScale0Spring.set(0.9);
       colonScaleCount0Ref.current = 1;
     }
     if (secondTimeRef.current >= 0.15 && colonScaleCount1Ref.current === 0) {
-      colonScale1Spring.set(0.8);
+      colonScale1Spring.set(0.9);
       colonScaleCount1Ref.current = 1;
     }
     if (secondTimeRef.current >= 0.15 && colonScaleCount0Ref.current === 1) {
@@ -808,8 +850,7 @@ function VoxelAttractor() {
       colonScale1Spring.get(),
     ];
 
-    const secondsValue = parseInt(secondsRef.current);
-    uniforms.uMinutePercent.value = secondsValue / 60.0;
+    uniforms.uRippleTimes.value = rippleTimes;
   });
 
   return (
@@ -823,6 +864,7 @@ function VoxelAttractor() {
           segmentAPositions={segmentAPositions}
           segmentBPositions={segmentBPositions}
           activeSegments={activeSegments}
+          rippleTimes={rippleTimes}
         />
       ))}
       <mesh visible={true}>
@@ -838,7 +880,7 @@ function VoxelAttractor() {
   );
 }
 
-export default function VoxelAttractorScene() {
+export default function VoxusScene() {
   const canvasRef = useRef<HTMLCanvasElement>(null!);
 
   useEffect(() => {
@@ -862,7 +904,6 @@ export default function VoxelAttractorScene() {
     <>
       <Canvas
         ref={canvasRef}
-        shadows
         dpr={1}
         camera={{
           position: [-0.1, -1.0, 10],
@@ -882,7 +923,7 @@ export default function VoxelAttractorScene() {
         <CustomStatsComponent />
         <Suspense fallback={null}>
           {/* <Environment preset="lobby" resolution={2048} /> */}
-          <VoxelAttractor />
+          <Voxus />
         </Suspense>
         <OrbitControls makeDefault />
       </Canvas>

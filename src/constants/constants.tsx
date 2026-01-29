@@ -10,7 +10,7 @@ export const CLOCK_NAMES = [
   // "Pool Room",
   // "Shadow Box",
   // "Viva",
-  "Voxel Attractor",
+  "Voxus",
   // "Word",
 ] as const;
 

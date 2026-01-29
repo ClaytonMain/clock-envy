@@ -11,6 +11,8 @@ uniform vec3[28] uSegmentBPositions;
 uniform vec3[2] uColonCenters;
 uniform float[2] uColonScales;
 
+uniform float[4] uRippleTimes;
+
 uniform vec3 uLightColor01;
 uniform vec3 uLightColor02;
 uniform vec3 uMaterialColor;
@@ -27,7 +29,6 @@ uniform vec3 uSeaHighColor;
 uniform float uNormalMix;
 uniform float uSkyRangeMin;
 uniform float uSkyRangeMax;
-uniform float uMinutePercent;
 
 varying mat4 vViewMatrix;
 
@@ -40,7 +41,7 @@ const vec3 LIGHT_DIR_02 = normalize(vec3(-0.1, -0.3, -2.0));
 // const vec3 LIGHT_COLOR_02 = vec3(0.25);
 
 const vec3 BOX_CENTER = vec3(0.0, -2.2, 0.0);
-const vec3 BOX_B = vec3(6.0, 0.5, 1.25);
+const vec3 BOX_B = vec3(6.0, 0.25, 1.25);
 
 const vec3 SEA_HEIGHT = vec3(0.0, -2.2, 0.0);
 
@@ -117,22 +118,34 @@ vec4 getMap(in vec3 p, out int closestMatId) {
         }
       }
     }
-
-    // Want to add some extra stuff below the digits.
-    // d = sdgMin(d, sdgTorus(p - vec3(uBoundingBoxCenters[i].x, -1.6 + 0.1 * sin(10.0 * p.x + uTime * 3.0) * sin(10.0 * p.z + uTime * 3.0), 0.0), 0.7, 0.18), 0.07);
-    // d = sdgMin(d, sdgTorus(p - vec3(uBoundingBoxCenters[i].x, -1.7 + sin(uTime * 0.8 + rand2d(vec2(float(i)))) * 0.1 + simplexNoise3d(vec3(p.xz * 2.0, uTime * 0.8)) * 0.1, 0.0), 0.75, 0.22), 0.01);
-    // d = sdgMin(d, sdgSphere(p - vec3(uBoundingBoxCenters[i].x, -1.7 + sin(uTime * 0.8 + rand2d(vec2(float(i)))) * 0.1 + simplexNoise3d(vec3(p.xz * 2.0, uTime * 0.8)) * 0.1, 0.0), 0.75), 0.01);
-    // if (d.x < minDist.x) {
-    //   minDist = d;
-    //   closestMatId = 1;
-    // }
   }
 
   // Distance to the main platform box.
+  // Get gradient for regular box.
   d = sdgMin(minDist, sdgBox(p - BOX_CENTER, BOX_B, 0.3), 0.07);
-  if (d.x < minDist.x) {
+  if (d.x < minDist.x && d.x >= 0.5) {
     minDist = d;
     closestMatId = 0;
+  } else if (d.x < 0.5) {
+    vec3 newP = p - BOX_CENTER;
+    for (int i = 0; i < 4; i++) {
+      float distanceToCenter = distance(p, vec3(uBoundingBoxCenters[i].x, BOX_CENTER.y + BOX_B.y, uBoundingBoxCenters[i].z));
+      // float wave = smoothstep(-1.0, 1.0, sin(1.0 * distanceToCenter - uTime * 1.0));
+      float wave = sin(8.0 * distanceToCenter - uRippleTimes[i] * 2.0);
+      float dotFactor = smoothstep(0.0, 1.0, dot(normalize(d.yzw), vec3(0.0, 1.0, 0.0)) * 0.5 + 0.5);
+      // float distanceFactor = smoothstep(3.5, 0.0, distanceToCenter);
+      float distanceFactor = exp(-0.9 * distanceToCenter);
+
+      // dotFactor = 1.0;
+      // distanceFactor = 1.0;
+
+      newP -= normalize(d.yzw) * 0.2 * wave * dotFactor * distanceFactor;
+    }
+    d = sdgMin(d, sdgBox(newP, BOX_B, 0.3), 0.07);
+    if (d.x < minDist.x) {
+      minDist = d;
+      closestMatId = 0;
+    }
   }
 
   // Distance to colons.

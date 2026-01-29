@@ -7,7 +7,7 @@ import FourierScene from "./components/clocks/fourier/Fourier";
 import MNCAScene from "./components/clocks/mnca/MNCA";
 // import NixieScene from "./components/clocks/nixie/Nixie";
 // import PoolRoomScene from "./components/clocks/pool-room/PoolRoom";
-import VoxelAttractorScene from "./components/clocks/voxel-attractor/VoxelAttractorScene";
+import VoxusScene from "./components/clocks/voxus/Voxus";
 import Timekeeper from "./components/misc/Timekeeper";
 import FullscreenHandleComponent from "./components/ui/FullscreenHandleComponent";
 import InteractionListener from "./components/ui/InteractionListener";
@@ -39,7 +39,7 @@ function App() {
             <Route path="/MNCA" element={<MNCAScene />} />
             {/* <Route path="/Nixie" element={<NixieScene />} /> */}
             {/* <Route path="/PoolRoom" element={<PoolRoomScene />} /> */}
-            <Route path="/VoxelAttractor" element={<VoxelAttractorScene />} />
+            <Route path="/Voxus" element={<VoxusScene />} />
             <Route path="*" element={<ArchdukeVonOrbenScene />} />
           </Routes>
         </div>
