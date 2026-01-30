@@ -7,6 +7,7 @@ import FourierScene from "./components/clocks/fourier/Fourier";
 import MNCAScene from "./components/clocks/mnca/MNCA";
 // import NixieScene from "./components/clocks/nixie/Nixie";
 // import PoolRoomScene from "./components/clocks/pool-room/PoolRoom";
+import HexScene from "./components/clocks/hex/Hex";
 import VoxusScene from "./components/clocks/voxus/Voxus";
 import Timekeeper from "./components/misc/Timekeeper";
 import FullscreenHandleComponent from "./components/ui/FullscreenHandleComponent";
@@ -36,6 +37,7 @@ function App() {
             />
             <Route path="/Cavity" element={<CavityScene />} />
             <Route path="/Fourier" element={<FourierScene />} />
+            <Route path="/Hex" element={<HexScene />} />
             <Route path="/MNCA" element={<MNCAScene />} />
             {/* <Route path="/Nixie" element={<NixieScene />} /> */}
             {/* <Route path="/PoolRoom" element={<PoolRoomScene />} /> */}

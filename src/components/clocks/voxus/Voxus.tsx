@@ -884,7 +884,7 @@ export default function VoxusScene() {
   const canvasRef = useRef<HTMLCanvasElement>(null!);
 
   useEffect(() => {
-    document.title = "Clock Envy - Voxel Attractor";
+    document.title = "Clock Envy - Voxus";
 
     const unsubInteractionState = useAppStore.subscribe(
       (state) => state.interactionState,
