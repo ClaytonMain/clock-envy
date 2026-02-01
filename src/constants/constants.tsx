@@ -2,6 +2,7 @@
 export const CLOCK_NAMES = [
   "Archduke Von Orben",
   "Cavity",
+  "Cosmo",
   // "Flip",
   "Fourier",
   "Hex",
