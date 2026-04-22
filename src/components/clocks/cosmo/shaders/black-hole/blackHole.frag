@@ -1,3 +1,4 @@
+uniform float uTime;
 uniform vec2 uResolution;
 uniform vec3 uCameraPosition;
 uniform float uGlZ;
@@ -26,12 +27,12 @@ const float PLANET_LIGHTNESS = 1.5;
 
 // https://github.com/oseiskar/black-hole/blob/master/raytracer.glsl
 
-vec4 sdgSphere(in vec3 p, in float r) {
+vec4 sdgSphere(vec3 p, float r) {
   float l = length(p);
   return vec4(l - r, p / l);
 }
 
-vec4 getMap(in vec3 p) {
+vec4 getMap(vec3 p) {
   vec4 minDist = vec4(1000.0);
 
   vec4 d;
@@ -49,7 +50,12 @@ struct HitInfo {
   int steps;
 };
 
-bool raycast(in vec3 rayOrigin, in vec3 rayDir, out HitInfo oHitInfo, const float tMax) {
+bool raycast(
+  vec3 rayOrigin,
+  vec3 rayDir,
+  out HitInfo oHitInfo,
+  const float tMax
+) {
   float t = 0.0;
   int i;
 
@@ -110,7 +116,10 @@ vec3 render(vec3 rayOrigin, vec3 rayDirection) {
     stepSize = MAX_REVOLUTIONS * 2.0 * PI / float(MAX_STEPS);
 
     float maxRelativeUChange = (1.0 - log(u)) * 10.0 / float(MAX_STEPS);
-    if (((du > 0.0 || (du0 < 0.0 && u0 / u < 5.0)) && abs(du) > abs(maxRelativeUChange * u) / stepSize)) {
+    if (
+      (du > 0.0 || du0 < 0.0 && u0 / u < 5.0) &&
+      abs(du) > abs(maxRelativeUChange * u) / stepSize
+    ) {
       stepSize = maxRelativeUChange * u / abs(du);
     }
 
@@ -132,6 +141,12 @@ vec3 render(vec3 rayOrigin, vec3 rayDirection) {
     rayDirection = pos - oldPos;
     float solidIsecT = 2.0;
     float rayLength = length(rayDirection);
+
+    // Accretion disk
+    if (oldPos.z * pos.z < 0.0) {
+      // Crossed z=0 plane
+      float accretionIntersectT = -oldPos.z / rayDirection.z;
+    }
   }
 
   // rayIntensity /= rayDopplerFactor * rayDopplerFactor * rayDopplerFactor;
@@ -152,6 +167,7 @@ vec3 render(vec3 rayOrigin, vec3 rayDirection) {
   // color = pow(color, vec3(0.4545));
 
   // return color;
+
 }
 
 void main() {

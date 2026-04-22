@@ -21,14 +21,18 @@ interface AppStore {
   statsContainerRef?: RefObject<HTMLDivElement>;
 }
 
-const persistOmit: (keyof AppStore)[] = ["statsContainerRef"];
+const persistList: (keyof AppStore)[] = [
+  "formatHours24",
+  "statsPosition",
+  "timeOffsetMs",
+];
 
 const useAppStore = create<AppStore>()(
   subscribeWithSelector(
     persist(
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       (_set) => ({
-        debug: true,
+        debug: false,
         sidebarOpen: false,
         currentClockName: "Archduke Von Orben",
         interactionState: "active",
@@ -44,8 +48,8 @@ const useAppStore = create<AppStore>()(
         storage: createJSONStorage(() => localStorage),
         partialize: (state) =>
           Object.fromEntries(
-            Object.entries(state).filter(
-              ([key]) => !persistOmit.includes(key as keyof AppStore),
+            Object.entries(state).filter(([key]) =>
+              persistList.includes(key as keyof AppStore),
             ),
           ),
       },
