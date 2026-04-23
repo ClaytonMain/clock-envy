@@ -1,4 +1,4 @@
-import { Loader, OrbitControls, Plane, useFBO } from "@react-three/drei";
+import { Loader, Plane, useFBO } from "@react-three/drei";
 import { Canvas, createPortal, useFrame } from "@react-three/fiber";
 import { useControls } from "leva";
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from "react";
@@ -8,6 +8,7 @@ import useAppStore from "../../../stores/useAppStore";
 import useCavityStore from "../../../stores/useCavityStore";
 import BasicBoundsBoxBaybee from "../../misc/BasicBoundsBoxBaybee";
 import CustomStatsComponent from "../../misc/CustomStatsComponent";
+import DebugOrbitControls from "../../misc/DebugOrbitControls";
 import ClockDisplay from "./ClockDisplay";
 import {
   BACKGROUND_CONSTANTS,
@@ -573,7 +574,6 @@ function Cavity() {
 }
 
 export default function CavityScene() {
-  const debug = useAppStore((state) => state.debug);
   const canvasRef = useRef<HTMLCanvasElement>(null!);
 
   useControls("Cavity Scene", {
@@ -629,13 +629,6 @@ export default function CavityScene() {
           <Cavity />
           <Screen />
           <Lights />
-          <OrbitControls
-            makeDefault
-            enablePan={debug}
-            enableRotate={debug}
-            minDistance={5}
-            maxDistance={80}
-          />
         </Suspense>
         <BasicBoundsBoxBaybee
           boxArgs={[
@@ -644,6 +637,7 @@ export default function CavityScene() {
             FOREGROUND_CONSTANTS.cubeCounts[2] * FOREGROUND_CONSTANTS.cubeSize,
           ]}
         />
+        <DebugOrbitControls minDistance={5} maxDistance={80} />
       </Canvas>
       <Loader />
     </>
