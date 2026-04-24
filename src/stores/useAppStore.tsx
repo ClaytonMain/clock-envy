@@ -6,13 +6,19 @@ import {
   persist,
   subscribeWithSelector,
 } from "zustand/middleware";
-import type { CLOCK_NAMES } from "../constants/constants";
-import type { StatsPosition } from "../types/types";
+import type {
+  BasicClockConfig,
+  ClockName,
+  StatsPosition,
+} from "../types/types";
+import * as UTILS from "../utils/utils";
 
 interface AppStore {
   debug: boolean;
   sidebarOpen: boolean;
-  currentClockName: (typeof CLOCK_NAMES)[number];
+  availableClockNames: ClockName[];
+  currentBasicClockConfig: BasicClockConfig;
+  currentBasicClockConfigIndex: number;
   interactionState: "active" | "inactive";
   formatHours24: boolean;
   currentTimeValue: DateTime;
@@ -34,7 +40,13 @@ const useAppStore = create<AppStore>()(
       (_set) => ({
         debug: false,
         sidebarOpen: false,
-        currentClockName: "Archduke Von Orben",
+        availableClockNames: UTILS.getAvailableClockNames(
+          window.location.hash === "#debug",
+        ),
+        currentBasicClockConfig:
+          UTILS.getBasicClockConfigByName("Archduke Von Orben"),
+        currentBasicClockConfigIndex:
+          UTILS.getBasicClockConfigIndexByName("Archduke Von Orben"),
         interactionState: "active",
         formatHours24: true,
         currentTimeValue: DateTime.now(),
