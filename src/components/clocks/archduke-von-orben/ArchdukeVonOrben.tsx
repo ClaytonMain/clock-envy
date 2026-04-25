@@ -39,8 +39,6 @@ function ArchdukeVonOrben() {
 }
 
 export default function ArchdukeVonOrbenScene() {
-  const interactionState = useAppStore((state) => state.interactionState);
-
   const cameraLayers = useMemo(() => {
     const layers = new THREE.Layers();
     layers.set(1);
@@ -65,7 +63,6 @@ export default function ArchdukeVonOrbenScene() {
         }}
         style={{
           touchAction: "none",
-          cursor: interactionState === "active" ? "default" : "none",
         }}
       >
         <CustomStatsComponent />

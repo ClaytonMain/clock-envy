@@ -1,5 +1,8 @@
 import * as THREE from "three";
-import { BASIC_CLOCK_CONFIGS } from "../constants/constants";
+import {
+  BASIC_CLOCK_CONFIGS,
+  DEFAULT_CLOCK_NAME,
+} from "../constants/constants";
 import type { ClockName } from "../types/types";
 
 export function getDisplayScale({ targetAspect }: { targetAspect: number }) {
@@ -33,4 +36,19 @@ export function getBasicClockConfigByName(name: ClockName) {
 
 export function getBasicClockConfigIndexByName(name: ClockName) {
   return BASIC_CLOCK_CONFIGS.findIndex((config) => config.name === name);
+}
+
+export function getCurrentClockNameFromLocation() {
+  const path = window.location.pathname;
+  const clockNameFromPath = path.slice(1).toLowerCase().replace(/\s+/g, "");
+  console.log("clockNameFromPath", clockNameFromPath, "path", path);
+  const availableClockNames = getAvailableClockNames(
+    window.location.hash === "#debug",
+  );
+  for (const clockName of availableClockNames) {
+    if (clockName.toLowerCase().replace(/\s+/g, "") === clockNameFromPath) {
+      return clockName;
+    }
+  }
+  return DEFAULT_CLOCK_NAME;
 }

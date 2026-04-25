@@ -43,10 +43,12 @@ const useAppStore = create<AppStore>()(
         availableClockNames: UTILS.getAvailableClockNames(
           window.location.hash === "#debug",
         ),
-        currentBasicClockConfig:
-          UTILS.getBasicClockConfigByName("Archduke Von Orben"),
-        currentBasicClockConfigIndex:
-          UTILS.getBasicClockConfigIndexByName("Archduke Von Orben"),
+        currentBasicClockConfig: UTILS.getBasicClockConfigByName(
+          UTILS.getCurrentClockNameFromLocation(),
+        ),
+        currentBasicClockConfigIndex: UTILS.getBasicClockConfigIndexByName(
+          UTILS.getCurrentClockNameFromLocation(),
+        ),
         interactionState: "active",
         formatHours24: true,
         currentTimeValue: DateTime.now(),

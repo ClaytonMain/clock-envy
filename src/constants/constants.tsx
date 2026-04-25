@@ -19,6 +19,8 @@ import type { BasicClockConfig } from "../types/types";
 //   // "Word",
 // ] as const;
 
+export const DEFAULT_CLOCK_NAME = "Archduke Von Orben";
+
 export const BASIC_CLOCK_CONFIGS: BasicClockConfig[] = [
   {
     name: "Archduke Von Orben",
