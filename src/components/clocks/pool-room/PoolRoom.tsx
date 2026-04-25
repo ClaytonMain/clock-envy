@@ -1,6 +1,4 @@
 import {
-  Box,
-  Cloud,
   Environment,
   Loader,
   MeshReflectorMaterial,
