@@ -3,7 +3,9 @@ import { Canvas } from "@react-three/fiber";
 import { Suspense, useMemo } from "react";
 import * as THREE from "three";
 import useAppStore from "../../../stores/useAppStore";
+import BasicBoundsBoxBaybee from "../../misc/BasicBoundsBoxBaybee";
 import CustomStatsComponent from "../../misc/CustomStatsComponent";
+import DebugOrbitControls from "../../misc/DebugOrbitControls";
 import Digits from "./Digits";
 import Hand from "./Hand";
 import Orb from "./Orb";
@@ -37,8 +39,6 @@ function ArchdukeVonOrben() {
 }
 
 export default function ArchdukeVonOrbenScene() {
-  const interactionState = useAppStore((state) => state.interactionState);
-
   const cameraLayers = useMemo(() => {
     const layers = new THREE.Layers();
     layers.set(1);
@@ -63,12 +63,10 @@ export default function ArchdukeVonOrbenScene() {
         }}
         style={{
           touchAction: "none",
-          cursor: interactionState === "active" ? "default" : "none",
         }}
       >
         <CustomStatsComponent />
         <Suspense fallback={null}>
-          {/* <Environment preset="lobby" resolution={2048} /> */}
           <Environment
             files="./environments/warm_reception_dinner_4k.exr"
             resolution={2048}
@@ -76,6 +74,8 @@ export default function ArchdukeVonOrbenScene() {
           <ambientLight intensity={0.5} layers={allLayers} />
           <ArchdukeVonOrben />
         </Suspense>
+        <BasicBoundsBoxBaybee boxArgs={[3.0, 3.0, 1.25]} />
+        <DebugOrbitControls minDistance={10} maxDistance={50} />
       </Canvas>
       <Loader />
     </>

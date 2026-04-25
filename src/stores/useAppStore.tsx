@@ -6,13 +6,19 @@ import {
   persist,
   subscribeWithSelector,
 } from "zustand/middleware";
-import type { CLOCK_NAMES } from "../constants/constants";
-import type { StatsPosition } from "../types/types";
+import type {
+  BasicClockConfig,
+  ClockName,
+  StatsPosition,
+} from "../types/types";
+import * as UTILS from "../utils/utils";
 
 interface AppStore {
   debug: boolean;
   sidebarOpen: boolean;
-  currentClockName: (typeof CLOCK_NAMES)[number];
+  availableClockNames: ClockName[];
+  currentBasicClockConfig: BasicClockConfig;
+  currentBasicClockConfigIndex: number;
   interactionState: "active" | "inactive";
   formatHours24: boolean;
   currentTimeValue: DateTime;
@@ -21,16 +27,28 @@ interface AppStore {
   statsContainerRef?: RefObject<HTMLDivElement>;
 }
 
-const persistOmit: (keyof AppStore)[] = ["statsContainerRef"];
+const persistList: (keyof AppStore)[] = [
+  "formatHours24",
+  "statsPosition",
+  "timeOffsetMs",
+];
 
 const useAppStore = create<AppStore>()(
   subscribeWithSelector(
     persist(
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       (_set) => ({
-        debug: true,
+        debug: false,
         sidebarOpen: false,
-        currentClockName: "Archduke Von Orben",
+        availableClockNames: UTILS.getAvailableClockNames(
+          window.location.hash === "#debug",
+        ),
+        currentBasicClockConfig: UTILS.getBasicClockConfigByName(
+          UTILS.getCurrentClockNameFromLocation(),
+        ),
+        currentBasicClockConfigIndex: UTILS.getBasicClockConfigIndexByName(
+          UTILS.getCurrentClockNameFromLocation(),
+        ),
         interactionState: "active",
         formatHours24: true,
         currentTimeValue: DateTime.now(),
@@ -44,8 +62,8 @@ const useAppStore = create<AppStore>()(
         storage: createJSONStorage(() => localStorage),
         partialize: (state) =>
           Object.fromEntries(
-            Object.entries(state).filter(
-              ([key]) => !persistOmit.includes(key as keyof AppStore),
+            Object.entries(state).filter(([key]) =>
+              persistList.includes(key as keyof AppStore),
             ),
           ),
       },

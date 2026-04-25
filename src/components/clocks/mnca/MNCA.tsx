@@ -5,6 +5,7 @@ import * as THREE from "three";
 import useMncaStore from "../../../stores/useMncaStore";
 import { getDisplayScale } from "../../../utils/utils";
 import CustomStatsComponent from "../../misc/CustomStatsComponent";
+import DebugOrbitControls from "../../misc/DebugOrbitControls";
 import ClockDisplay from "./ClockDisplay";
 import { GAME_SPEED, GAME_TEXTURE_SIZE } from "./constants/constants";
 import MncaComponent from "./MncaComponent";
@@ -49,6 +50,7 @@ function MNCA() {
     return {
       uDisplayScale: { value: getDisplayScale({ targetAspect: 1 }) },
       uGameTexture: { value: new THREE.Texture() },
+      uZoom: { value: 1 },
     };
   }, []);
 
@@ -129,12 +131,14 @@ function MNCA() {
   const frameDurationRef = useRef(1);
   const actualDeltaRef = useRef(0);
   const uDeltaRef = useRef(0);
-  useFrame(({ gl }, delta) => {
+  useFrame(({ gl, camera }, delta) => {
     actualDeltaRef.current = Math.min(delta, 0.1);
     frameDurationRef.current += actualDeltaRef.current * GAME_SPEED;
     uDeltaRef.current += actualDeltaRef.current;
     if (frameDurationRef.current < 1) return;
     frameDurationRef.current = 0;
+
+    displayPlaneUniforms.uZoom.value = camera.zoom;
 
     // Render clock.
     gl.setRenderTarget(clockRenderTarget);
@@ -218,6 +222,12 @@ export default function MNCAScene() {
           <ambientLight intensity={0.1} />
           <MNCA />
         </Suspense>
+        <DebugOrbitControls
+          enableRotate={false}
+          enablePan={false}
+          minZoom={0.5}
+          maxZoom={10}
+        />
       </Canvas>
       <Loader />
     </>

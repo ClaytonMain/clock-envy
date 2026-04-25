@@ -5,6 +5,7 @@ import * as THREE from "three";
 import useAppStore from "../../../stores/useAppStore";
 import { getDisplayScale } from "../../../utils/utils";
 import CustomStatsComponent from "../../misc/CustomStatsComponent";
+import DebugOrbitControls from "../../misc/DebugOrbitControls";
 import { COLOR_PALETTE, TICK_RATE } from "./constants/constants";
 import displayFragmentShader from "./shaders/display/display.frag";
 import displayVertexShader from "./shaders/display/display.vert";
@@ -27,12 +28,13 @@ function Fourier() {
       uDisplayScale: {
         value: getDisplayScale({ targetAspect: 1 }),
       },
+      uZoom: { value: 1 },
     };
   }, []);
 
   const frameDurationRef = useRef(1);
   const timeRef = useRef(0);
-  useFrame((_, delta) => {
+  useFrame(({ camera }, delta) => {
     if (!(gpgpuTexture.current && shaderRef.current)) return;
 
     frameDurationRef.current += delta;
@@ -40,6 +42,7 @@ function Fourier() {
     shaderRef.current.uniforms.uDisplayScale.value = getDisplayScale({
       targetAspect: 1,
     });
+    shaderRef.current.uniforms.uZoom.value = camera.zoom;
 
     if (frameDurationRef.current >= 1 / TICK_RATE) {
       timeRef.current += frameDurationRef.current;
@@ -51,21 +54,17 @@ function Fourier() {
   });
 
   return (
-    // <Bounds fit clip observe margin={1}>
-    <group scale={1}>
-      <Plane ref={displayPlaneRef}>
-        <shaderMaterial
-          ref={shaderRef}
-          vertexShader={displayVertexShader}
-          fragmentShader={displayFragmentShader}
-          uniforms={uniforms}
-          transparent
-          depthTest={false}
-          depthWrite={false}
-        />
-      </Plane>
-    </group>
-    // </Bounds>
+    <Plane ref={displayPlaneRef}>
+      <shaderMaterial
+        ref={shaderRef}
+        vertexShader={displayVertexShader}
+        fragmentShader={displayFragmentShader}
+        uniforms={uniforms}
+        transparent
+        depthTest={false}
+        depthWrite={false}
+      />
+    </Plane>
   );
 }
 
@@ -102,15 +101,15 @@ export default function FourierScene() {
       >
         <CustomStatsComponent />
         <Suspense fallback={null}>
-          {/* <Environment preset="city" resolution={2048} /> */}
-          {/* <Environment
-            files="./environments/photo_studio_loft_hall_4k.exr"
-            resolution={2048}
-          /> */}
           <ambientLight intensity={0.1} />
-          {/* <OrbitControls makeDefault /> */}
           <Fourier />
         </Suspense>
+        <DebugOrbitControls
+          enableRotate={false}
+          enablePan={false}
+          minZoom={0.5}
+          maxZoom={10}
+        />
       </Canvas>
       <Loader />
     </>

@@ -2,21 +2,32 @@ import { AnimatePresence, motion, stagger } from "motion/react";
 import { useEffect, useState } from "react";
 import { MdClose, MdMenu } from "react-icons/md";
 import { useNavigate } from "react-router";
-import { CLOCK_NAMES } from "../../constants/constants";
 import useAppStore from "../../stores/useAppStore";
+import type { ClockName } from "../../types/types";
+import * as UTILS from "../../utils/utils";
 
 function SidebarClockNameItem({
   name,
   currentClockName,
 }: {
-  name: (typeof CLOCK_NAMES)[number];
-  currentClockName: (typeof CLOCK_NAMES)[number];
+  name: ClockName;
+  currentClockName: ClockName;
 }) {
   const [selected, setSelected] = useState(name === currentClockName);
   const navigate = useNavigate();
 
   function handleOnClick() {
-    useAppStore.setState({ currentClockName: name });
+    const currentBasicClockConfigIndex =
+      useAppStore.getState().currentBasicClockConfigIndex;
+    const newBasicClockConfigIndex = UTILS.getBasicClockConfigIndexByName(name);
+    if (currentBasicClockConfigIndex === newBasicClockConfigIndex) {
+      return;
+    }
+    const newBasicClockConfig = UTILS.getBasicClockConfigByName(name);
+    useAppStore.setState({
+      currentBasicClockConfig: newBasicClockConfig,
+      currentBasicClockConfigIndex: newBasicClockConfigIndex,
+    });
     navigate(`/${name.replace(/\s+/g, "")}`);
   }
 
@@ -44,7 +55,10 @@ function SidebarClockNameItem({
 export default function Sidebar() {
   const interactionState = useAppStore((state) => state.interactionState);
   const sidebarOpen = useAppStore((state) => state.sidebarOpen);
-  const currentClockName = useAppStore((state) => state.currentClockName);
+  const availableClockNames = useAppStore((state) => state.availableClockNames);
+  const currentClockName = useAppStore(
+    (state) => state.currentBasicClockConfig.name,
+  );
 
   function handleOnClick(newSidebarOpen: boolean) {
     useAppStore.setState({ sidebarOpen: newSidebarOpen });
@@ -90,7 +104,7 @@ export default function Sidebar() {
                 }}
               >
                 <AnimatePresence propagate>
-                  {CLOCK_NAMES.map((name) => (
+                  {availableClockNames.map((name) => (
                     <SidebarClockNameItem
                       key={name}
                       name={name}

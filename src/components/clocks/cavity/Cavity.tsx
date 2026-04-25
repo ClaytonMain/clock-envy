@@ -6,7 +6,9 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import useAppStore from "../../../stores/useAppStore";
 import useCavityStore from "../../../stores/useCavityStore";
+import BasicBoundsBoxBaybee from "../../misc/BasicBoundsBoxBaybee";
 import CustomStatsComponent from "../../misc/CustomStatsComponent";
+import DebugOrbitControls from "../../misc/DebugOrbitControls";
 import ClockDisplay from "./ClockDisplay";
 import {
   BACKGROUND_CONSTANTS,
@@ -623,17 +625,19 @@ export default function CavityScene() {
       >
         <CustomStatsComponent />
         <Suspense fallback={null}>
-          {/* <Environment preset="city" resolution={2048} /> */}
-          {/* <Environment
-            files="./environments/photo_studio_loft_hall_4k.exr"
-            resolution={2048}
-          /> */}
           <ambientLight intensity={0.1} />
           <Cavity />
           <Screen />
           <Lights />
-          {/* <OrbitControls makeDefault /> */}
         </Suspense>
+        <BasicBoundsBoxBaybee
+          boxArgs={[
+            FOREGROUND_CONSTANTS.cubeCounts[0] * FOREGROUND_CONSTANTS.cubeSize,
+            FOREGROUND_CONSTANTS.cubeCounts[1] * FOREGROUND_CONSTANTS.cubeSize,
+            FOREGROUND_CONSTANTS.cubeCounts[2] * FOREGROUND_CONSTANTS.cubeSize,
+          ]}
+        />
+        <DebugOrbitControls minDistance={5} maxDistance={80} />
       </Canvas>
       <Loader />
     </>
