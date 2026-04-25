@@ -346,7 +346,7 @@ export default function Tube({
       <Posts />
       <Backing />
       <Screen />
-      {/* <Lights displayIndex={displayIndex} /> */}
+      <Lights displayIndex={displayIndex} />
     </group>
   );
 }
