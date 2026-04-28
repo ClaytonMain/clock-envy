@@ -14,6 +14,7 @@ import VoxusScene from "./components/clocks/voxus/Voxus";
 import DebugListener from "./components/misc/DebugListener";
 import Timekeeper from "./components/misc/Timekeeper";
 import FullscreenHandleComponent from "./components/ui/FullscreenHandleComponent";
+import InfoAndAckModal from "./components/ui/InfoAndAckModal";
 import InteractionListener from "./components/ui/InteractionListener";
 import Sidebar from "./components/ui/Sidebar";
 import useAppStore from "./stores/useAppStore";
@@ -30,6 +31,7 @@ function App() {
         <FullScreen handle={handle}>
           <InteractionListener />
           <Sidebar />
+          <InfoAndAckModal />
           <DebugListener />
           <div className="h-screen w-screen">
             <Routes>
