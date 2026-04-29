@@ -25,12 +25,32 @@ export const BASIC_CLOCK_CONFIGS: BasicClockConfig[] = [
   {
     name: "Archduke Von Orben",
     displayOnSite: true,
-    info: "lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+    info: (
+      <>
+        <span className="italic">Do not upset Archduke Von Orben.</span>
+        <span>
+          This is the first clock I made for this project. Just wanted to do
+          something fun involving{" "}
+          <a
+            target="_blank"
+            href="https://motion.dev/docs/react"
+            rel="noopener noreferrer"
+            className="underline"
+          >
+            Motion.dev
+          </a>
+          's <code>useSpring</code>
+        </span>
+      </>
+    ),
     acknowledgements: (
       <>
         <span>
           The shader for the orb is loosely adapted from Bruno Simon's{" "}
-          <a href="https://threejs-journey.com/lessons/wobbly-sphere-shader#compute-the-normal">
+          <a
+            className="underline"
+            href="https://threejs-journey.com/lessons/wobbly-sphere-shader#compute-the-normal"
+          >
             Wobbly Sphere Shader tutorial
           </a>
           .
@@ -41,6 +61,7 @@ export const BASIC_CLOCK_CONFIGS: BasicClockConfig[] = [
   {
     name: "Cavity",
     displayOnSite: true,
+    info: "Uses ",
   },
   {
     name: "Cosmo",
