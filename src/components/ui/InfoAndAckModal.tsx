@@ -78,9 +78,9 @@ export default function InfoAndAckModal() {
                           <h2 className="text-md my-1 border-b border-zinc-500 pr-2 font-bold">
                             Info
                           </h2>
-                          <p className="text-sm whitespace-pre-wrap">
+                          <div className="text-sm whitespace-pre-wrap">
                             {currentBasicClockConfig.info}
-                          </p>
+                          </div>
                         </div>
                       )}
                       {currentBasicClockConfig.acknowledgements && (
@@ -88,9 +88,9 @@ export default function InfoAndAckModal() {
                           <h2 className="text-md my-1 border-b border-zinc-500 pr-2 font-bold">
                             Acknowledgements
                           </h2>
-                          <p className="text-sm whitespace-pre-wrap">
+                          <div className="text-sm whitespace-pre-wrap">
                             {currentBasicClockConfig.acknowledgements}
-                          </p>
+                          </div>
                         </div>
                       )}
                     </div>
