@@ -241,13 +241,43 @@ export const BASIC_CLOCK_CONFIGS: BasicClockConfig[] = [
           The digits themselves use individual chamfer box signed distance
           functions (SDFs) for each segment, combined together visually using a
           smooth union operation to get the rounded look. They're rendered
-          off-screen using Drei's `createPortal`, then passed to the MNCA shader
-          as a texture. The parts of the individual digits that are enabled at
-          any given time are populated with "alive" cells as needed. That way,
-          they can affect the simulation with their presence, but they aren't
-          bound by the rules (and so remain visible), allowing the clock to
-          acutually be read.
+          off-screen using Drei's <code>createPortal</code>, then passed to the
+          MNCA shader as a texture. The parts of the individual digits that are
+          enabled at any given time are populated with "alive" cells as needed.
+          That way, they can affect the simulation with their presence, but they
+          aren't bound by the rules (and so remain visible), allowing the clock
+          to acutually be read.
         </span>
+      </div>
+    ),
+    acknowledgements: (
+      <div className="flex flex-col gap-4">
+        <ul className="list-inside list-disc">
+          <li>
+            Credit to Acerola for{" "}
+            <a
+              className="underline"
+              href="https://www.youtube.com/watch?v=I1JBiZrZ_XM&t=1345s"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              the video on MNCAs
+            </a>{" "}
+            that inspired this clock (and for the rule set).
+          </li>
+          <li>
+            As usual, thanks to Iñigo Quilez for the{" "}
+            <a
+              className="underline"
+              href="https://iquilezles.org/articles/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              incredible shader resources
+            </a>
+            .
+          </li>
+        </ul>
       </div>
     ),
   },
