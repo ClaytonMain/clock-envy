@@ -324,7 +324,7 @@ vec3 lighting(
 
   int unusedMatId;
   float ao = smoothstep(-0.08, 0.04, getMap(hitInfo.pos, unusedMatId).x / length(grad(hitInfo.pos)));
-  returnColor *= ao * 0.7 + 0.3;
+  returnColor *= ao * 0.5 + 0.5;
 
   // // Apply fog.
   // float fogAmount = 1.0 - exp(-0.02 * hitInfo.t * hitInfo.t);
