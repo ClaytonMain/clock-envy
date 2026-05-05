@@ -68,8 +68,8 @@ export default function ArchdukeVonOrbenScene() {
         <CustomStatsComponent />
         <Suspense fallback={null}>
           <Environment
-            files="./environments/warm_reception_dinner_4k.exr"
-            resolution={2048}
+            files="./environments/warm_reception_dinner_1k.hdr"
+            resolution={1024}
           />
           <ambientLight intensity={0.5} layers={allLayers} />
           <ArchdukeVonOrben />

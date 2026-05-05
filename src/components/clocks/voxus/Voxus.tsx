@@ -1,11 +1,13 @@
-import { Box, Loader, OrbitControls } from "@react-three/drei";
+import { Box, Loader } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useControls } from "leva";
 import { useMotionValue, useSpring } from "motion/react";
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import useAppStore from "../../../stores/useAppStore";
+import BasicBoundsBoxBaybee from "../../misc/BasicBoundsBoxBaybee";
 import CustomStatsComponent from "../../misc/CustomStatsComponent";
+import DebugOrbitControls from "../../misc/DebugOrbitControls";
 import { FOV } from "./constants/constants";
 import voxelsFragmentShader from "./shaders/voxels/voxels.frag";
 import voxelsVertexShader from "./shaders/voxels/voxels.vert";
@@ -646,14 +648,16 @@ function Voxus() {
       uLightColor02: { value: new THREE.Color("#ffc99d") },
       // uMaterialColor: { value: new THREE.Color("#b4b4b4") },
       uMaterialColor: { value: new THREE.Color("#ffffff") },
-      uMaterialSubsurfaceColor: { value: new THREE.Color("#ff0039") },
+      uMaterialSubsurfaceColor: { value: new THREE.Color("#f20512") },
       // uSubsurfaceRadius: { value: 2.42 },
       uSubsurfaceRadius: { value: 1.72 },
       uRoughness: { value: 0.0 },
       uRefractionIndex: { value: 2.17 },
       uFogColor: { value: new THREE.Color("#c76b80") },
-      uSkyLowColor: { value: new THREE.Color("#000000") },
-      uSkyHighColor: { value: new THREE.Color("#000000") },
+      // uSkyLowColor: { value: new THREE.Color("#000000") },
+      // uSkyHighColor: { value: new THREE.Color("#000000") },
+      uSkyLowColor: { value: new THREE.Color("#f20512") },
+      uSkyHighColor: { value: new THREE.Color("#f20512") },
       uPlatformColor: { value: new THREE.Color("#be0225") },
       uSeaLowColor: { value: new THREE.Color("#c73e4e") },
       uSeaHighColor: { value: new THREE.Color("#02153b") },
@@ -687,7 +691,7 @@ function Voxus() {
       },
     },
     materialSubsurfaceColor: {
-      value: "#ff0039",
+      value: "#f20512",
       onChange: (value) => {
         uniforms.uMaterialSubsurfaceColor.value = new THREE.Color(value);
       },
@@ -735,13 +739,13 @@ function Voxus() {
       },
     },
     skyLowColor: {
-      value: "#000000",
+      value: "#f20512",
       onChange: (value) => {
         uniforms.uSkyLowColor.value = new THREE.Color(value);
       },
     },
     skyHighColor: {
-      value: "#000000",
+      value: "#f20512",
       onChange: (value) => {
         uniforms.uSkyHighColor.value = new THREE.Color(value);
       },
@@ -922,10 +926,20 @@ export default function VoxusScene() {
       >
         <CustomStatsComponent />
         <Suspense fallback={null}>
-          {/* <Environment preset="lobby" resolution={2048} /> */}
           <Voxus />
         </Suspense>
-        <OrbitControls makeDefault />
+        <DebugOrbitControls minDistance={1} />
+        <BasicBoundsBoxBaybee
+          boundsMargin={1.0}
+          boxArgs={[
+            (DIGIT_CENTER_OFFSETS[3] +
+              SEGMENT_X_OFFSET * OFFSET_SCALE +
+              SEGMENT_THICKNESS) *
+              2,
+            SEGMENT_Y_OFFSET * 2 + SEGMENT_THICKNESS,
+            SEGMENT_THICKNESS,
+          ]}
+        />
       </Canvas>
       <Loader />
     </>

@@ -80,8 +80,8 @@ export default function BugsScene() {
         <Suspense fallback={null}>
           {/* <Environment preset="city" resolution={2048} /> */}
           {/* <Environment
-              files="./environments/photo_studio_loft_hall_4k.exr"
-              resolution={2048}
+              files="./environments/photo_studio_loft_hall_1k.hdr"
+              resolution={1024}
             /> */}
           <ambientLight intensity={0.1} />
           <Bugs />
