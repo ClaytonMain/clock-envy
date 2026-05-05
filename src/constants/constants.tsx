@@ -284,6 +284,81 @@ export const BASIC_CLOCK_CONFIGS: BasicClockConfig[] = [
   {
     name: "Voxus",
     displayOnSite: true,
+    info: (
+      <div className="flex flex-col gap-4">
+        <span className="indent-3">
+          Disclaimer: The bulk of the structure for the shader code I used here
+          is mostly stitched together examples from others' work. I've done my
+          best to understand how it all works together, but I can't take full
+          credit for the voxel raymarching implementation and the pseudo
+          subsurface scattering effect.
+        </span>
+        <span className="indent-3">
+          I knew I wanted to do something with voxels, and possibly some
+          subsurface scattering, but I hadn't worked with either of those
+          before. I also knew I wanted to take a raymarched approach instead of
+          rasterizing. I started out by looking at how{" "}
+          <a
+            className="underline"
+            href="https://www.shadertoy.com/view/4dfGzs"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            this voxel example
+          </a>{" "}
+          by Iñigo Quilez worked, and looked into a few resources on{" "}
+          <a
+            className="underline"
+            href="https://aaaa.sh/creatures/dda-algorithm-interactive/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            the DDA algorithm
+          </a>
+          . It was pretty obvious that I'd have to use a different approach than
+          the one used in the voxel example in order for the digits be legible
+          though, since I'd need the voxels to be much smaller, and the only way
+          to do that using the example would involve performing an absurd number
+          of steps each frame.
+        </span>
+        <span className="indent-3">
+          I figured it'd be practical to adopt a standard raymarching approach,
+          but then switch to the DDA algorithm when the rays were close enough
+          to the SDFs. Unfortunately, my attempts at implementing this on my own
+          were... not good. I did eventually find{" "}
+          <a
+            className="underline"
+            href="https://www.shadertoy.com/view/dtVSzw"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            this example
+          </a>{" "}
+          by Shadertoy user "Gelami", which was exactly what I was trying to do.
+        </span>
+        <span className="indent-3">
+          I found{" "}
+          <a
+            className="underline"
+            href="https://www.shadertoy.com/view/dltGWl"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            this example
+          </a>{" "}
+          by Shadertoy user "Poisson" that implements a very nice looking
+          subsurface scattering effect without having to actually simulate the
+          rays bouncing around inside the objects.
+        </span>
+      </div>
+    ),
+    acknowledgements: (
+      <div className="flex flex-col gap-4">
+        <ul className="list-inside list-disc">
+          <li>please</li>
+        </ul>
+      </div>
+    ),
   },
 ];
 
