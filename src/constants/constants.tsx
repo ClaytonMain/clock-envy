@@ -287,11 +287,11 @@ export const BASIC_CLOCK_CONFIGS: BasicClockConfig[] = [
     info: (
       <div className="flex flex-col gap-4">
         <span className="indent-3">
-          Disclaimer: The bulk of the structure for the shader code I used here
-          is mostly stitched together examples from others' work. I've done my
-          best to understand how it all works together, but I can't take full
-          credit for the voxel raymarching implementation and the pseudo
-          subsurface scattering effect.
+          <b>Disclaimer</b>: The structure for this clock's shader code is
+          mostly stitched together examples from others' work. I've done my best
+          to understand how it all works together, but I can't take full credit
+          for the voxel raymarching implementation and the pseudo subsurface
+          scattering effect.
         </span>
         <span className="indent-3">
           I knew I wanted to do something with voxels, and possibly some
@@ -337,7 +337,8 @@ export const BASIC_CLOCK_CONFIGS: BasicClockConfig[] = [
           by Shadertoy user "Gelami", which was exactly what I was trying to do.
         </span>
         <span className="indent-3">
-          I found{" "}
+          After researching realtime subsurface scattering for a bit & searching
+          for examples, I found{" "}
           <a
             className="underline"
             href="https://www.shadertoy.com/view/dltGWl"
@@ -348,14 +349,67 @@ export const BASIC_CLOCK_CONFIGS: BasicClockConfig[] = [
           </a>{" "}
           by Shadertoy user "Poisson" that implements a very nice looking
           subsurface scattering effect without having to actually simulate the
-          rays bouncing around inside the objects.
+          rays bouncing around inside the objects. Trying to implement this
+          directly using the normals from the voxel surfaces didn't look good
+          though. I ended up mixing the voxel normals with the SDF normals and
+          passing those to the SSS function, which looks alright, though there
+          are some noticeable issues around the edges of some of the digits that
+          I'd like to try to fix at some point.
         </span>
       </div>
     ),
     acknowledgements: (
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        I've listed these in the info section already, but:
         <ul className="list-inside list-disc">
-          <li>please</li>
+          <li>
+            Special thanks to Ashley Cruz for the interactive{" "}
+            <a
+              className="underline"
+              href="https://aaaa.sh/creatures/dda-algorithm-interactive/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              DDA algorithm explanation
+            </a>
+            .
+          </li>
+          <li>
+            Massive thanks to Shadertoy user "Gelami" for the{" "}
+            <a
+              className="underline"
+              href="https://www.shadertoy.com/view/dtVSzw"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Hybrid SDF-Voxel Traversal
+            </a>{" "}
+            example.
+          </li>
+          <li>
+            A big thank you to Shadertoy user "Poisson" for the{" "}
+            <a
+              className="underline"
+              href="https://www.shadertoy.com/view/dltGWl"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Realtime Subsurface Scattering
+            </a>{" "}
+            example.
+          </li>
+          <li>
+            As usual, thanks to Iñigo Quilez for the{" "}
+            <a
+              className="underline"
+              href="https://iquilezles.org/articles/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              incredible shader resources
+            </a>
+            .
+          </li>
         </ul>
       </div>
     ),
