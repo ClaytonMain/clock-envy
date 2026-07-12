@@ -11,162 +11,180 @@ const int MAX_STEPS = 128;
 const float MAX_TRAVEL_DIST = 100.0;
 const float MAX_REVOLUTIONS = 2.0;
 
-const float ACCRETION_MIN_R = 1.5;
-const float ACCRETION_WIDTH = 5.0;
-const float ACCRETION_BRIGHTNESS = 0.9;
-const float ACCRETION_TEMPERATURE = 3900.0;
+// // https://github.com/oseiskar/black-hole/blob/master/raytracer.glsl
 
-const float STAR_MIN_TEMPERATURE = 4000.0;
-const float STAR_MAX_TEMPERATURE = 15000.0;
+// const float ACCRETION_MIN_R = 1.5;
+// const float ACCRETION_WIDTH = 5.0;
+// const float ACCRETION_BRIGHTNESS = 0.9;
+// const float ACCRETION_TEMPERATURE = 3900.0;
 
-const float STAR_BRIGHTNESS = 1.0;
-const float GALAXY_BRIGHTNESS = 0.4;
+// const float STAR_MIN_TEMPERATURE = 4000.0;
+// const float STAR_MAX_TEMPERATURE = 15000.0;
 
-const float PLANET_AMBIENT = 0.1;
-const float PLANET_LIGHTNESS = 1.5;
+// const float STAR_BRIGHTNESS = 1.0;
+// const float GALAXY_BRIGHTNESS = 0.4;
 
-// https://github.com/oseiskar/black-hole/blob/master/raytracer.glsl
+// const float PLANET_AMBIENT = 0.1;
+// const float PLANET_LIGHTNESS = 1.5;
 
-vec4 sdgSphere(vec3 p, float r) {
-  float l = length(p);
-  return vec4(l - r, p / l);
-}
+// vec4 sdgSphere(vec3 p, float r) {
+//   float l = length(p);
+//   return vec4(l - r, p / l);
+// }
 
-vec4 getMap(vec3 p) {
-  vec4 minDist = vec4(1000.0);
+// vec4 getMap(vec3 p) {
+//   vec4 minDist = vec4(1000.0);
 
-  vec4 d;
+//   vec4 d;
 
-  d = sdgSphere(p, 1.0);
-  minDist = minDist.x < d.x ? minDist : d;
+//   d = sdgSphere(p, 1.0);
+//   minDist = minDist.x < d.x ? minDist : d;
 
-  return minDist;
-}
+//   return minDist;
+// }
 
-struct HitInfo {
-  float t;
-  vec3 normal;
-  vec3 pos;
-  int steps;
-};
+// struct HitInfo {
+//   float t;
+//   vec3 normal;
+//   vec3 pos;
+//   int steps;
+// };
 
-bool raycast(
-  vec3 rayOrigin,
-  vec3 rayDir,
-  out HitInfo oHitInfo,
-  const float tMax
-) {
-  float t = 0.0;
-  int i;
+// bool raycast(
+//   vec3 rayOrigin,
+//   vec3 rayDir,
+//   out HitInfo oHitInfo,
+//   const float tMax
+// ) {
+//   float t = 0.0;
+//   int i;
 
-  for (i = 0; i < MAX_STEPS; i++) {
-    vec3 pos = rayOrigin + rayDir * t;
-    vec4 d = getMap(pos);
+//   for (i = 0; i < MAX_STEPS; i++) {
+//     vec3 pos = rayOrigin + rayDir * t;
+//     vec4 d = getMap(pos);
 
-    if (d.x < 0.01) {
-      oHitInfo.t = t;
-      oHitInfo.pos = pos;
-      oHitInfo.normal = normalize(d.yzw);
-      oHitInfo.steps = i;
-      return true;
-    } else {
-      t += d.x;
-    }
+//     if (d.x < 0.01) {
+//       oHitInfo.t = t;
+//       oHitInfo.pos = pos;
+//       oHitInfo.normal = normalize(d.yzw);
+//       oHitInfo.steps = i;
+//       return true;
+//     } else {
+//       t += d.x;
+//     }
 
-    if (t >= tMax) {
-      return false;
-    }
+//     if (t >= tMax) {
+//       return false;
+//     }
+//   }
+
+//   return false;
+// }
+
+// vec3 render(vec3 rayOrigin, vec3 rayDirection) {
+//   vec3 pos = rayOrigin;
+
+//   float rayIntensity = 1.0;
+//   float rayDopplerFactor = 1.0;
+
+//   // Not sure if I'll use this, but keeping it for now in case.
+//   vec3 cameraVelocity = vec3(0.0, 0.0, 0.0);
+
+//   float gamma = 1.0 / sqrt(1.0 - dot(cameraVelocity, cameraVelocity));
+//   rayDopplerFactor = gamma * (1.0 - dot(rayDirection, -cameraVelocity));
+
+//   vec4 color = vec4(0.0);
+
+//   float u = 1.0 / length(pos);
+//   float oldU;
+//   float u0 = u;
+
+//   vec3 normalVec = normalize(pos);
+//   vec3 tangentVec = normalize(cross(cross(normalVec, rayDirection), normalVec));
+//   float du = -dot(rayDirection, normalVec) / dot(rayDirection, tangentVec) * u;
+//   float du0 = du;
+
+//   float phi = 0.0;
+//   float t = uTime;
+//   float dt = 1.0;
+
+//   vec3 oldPos;
+
+//   float stepSize;
+
+//   for (int i = 0; i < MAX_STEPS; i++) {
+//     stepSize = MAX_REVOLUTIONS * 2.0 * PI / float(MAX_STEPS);
+
+//     float maxRelativeUChange = (1.0 - log(u)) * 10.0 / float(MAX_STEPS);
+//     if (
+//       (du > 0.0 || du0 < 0.0 && u0 / u < 5.0) &&
+//       abs(du) > abs(maxRelativeUChange * u) / stepSize
+//     ) {
+//       stepSize = maxRelativeUChange * u / abs(du);
+//     }
+
+//     oldU = u;
+
+//     u += du * stepSize;
+//     float ddu = -u * (1.0 - 1.5 * u * u);
+//     du += ddu * stepSize;
+
+//     if (u < 0.0) {
+//       break;
+//     }
+
+//     phi += stepSize;
+
+//     oldPos = pos;
+//     pos = (cos(phi) * normalVec + sin(phi) * tangentVec) / u;
+
+//     rayDirection = pos - oldPos;
+//     float solidIsecT = 2.0;
+//     float rayLength = length(rayDirection);
+
+//     // Accretion disk
+//     if (oldPos.z * pos.z < 0.0) {
+//       // Crossed z=0 plane
+//       float accretionIntersectT = -oldPos.z / rayDirection.z;
+//     }
+//   }
+
+//   // rayIntensity /= rayDopplerFactor * rayDopplerFactor * rayDopplerFactor;
+
+//   // HitInfo hitInfo;
+//   // bool isHit = raycast(rayOrigin, rayDirection, hitInfo, MAX_TRAVEL_DIST);
+
+//   // vec3 color;
+//   // if (isHit) {
+//   //   color = vec3(0.0);
+//   // } else {
+//   //   color = vec3(0.8);
+//   // }
+
+//   // // Tone mapping. Why tho?
+//   // color = 2.0 * color / (0.8 + 2.5 * color);
+//   // // Gamma correction. Also why tho?
+//   // color = pow(color, vec3(0.4545));
+
+//   // return color;
+
+// }
+
+// https://arxiv.org/pdf/2010.08735
+// https://ebruneton.github.io/black_hole_shader/black_hole/functions.glsl.html
+
+const float kMu = 4.0 / 27.0;
+
+float getRayDeflectionTextureUFromESquare(const float eSquare) {
+  if (eSquare < kMu) {
+    return 0.5 - sqrt(-log(1.0 - eSquare / kMu) * (1.0 / 50.0));
+  } else {
+    return 0.5 + sqrt(-log(1.0 - kMu / eSquare) * (1.0 / 50.0));
   }
-
-  return false;
 }
 
 vec3 render(vec3 rayOrigin, vec3 rayDirection) {
-  vec3 pos = rayOrigin;
-
-  float rayIntensity = 1.0;
-  float rayDopplerFactor = 1.0;
-
-  // Not sure if I'll use this, but keeping it for now in case.
-  vec3 cameraVelocity = vec3(0.0, 0.0, 0.0);
-
-  float gamma = 1.0 / sqrt(1.0 - dot(cameraVelocity, cameraVelocity));
-  rayDopplerFactor = gamma * (1.0 - dot(rayDirection, -cameraVelocity));
-
-  vec4 color = vec4(0.0);
-
-  float u = 1.0 / length(pos);
-  float oldU;
-  float u0 = u;
-
-  vec3 normalVec = normalize(pos);
-  vec3 tangentVec = normalize(cross(cross(normalVec, rayDirection), normalVec));
-  float du = -dot(rayDirection, normalVec) / dot(rayDirection, tangentVec) * u;
-  float du0 = du;
-
-  float phi = 0.0;
-  float t = uTime;
-  float dt = 1.0;
-
-  vec3 oldPos;
-
-  float stepSize;
-
-  for (int i = 0; i < MAX_STEPS; i++) {
-    stepSize = MAX_REVOLUTIONS * 2.0 * PI / float(MAX_STEPS);
-
-    float maxRelativeUChange = (1.0 - log(u)) * 10.0 / float(MAX_STEPS);
-    if (
-      (du > 0.0 || du0 < 0.0 && u0 / u < 5.0) &&
-      abs(du) > abs(maxRelativeUChange * u) / stepSize
-    ) {
-      stepSize = maxRelativeUChange * u / abs(du);
-    }
-
-    oldU = u;
-
-    u += du * stepSize;
-    float ddu = -u * (1.0 - 1.5 * u * u);
-    du += ddu * stepSize;
-
-    if (u < 0.0) {
-      break;
-    }
-
-    phi += stepSize;
-
-    oldPos = pos;
-    pos = (cos(phi) * normalVec + sin(phi) * tangentVec) / u;
-
-    rayDirection = pos - oldPos;
-    float solidIsecT = 2.0;
-    float rayLength = length(rayDirection);
-
-    // Accretion disk
-    if (oldPos.z * pos.z < 0.0) {
-      // Crossed z=0 plane
-      float accretionIntersectT = -oldPos.z / rayDirection.z;
-    }
-  }
-
-  // rayIntensity /= rayDopplerFactor * rayDopplerFactor * rayDopplerFactor;
-
-  // HitInfo hitInfo;
-  // bool isHit = raycast(rayOrigin, rayDirection, hitInfo, MAX_TRAVEL_DIST);
-
-  // vec3 color;
-  // if (isHit) {
-  //   color = vec3(0.0);
-  // } else {
-  //   color = vec3(0.8);
-  // }
-
-  // // Tone mapping. Why tho?
-  // color = 2.0 * color / (0.8 + 2.5 * color);
-  // // Gamma correction. Also why tho?
-  // color = pow(color, vec3(0.4545));
-
-  // return color;
+  vec3 color = vec3(0.0);
 
 }
 
