@@ -1,7 +1,7 @@
 // import { Box, Loader, OrbitControls, useFBO } from "@react-three/drei";
 // import { Canvas, createPortal, useFrame } from "@react-three/fiber";
 // import { Suspense, useEffect, useMemo, useRef } from "react";
-// import * as THREE from "three";
+import * as THREE from "three";
 // import useAppStore from "../../../stores/useAppStore";
 // import CustomStatsComponent from "../../misc/CustomStatsComponent";
 // import BlackHoleComponent from "./BlackHoleComponent";
@@ -11,6 +11,8 @@
 // import type { BlackHoleUniforms } from "./types/types";
 // import * as UTILS from "./utils/utils";
 // import { getActiveSegments } from "./utils/utils";
+
+import BlackHoleComponent from "./BlackHoleComponent";
 
 // const OFFSET_SCALE = 1.45;
 // const DIGIT_CENTER_OFFSETS = [
@@ -410,5 +412,16 @@
 // }
 
 export default function CosmoScene() {
-  return null;
+  return (
+    <BlackHoleComponent
+      uniforms={{
+        uTime: { value: 0 },
+        uCameraPosition: { value: new THREE.Vector3() },
+        uResolution: {
+          value: new THREE.Vector2(window.innerWidth, window.innerHeight),
+        },
+        uGlZ: { value: -1 / (2 * Math.tan(45 * (Math.PI / 180) * 0.5)) },
+      }}
+    />
+  );
 }

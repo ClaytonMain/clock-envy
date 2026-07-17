@@ -1,11 +1,15 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import blackHoleFragmentShader from "./shaders/black-hole/blackHole.frag";
 import blackHoleVertexShader from "./shaders/black-hole/blackHole.vert";
 import type { BlackHoleUniforms } from "./types/types";
 // import type { MncaUniforms } from "./types/types";
 
+// TODO: Credit properly https://github.com/ebruneton/black_hole_shader/blob/master/black_hole/preprocess/functions.cc#L114
+// May or may not need the license added?
+
 const MU = 4 / 27;
+const DEFLECTION_TABLE_SIZE = 512;
 
 function getUApsis(eSq: number) {
   return 1 / 3 + (2 / 3) * Math.sin((1 / 3) * Math.asin((2 * eSq) / MU - 1));
@@ -38,27 +42,83 @@ function getUephiTexelCoordinates(e: number, phi: number): [number, number] {
   return [texelU, texelV];
 }
 
-function getEForTexelU(texelU: number): number {
-  if (texelU <= 1 / 2) {
-    return Math.sqrt(
-      MU * (1 - Math.exp((-25 / 2) * Math.pow(1 - 2 * texelU, 2))),
-    );
+function getEForDeflectionTexelU(texelU: number): number {
+  if (texelU <= 0.5) {
+    return Math.sqrt(MU * (1.0 - Math.exp(-50.0 * Math.pow(texelU - 0.5, 2))));
   }
-  return Math.sqrt(
-    -MU / (Math.exp((-25 / 2) * Math.pow(1 - 2 * texelU, 2)) - 1),
-  );
+  return Math.sqrt(MU / (1.0 - Math.exp(-50.0 * Math.pow(texelU - 0.5, 2))));
 }
 
 function getDeflectionTableTextureDeu() {
-  const data = new Float32Array(512 * 512 * 2);
-  for (let i = 0; i < 512 * 512; i++) {
-    const i2 = i * 2;
-    const e = getEForTexelU((i % 512) / 511);
+  const eps = 1e-5;
+  const data = new Float32Array(
+    DEFLECTION_TABLE_SIZE * DEFLECTION_TABLE_SIZE * 2,
+  );
+  for (let i = 0; i < DEFLECTION_TABLE_SIZE; i++) {
+    const e = getEForDeflectionTexelU(i / (DEFLECTION_TABLE_SIZE - 1));
+    let t = 0;
+    let u = 0;
+    let uDot = e;
+    let phi = 0;
+    let dPhi = eps;
+
+    let delta;
+    let j;
+
+    let prevDelta = 0;
+    let prevT = 0;
+    let prevJ = 0;
+
+    while (true) {
+      if (u >= 1 || uDot < 0) {
+        // Set texture using prevDelta and PrevT, then break.
+        const index = i * DEFLECTION_TABLE_SIZE + Math.floor(prevJ);
+        data[index * 2] = prevDelta;
+        data[index * 2 + 1] = prevT;
+
+        break;
+      }
+
+      delta = phi - Math.atan2(u, uDot);
+      j = getDeuTexelCoordinates(e, u)[1] * (DEFLECTION_TABLE_SIZE - 1);
+
+      // TODO: Figure out what "k" is.
+      const k0 = Math.ceil(prevJ);
+      const k1 = Math.ceil(j);
+
+      for (let k = k0; k <= k1; k++) {
+        // I know this has something to do with interpolating between the values
+        // needed for our deflection table at "j" and "prevJ", but I need to study
+        // this more to understand it fully.
+        // TODO: Study this more to understand it fully.
+        const lerp = (k - prevJ) / (j - prevJ);
+        const lerpDelta = prevDelta * (1.0 - lerp) + delta * lerp;
+        const lerpT = prevT * (1.0 - lerp) + t * lerp;
+
+        const index = i * DEFLECTION_TABLE_SIZE + k;
+        data[index * 2] = lerpDelta;
+        data[index * 2 + 1] = lerpT;
+      }
+
+      prevDelta = delta;
+      prevT = t;
+      prevJ = j;
+
+      // Why?
+      if (u > 1e-2) {
+        t = t + (e / (Math.pow(u, 2) * (1.0 - u))) * dPhi;
+      }
+
+      uDot = uDot + (1.5 * Math.pow(u, 2) - u) * dPhi;
+      u = u + uDot * dPhi;
+      phi = phi + dPhi;
+    }
   }
+
   const texture = new THREE.DataTexture(
     data,
-    512,
-    512,
+    DEFLECTION_TABLE_SIZE,
+    DEFLECTION_TABLE_SIZE,
     THREE.RGFormat,
     THREE.FloatType,
   );
@@ -83,29 +143,34 @@ export default function BlackHoleComponent({
     [],
   );
 
+  useEffect(() => {
+    getDeflectionTableTextureDeu();
+  }, []);
+
   return (
-    <mesh>
-      <shaderMaterial
-        uniforms={uniforms}
-        vertexShader={blackHoleVertexShader}
-        fragmentShader={blackHoleFragmentShader}
-      />
-      <bufferGeometry>
-        <bufferAttribute
-          args={[renderPlanePositions, 3]}
-          attach="attributes-position"
-          array={renderPlanePositions}
-          count={renderPlanePositions.length / 3}
-          itemSize={3}
-        />
-        <bufferAttribute
-          args={[renderPlaneUvs, 2]}
-          attach="attributes-uv"
-          array={renderPlaneUvs}
-          count={renderPlaneUvs.length / 2}
-          itemSize={2}
-        />
-      </bufferGeometry>
-    </mesh>
+    <></>
+    // <mesh>
+    //   <shaderMaterial
+    //     uniforms={uniforms}
+    //     vertexShader={blackHoleVertexShader}
+    //     fragmentShader={blackHoleFragmentShader}
+    //   />
+    //   <bufferGeometry>
+    //     <bufferAttribute
+    //       args={[renderPlanePositions, 3]}
+    //       attach="attributes-position"
+    //       array={renderPlanePositions}
+    //       count={renderPlanePositions.length / 3}
+    //       itemSize={3}
+    //     />
+    //     <bufferAttribute
+    //       args={[renderPlaneUvs, 2]}
+    //       attach="attributes-uv"
+    //       array={renderPlaneUvs}
+    //       count={renderPlaneUvs.length / 2}
+    //       itemSize={2}
+    //     />
+    //   </bufferGeometry>
+    // </mesh>
   );
 }
