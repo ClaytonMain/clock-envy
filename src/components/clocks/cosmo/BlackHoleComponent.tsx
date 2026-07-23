@@ -4,6 +4,7 @@ import blackHoleFragmentShader from "./shaders/black-hole/blackHole.frag";
 import blackHoleVertexShader from "./shaders/black-hole/blackHole.vert";
 import type { BlackHoleUniforms } from "./types/types";
 // import type { MncaUniforms } from "./types/types";
+import { Plane } from "@react-three/drei";
 import precomputeWorker from "./workers/precompute.ts";
 
 // TODO: Credit properly https://github.com/ebruneton/black_hole_shader/blob/master/black_hole/preprocess/functions.cc#L114
@@ -245,6 +246,7 @@ export default function BlackHoleComponent({
     [],
   );
 
+  const [calculating, setCalculating] = useState(true);
   const [deflectionTableTexture, setDeflectionTableTexture] =
     useState<THREE.DataTexture | null>(null);
   const [rayInverseRadiusTableTexture, setRayInverseRadiusTableTexture] =
@@ -290,6 +292,7 @@ export default function BlackHoleComponent({
             THREE.FloatType,
           ),
         );
+        setCalculating(false);
       }
     };
     return () => {
@@ -298,7 +301,66 @@ export default function BlackHoleComponent({
   }, []);
 
   return (
-    <></>
+    <>
+      <Plane ref={agentDataDisplayPlaneRef} visible={showGpuTextures}>
+        <meshBasicMaterial
+          attach="material"
+          map={agentDataRenderTargetA.texture}
+          depthTest={false}
+          depthWrite={false}
+          onBeforeCompile={(shader) => {
+            shader.uniforms.uWindowResolution =
+              texturePlaneUniforms.uWindowResolution;
+            shader.uniforms.uShowTexture = texturePlaneUniforms.uShowTexture;
+            shader.vertexShader = shader.vertexShader.replace(
+              "#include <common>",
+              /* glsl */ `
+              #include <common>
+              uniform vec2 uWindowResolution;
+              uniform float uShowTexture;
+              `,
+            );
+            shader.vertexShader = shader.vertexShader.replace(
+              "#include <project_vertex>",
+              /* glsl */ `
+              #include <project_vertex>
+              gl_Position = vec4(position, 1.0) * vec4(0.4 * (uWindowResolution.y / uWindowResolution.x), 0.4, 1.0, 1.0) + vec4(1.0 - (0.4 * (uWindowResolution.y / uWindowResolution.x)) * 0.5, 0.8, 0.0, 0.0);
+              gl_Position += vec4(vec3((1.0 - uShowTexture) * 9999.0), 0.0);
+              `,
+            );
+          }}
+        />
+      </Plane>
+      <Plane ref={agentPositionsDisplayPlaneRef} visible={showGpuTextures}>
+        <meshBasicMaterial
+          attach="material"
+          map={agentPositionsRenderTarget.texture}
+          depthTest={false}
+          depthWrite={false}
+          onBeforeCompile={(shader) => {
+            shader.uniforms.uWindowResolution =
+              texturePlaneUniforms.uWindowResolution;
+            shader.uniforms.uShowTexture = texturePlaneUniforms.uShowTexture;
+            shader.vertexShader = shader.vertexShader.replace(
+              "#include <common>",
+              /* glsl */ `
+              #include <common>
+              uniform vec2 uWindowResolution;
+              uniform float uShowTexture;
+              `,
+            );
+            shader.vertexShader = shader.vertexShader.replace(
+              "#include <project_vertex>",
+              /* glsl */ `
+              #include <project_vertex>
+              gl_Position = vec4(position, 1.0) * vec4(0.4 * (uWindowResolution.y / uWindowResolution.x), 0.4, 1.0, 1.0) + vec4(1.0 - (0.4 * (uWindowResolution.y / uWindowResolution.x)) * 0.5, 0.4, 0.0, 0.0);
+              gl_Position += vec4(vec3((1.0 - uShowTexture) * 9999.0), 0.0);
+              `,
+            );
+          }}
+        />
+      </Plane>
+    </>
     // <mesh>
     //   <shaderMaterial
     //     uniforms={uniforms}

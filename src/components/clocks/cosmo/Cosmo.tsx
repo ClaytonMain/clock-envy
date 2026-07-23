@@ -12,7 +12,13 @@ import * as THREE from "three";
 // import * as UTILS from "./utils/utils";
 // import { getActiveSegments } from "./utils/utils";
 
+import { Loader, OrbitControls } from "@react-three/drei";
+import { Canvas } from "@react-three/fiber";
+import { Suspense, useEffect, useRef } from "react";
+import useAppStore from "../../../stores/useAppStore";
+import CustomStatsComponent from "../../misc/CustomStatsComponent";
 import BlackHoleComponent from "./BlackHoleComponent";
+import { FOV } from "./constants/constants";
 
 // const OFFSET_SCALE = 1.45;
 // const DIGIT_CENTER_OFFSETS = [
@@ -412,16 +418,61 @@ import BlackHoleComponent from "./BlackHoleComponent";
 // }
 
 export default function CosmoScene() {
+  const canvasRef = useRef<HTMLCanvasElement>(null!);
+
+  useEffect(() => {
+    document.title = "Clock Envy - Cosmo";
+    const unsubInteractionState = useAppStore.subscribe(
+      (state) => state.interactionState,
+      (interactionState) => {
+        if (canvasRef.current) {
+          canvasRef.current.style.cursor =
+            interactionState === "active" ? "default" : "none";
+        }
+      },
+    );
+    return () => {
+      unsubInteractionState();
+    };
+  }, []);
+
   return (
-    <BlackHoleComponent
-      uniforms={{
-        uTime: { value: 0 },
-        uCameraPosition: { value: new THREE.Vector3() },
-        uResolution: {
-          value: new THREE.Vector2(window.innerWidth, window.innerHeight),
-        },
-        uGlZ: { value: -1 / (2 * Math.tan(45 * (Math.PI / 180) * 0.5)) },
-      }}
-    />
+    <>
+      <Canvas
+        ref={canvasRef}
+        dpr={1}
+        camera={{
+          position: [0.01, 0.5, 8],
+          // position: [0, 0, 10],
+          fov: FOV,
+        }}
+        style={{
+          touchAction: "none",
+        }}
+        gl={{
+          toneMapping: THREE.LinearToneMapping,
+          outputColorSpace: THREE.LinearSRGBColorSpace,
+        }}
+        linear
+        flat
+      >
+        <CustomStatsComponent />
+        <Suspense fallback={null}>
+          {/* <Environment preset="lobby" resolution={2048} /> */}
+          <BlackHoleComponent
+            uniforms={{
+              uTime: { value: 0 },
+              uCameraPosition: { value: new THREE.Vector3() },
+              uResolution: {
+                value: new THREE.Vector2(window.innerWidth, window.innerHeight),
+              },
+              uGlZ: { value: -1 / (2 * Math.tan(45 * (Math.PI / 180) * 0.5)) },
+            }}
+          />
+        </Suspense>
+        <OrbitControls makeDefault />
+      </Canvas>
+      <Loader />
+    </>
   );
 }
