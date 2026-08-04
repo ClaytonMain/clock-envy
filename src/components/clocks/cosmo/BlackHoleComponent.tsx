@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import blackHoleFragmentShader from "./shaders/black-hole/blackHole.frag";
 import blackHoleVertexShader from "./shaders/black-hole/blackHole.vert";
 import type { BlackHoleUniforms } from "./types/types";
 // import type { MncaUniforms } from "./types/types";
-import { Plane } from "@react-three/drei";
+import { Html, Plane } from "@react-three/drei";
 import precomputeWorker from "./workers/precompute.ts";
 
 // TODO: Credit properly https://github.com/ebruneton/black_hole_shader/blob/master/black_hole/preprocess/functions.cc#L114
@@ -16,223 +16,15 @@ import precomputeWorker from "./workers/precompute.ts";
 
 // const MU = 4 / 27;
 const DEFLECTION_TABLE_SIZE = 512;
-
-// function getUApsis(eSq: number) {
-//   return 1 / 3 + (2 / 3) * Math.sin((1 / 3) * Math.asin((2 * eSq) / MU - 1));
-// }
-
-// function getDeuTexelCoordinates(e: number, u: number): [number, number] {
-//   let texelU = 0;
-//   let texelV = 0;
-//   const eSq = e * e;
-//   if (eSq < MU) {
-//     texelU = 1 / 2 - Math.sqrt(-Math.log(1 - eSq / MU) / 50);
-//     texelV = 1 - Math.sqrt(1 - u / getUApsis(eSq));
-//   } else {
-//     texelU = 1 / 2 + Math.sqrt(-Math.log(1 - MU / eSq) / 50);
-//     texelV =
-//       (Math.sqrt(2 / 3) +
-//         Math.sign(u - 2 / 3) * Math.sqrt(Math.abs(u - 2 / 3))) /
-//       (Math.sqrt(2 / 3) + Math.sqrt(1 / 3));
-//   }
-//   return [texelU, texelV];
-// }
-
-// function getEForDeflectionTexelU(texelU: number): number {
-//   if (texelU <= 0.5) {
-//     return Math.sqrt(MU * (1.0 - Math.exp(-50.0 * Math.pow(texelU - 0.5, 2))));
-//   }
-//   return Math.sqrt(MU / (1.0 - Math.exp(-50.0 * Math.pow(texelU - 0.5, 2))));
-// }
-
-// function getDeflectionTableTextureDeu() {
-//   const eps = 1e-5;
-//   const data = new Float32Array(
-//     DEFLECTION_TABLE_SIZE * DEFLECTION_TABLE_SIZE * 2,
-//   );
-//   for (let i = 0; i < DEFLECTION_TABLE_SIZE; i++) {
-//     const e = getEForDeflectionTexelU(i / (DEFLECTION_TABLE_SIZE - 1));
-//     let t = 0;
-//     let u = 0;
-//     let uDot = e;
-//     let phi = 0;
-//     let dPhi = eps;
-
-//     let delta;
-//     let j;
-
-//     let prevDelta = 0;
-//     let prevT = 0;
-//     let prevJ = 0;
-
-//     while (true) {
-//       if (u >= 1 || uDot < 0) {
-//         // Set texture using prevDelta and PrevT, then break.
-//         const index = i * DEFLECTION_TABLE_SIZE + Math.floor(prevJ);
-//         data[index * 2 + 0] = prevDelta;
-//         data[index * 2 + 1] = prevT;
-
-//         break;
-//       }
-
-//       delta = phi - Math.atan2(u, uDot);
-//       j = getDeuTexelCoordinates(e, u)[1] * (DEFLECTION_TABLE_SIZE - 1);
-
-//       const k0 = Math.ceil(prevJ);
-//       const k1 = Math.ceil(j);
-
-//       for (let k = k0; k <= k1; ++k) {
-//         // I know this has something to do with interpolating between the values
-//         // needed for our deflection table at "j" and "prevJ", but I need to study
-//         // this more to understand it fully.
-//         // TODO: Study this more to understand it fully.
-//         const lerp = (k - prevJ) / (j - prevJ);
-//         const lerpDelta = prevDelta * (1.0 - lerp) + delta * lerp;
-//         const lerpT = prevT * (1.0 - lerp) + t * lerp;
-
-//         const index = i * DEFLECTION_TABLE_SIZE + k;
-//         data[index * 2 + 0] = lerpDelta;
-//         data[index * 2 + 1] = lerpT;
-//       }
-
-//       prevDelta = delta;
-//       prevT = t;
-//       prevJ = j;
-
-//       // Why?
-//       if (u > 1e-2) {
-//         t = t + (e / (Math.pow(u, 2) * (1.0 - u))) * dPhi;
-//       }
-
-//       uDot = uDot + (1.5 * Math.pow(u, 2) - u) * dPhi;
-//       u = u + uDot * dPhi;
-//       phi = phi + dPhi;
-//     }
-//   }
-
-//   const texture = new THREE.DataTexture(
-//     data,
-//     DEFLECTION_TABLE_SIZE,
-//     DEFLECTION_TABLE_SIZE,
-//     THREE.RGFormat,
-//     THREE.FloatType,
-//   );
-//   texture.needsUpdate = true;
-//   return texture;
-// }
-
-// // ******************************************
-// // Ray Inverse Radius Table Texture U(e, phi)
-// // ******************************************
-
 const RAY_INVERSE_RADIUS_TABLE_SIZE = 64;
-
-// // I think this needs to be implemented in the shader, not here.
-// function getUephiTexelCoordinates(e: number, phi: number): [number, number] {
-//   const eSq = e * e;
-//   const eCu = eSq * e;
-//   const texelU = 1 / (1 + 6 * eSq);
-//   const texelV = ((phi / 3) * (1 + 6 * eCu)) / (1 + eSq);
-//   return [texelU, texelV];
-// }
-
-// function getEForRayInverseRadiusTexelU(texelU: number): number {
-//   return Math.sqrt((1 / texelU - 1) / 6);
-// }
-
-// function getPhiUpperBoundForE(e: number): number {
-//   return (3 * (Math.pow(e, 2) + 1)) / (6 * Math.pow(Math.abs(e), 3) + 1);
-// }
-
-// function getRayInverseRadiusTableTextureUephi() {
-//   const eps = 1e-5;
-//   const data = new Float32Array(
-//     RAY_INVERSE_RADIUS_TABLE_SIZE * RAY_INVERSE_RADIUS_TABLE_SIZE * 2,
-//   );
-
-//   for (let i = 0; i < RAY_INVERSE_RADIUS_TABLE_SIZE; i++) {
-//     // TODO: Why are we clamping?
-//     const clampedTexelU = Math.min(
-//       Math.max(i / (RAY_INVERSE_RADIUS_TABLE_SIZE - 1), 0.001),
-//       0.999,
-//     );
-//     const e = getEForRayInverseRadiusTexelU(clampedTexelU);
-//     const eSq = e * e;
-//     const phiUpperBound = getPhiUpperBoundForE(e);
-
-//     let t = 0;
-//     let u = 0;
-//     let uDot = e;
-//     let phi = 0;
-//     let dPhi = eps;
-
-//     let j = 0;
-
-//     let prevU = 0;
-//     let prevT = 0;
-//     let prevJ = 0;
-
-//     data[i * RAY_INVERSE_RADIUS_TABLE_SIZE * 2 + 0] = 0;
-//     data[i * RAY_INVERSE_RADIUS_TABLE_SIZE * 2 + 1] = 0;
-
-//     while (true) {
-//       const j = (phi / phiUpperBound) * (RAY_INVERSE_RADIUS_TABLE_SIZE - 1);
-
-//       const k0 = Math.ceil(prevJ);
-//       const k1 = Math.min(Math.ceil(j), RAY_INVERSE_RADIUS_TABLE_SIZE);
-
-//       for (let k = k0; k <= k1; ++k) {
-//         const lerp = (k - prevJ) / (j - prevJ);
-//         const lerpU = prevU * (1.0 - lerp) + u * lerp;
-//         const lerpT = prevT * (1.0 - lerp) + t * lerp;
-
-//         const index = i * RAY_INVERSE_RADIUS_TABLE_SIZE + k;
-//         data[index * 2 + 0] = lerpU;
-//         data[index * 2 + 1] = lerpT;
-//       }
-
-//       if (k1 === RAY_INVERSE_RADIUS_TABLE_SIZE) {
-//         break;
-//       }
-
-//       prevU = u;
-//       prevT = t;
-//       prevJ = j;
-
-//       // Again, why?
-//       if (u > 1e-2) {
-//         t = t + (e / (Math.pow(u, 2) * (1.0 - u))) * dPhi;
-//       }
-
-//       uDot = uDot + (1.5 * Math.pow(u, 2) - u) * dPhi;
-//       u = u + uDot * dPhi;
-//       phi = phi + dPhi;
-//     }
-//   }
-
-//   const texture = new THREE.DataTexture(
-//     data,
-//     RAY_INVERSE_RADIUS_TABLE_SIZE,
-//     RAY_INVERSE_RADIUS_TABLE_SIZE,
-//     THREE.RGFormat,
-//     THREE.FloatType,
-//   );
-//   texture.needsUpdate = true;
-//   return texture;
-// }
 
 export default function BlackHoleComponent({
   uniforms,
 }: {
   uniforms: BlackHoleUniforms;
 }) {
-  // const [deflectionTableTexture, rayInverseRadiusTableTexture] = useMemo(() => {
-  //   const deflectionTableTexture = getDeflectionTableTextureDeu();
-  //   const rayInverseRadiusTableTexture = getRayInverseRadiusTableTextureUephi();
-  //   console.log("deflectionTableTexture", deflectionTableTexture);
-  //   console.log("rayInverseRadiusTableTexture", rayInverseRadiusTableTexture);
-  //   return [deflectionTableTexture, rayInverseRadiusTableTexture];
-  // }, []);
+  const deflectionTableDisplayPlaneRef = useRef<THREE.Mesh>(null);
+  const rayInverseRadiusTableDisplayPlaneRef = useRef<THREE.Mesh>(null);
 
   const renderPlanePositions = useMemo(
     () =>
@@ -251,6 +43,15 @@ export default function BlackHoleComponent({
     useState<THREE.DataTexture | null>(null);
   const [rayInverseRadiusTableTexture, setRayInverseRadiusTableTexture] =
     useState<THREE.DataTexture | null>(null);
+
+  const texturePlaneUniforms = useMemo(() => {
+    return {
+      uWindowResolution: {
+        value: new THREE.Vector2(window.innerWidth, window.innerHeight),
+      },
+      uShowTexture: { value: 1.0 },
+    };
+  }, []);
 
   useEffect(() => {
     const worker = new Worker(precomputeWorker);
@@ -274,24 +75,72 @@ export default function BlackHoleComponent({
           "Ray Inverse Radius Table Texture Data:",
           rayInverseRadiusTableTextureData,
         );
-        setDeflectionTableTexture(
-          new THREE.DataTexture(
-            deflectionTableTextureData,
-            DEFLECTION_TABLE_SIZE,
-            DEFLECTION_TABLE_SIZE,
-            THREE.RGFormat,
-            THREE.FloatType,
-          ),
+
+        const deflectionTableTextureRGBAData = new Float32Array(
+          DEFLECTION_TABLE_SIZE * DEFLECTION_TABLE_SIZE * 4,
         );
-        setRayInverseRadiusTableTexture(
-          new THREE.DataTexture(
-            rayInverseRadiusTableTextureData,
-            RAY_INVERSE_RADIUS_TABLE_SIZE,
-            RAY_INVERSE_RADIUS_TABLE_SIZE,
-            THREE.RGFormat,
-            THREE.FloatType,
-          ),
+        const rayInverseRadiusTableTextureRGBAData = new Float32Array(
+          RAY_INVERSE_RADIUS_TABLE_SIZE * RAY_INVERSE_RADIUS_TABLE_SIZE * 4,
         );
+
+        for (
+          let i = 0;
+          i < DEFLECTION_TABLE_SIZE * DEFLECTION_TABLE_SIZE;
+          i++
+        ) {
+          const i2 = i * 2;
+          const i4 = i * 4;
+
+          // Max R is about 13.4142
+          // Max G is about 149.8022
+
+          deflectionTableTextureRGBAData[i4 + 0] =
+            deflectionTableTextureData[i2 + 0];
+          deflectionTableTextureRGBAData[i4 + 1] =
+            deflectionTableTextureData[i2 + 1];
+          deflectionTableTextureRGBAData[i4 + 2] = 0;
+          deflectionTableTextureRGBAData[i4 + 3] = 0;
+        }
+
+        for (
+          let i = 0;
+          i < RAY_INVERSE_RADIUS_TABLE_SIZE * RAY_INVERSE_RADIUS_TABLE_SIZE;
+          i++
+        ) {
+          const i2 = i * 2;
+          const i4 = i * 4;
+
+          // Max R is about 0.9253
+          // Max G is about 179.8725
+
+          rayInverseRadiusTableTextureRGBAData[i4 + 0] =
+            rayInverseRadiusTableTextureData[i2 + 0];
+          rayInverseRadiusTableTextureRGBAData[i4 + 1] =
+            rayInverseRadiusTableTextureData[i2 + 1];
+          rayInverseRadiusTableTextureRGBAData[i4 + 2] = 0;
+          rayInverseRadiusTableTextureRGBAData[i4 + 3] = 0;
+        }
+
+        const deflectionTableTexture = new THREE.DataTexture(
+          deflectionTableTextureRGBAData,
+          DEFLECTION_TABLE_SIZE,
+          DEFLECTION_TABLE_SIZE,
+          THREE.RGBAFormat,
+          THREE.FloatType,
+        );
+        const rayInverseRadiusTableTexture = new THREE.DataTexture(
+          rayInverseRadiusTableTextureRGBAData,
+          RAY_INVERSE_RADIUS_TABLE_SIZE,
+          RAY_INVERSE_RADIUS_TABLE_SIZE,
+          THREE.RGBAFormat,
+          THREE.FloatType,
+        );
+
+        deflectionTableTexture.needsUpdate = true;
+        rayInverseRadiusTableTexture.needsUpdate = true;
+
+        setDeflectionTableTexture(deflectionTableTexture);
+        setRayInverseRadiusTableTexture(rayInverseRadiusTableTexture);
         setCalculating(false);
       }
     };
@@ -300,12 +149,71 @@ export default function BlackHoleComponent({
     };
   }, []);
 
+  useEffect(() => {
+    if (
+      deflectionTableTexture &&
+      rayInverseRadiusTableTexture &&
+      deflectionTableDisplayPlaneRef.current &&
+      rayInverseRadiusTableDisplayPlaneRef.current &&
+      deflectionTableDisplayPlaneRef.current.material instanceof
+        THREE.MeshBasicMaterial &&
+      rayInverseRadiusTableDisplayPlaneRef.current.material instanceof
+        THREE.MeshBasicMaterial
+    ) {
+      console.log(deflectionTableTexture, rayInverseRadiusTableTexture);
+
+      deflectionTableDisplayPlaneRef.current.material.map =
+        deflectionTableTexture;
+      rayInverseRadiusTableDisplayPlaneRef.current.material.map =
+        rayInverseRadiusTableTexture;
+
+      console.log("Textures applied to display planes.");
+    }
+  }, [calculating]);
+
   return (
     <>
-      <Plane ref={agentDataDisplayPlaneRef} visible={showGpuTextures}>
+      {calculating && (
+        <Html>
+          <div
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+            }}
+          >
+            Calculating
+          </div>
+        </Html>
+      )}
+      <mesh>
+        <shaderMaterial
+          uniforms={uniforms}
+          vertexShader={blackHoleVertexShader}
+          fragmentShader={blackHoleFragmentShader}
+        />
+        <bufferGeometry>
+          <bufferAttribute
+            args={[renderPlanePositions, 3]}
+            attach="attributes-position"
+            array={renderPlanePositions}
+            count={renderPlanePositions.length / 3}
+            itemSize={3}
+          />
+          <bufferAttribute
+            args={[renderPlaneUvs, 2]}
+            attach="attributes-uv"
+            array={renderPlaneUvs}
+            count={renderPlaneUvs.length / 2}
+            itemSize={2}
+          />
+        </bufferGeometry>
+      </mesh>
+      <Plane ref={deflectionTableDisplayPlaneRef} visible={true}>
         <meshBasicMaterial
           attach="material"
-          map={agentDataRenderTargetA.texture}
+          map={deflectionTableTexture || new THREE.DataTexture()}
           depthTest={false}
           depthWrite={false}
           onBeforeCompile={(shader) => {
@@ -331,10 +239,10 @@ export default function BlackHoleComponent({
           }}
         />
       </Plane>
-      <Plane ref={agentPositionsDisplayPlaneRef} visible={showGpuTextures}>
+      <Plane ref={rayInverseRadiusTableDisplayPlaneRef} visible={true}>
         <meshBasicMaterial
           attach="material"
-          map={agentPositionsRenderTarget.texture}
+          map={rayInverseRadiusTableTexture || new THREE.DataTexture()}
           depthTest={false}
           depthWrite={false}
           onBeforeCompile={(shader) => {
@@ -361,28 +269,5 @@ export default function BlackHoleComponent({
         />
       </Plane>
     </>
-    // <mesh>
-    //   <shaderMaterial
-    //     uniforms={uniforms}
-    //     vertexShader={blackHoleVertexShader}
-    //     fragmentShader={blackHoleFragmentShader}
-    //   />
-    //   <bufferGeometry>
-    //     <bufferAttribute
-    //       args={[renderPlanePositions, 3]}
-    //       attach="attributes-position"
-    //       array={renderPlanePositions}
-    //       count={renderPlanePositions.length / 3}
-    //       itemSize={3}
-    //     />
-    //     <bufferAttribute
-    //       args={[renderPlaneUvs, 2]}
-    //       attach="attributes-uv"
-    //       array={renderPlaneUvs}
-    //       count={renderPlaneUvs.length / 2}
-    //       itemSize={2}
-    //     />
-    //   </bufferGeometry>
-    // </mesh>
   );
 }
