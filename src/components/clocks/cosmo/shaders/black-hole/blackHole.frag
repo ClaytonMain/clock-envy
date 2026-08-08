@@ -1,7 +1,15 @@
 uniform float uTime;
-uniform vec2 uResolution;
+uniform float uDelta;
 uniform vec3 uCameraPosition;
+uniform vec4 uCameraSchwarzschildP;
+uniform vec2 uResolution;
 uniform float uGlZ;
+uniform sampler2D uDeflectionTableTexture;
+uniform sampler2D uRayInverseRadiusTableTexture;
+uniform float uU;
+uniform float uUDot;
+uniform float uE;
+uniform float uESquare;
 
 varying mat4 vViewMatrix;
 
