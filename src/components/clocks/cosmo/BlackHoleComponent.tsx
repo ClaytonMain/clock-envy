@@ -22,19 +22,16 @@ const RAY_INVERSE_RADIUS_TABLE_SIZE = 64;
 
 const uniforms: BlackHoleUniforms = {
   uTime: { value: 0 },
-  uDelta: { value: 0 },
+  uTimeDelta: { value: 0 },
   uCameraPosition: { value: new THREE.Vector3() },
   uCameraSchwarzschildP: { value: new THREE.Vector4() },
+  uCameraMatrixWorld: { value: new THREE.Matrix4() },
   uResolution: {
     value: new THREE.Vector2(window.innerWidth, window.innerHeight),
   },
   uGlZ: { value: -1 / (2 * Math.tan(45 * (Math.PI / 180) * 0.5)) },
   uDeflectionTableTexture: { value: new THREE.DataTexture() },
   uRayInverseRadiusTableTexture: { value: new THREE.DataTexture() },
-  uU: { value: 0 },
-  uUDot: { value: 0 },
-  uE: { value: 0 },
-  uESquare: { value: 0 },
 };
 
 export default function BlackHoleComponent() {
@@ -223,6 +220,7 @@ export default function BlackHoleComponent() {
   const cameraPosition = new THREE.Vector3();
   const cameraSpherical = new THREE.Spherical();
   const cameraSchwarzschildP = new THREE.Vector4();
+  const cameraMatrixWorld = new THREE.Matrix4();
 
   useFrame(({ camera }, delta) => {
     if (calculating) return;
@@ -231,10 +229,12 @@ export default function BlackHoleComponent() {
     uTimeRef.current += deltaRef.current;
 
     uniforms.uTime.value = uTimeRef.current;
-    uniforms.uDelta.value = deltaRef.current;
+    uniforms.uTimeDelta.value = deltaRef.current;
 
     cameraPosition.copy(camera.position);
+    cameraMatrixWorld.copy(camera.matrixWorld);
     uniforms.uCameraPosition.value.copy(cameraPosition);
+    uniforms.uCameraMatrixWorld.value.copy(cameraMatrixWorld);
 
     cameraSpherical.setFromVector3(cameraPosition);
     cameraSchwarzschildP.set(
@@ -244,16 +244,6 @@ export default function BlackHoleComponent() {
       cameraSpherical.theta,
     );
     uniforms.uCameraSchwarzschildP.value.copy(cameraSchwarzschildP);
-
-    const u = 1 / cameraSpherical.radius;
-    const uDot = -u / Math.tan(deltaRef.current);
-    const eSquare = uDot * uDot + u * u * (1.0 - u);
-    const e = Math.sqrt(eSquare);
-
-    uniforms.uU.value = u;
-    uniforms.uUDot.value = uDot;
-    uniforms.uE.value = e;
-    uniforms.uESquare.value = eSquare;
 
     uniforms.uResolution.value.set(window.innerWidth, window.innerHeight);
     texturePlaneUniforms.uWindowResolution.value.set(
