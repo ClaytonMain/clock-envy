@@ -17,11 +17,67 @@ const float kMu = 4.0 / 27.0;
 const float INNER_RADIUS = 1.0;
 const float OUTER_RADIUS = 3.0;
 
-float getRayDeflectionTextureUFromESquare(const float eSquare) {
-  if (eSquare < kMu) {
-    return 0.5 - sqrt(-log(1.0 - eSquare / kMu) * (1.0 / 50.0));
+const float TWO_THIRDS = 2.0 / 3.0;
+
+const int DEFLECTION_TABLE_SIZE = 512;
+
+float getTextureCoordFromUnitRange(float u) {
+  return 0.5 / float(DEFLECTION_TABLE_SIZE) + u * (1.0 - 1.0 / float(DEFLECTION_TABLE_SIZE));
+}
+
+float getUApsisFromESquare(float eSquare) {
+  float x = (2.0 / kMu) * eSquare - 1.0;
+  return 1.0 / 3.0 + TWO_THIRDS * sin(asin(x) * (1.0 - TWO_THIRDS));
+}
+
+float getRayDeflectionTextureVFromESquareAndU(float eSquare, float u) {
+  if (eSquare > kMu) {
+    float x = u < TWO_THIRDS ? -sqrt(TWO_THIRDS - u) : sqrt(u - TWO_THIRDS);
+    return (sqrt(TWO_THIRDS) + x) / (sqrt(TWO_THIRDS) + sqrt(1.0 - TWO_THIRDS));
   } else {
-    return 0.5 + sqrt(-log(1.0 - kMu / eSquare) * (1.0 / 50.0));
+    return 1.0 - sqrt(max(1.0 - u / getUApsisFromESquare(eSquare), 0.0));
+  }
+}
+
+vec2 LookupRayDeflection(
+  const float eSquare,
+  const float u,
+  out vec2 deflectionApsis
+) {
+  float texU = getTextureCoordFromUnitRange(
+    getRayDeflectionTextureUFromESquare(eSquare)
+  );
+  float texV = getTextureCoordFromUnitRange(
+    getRayDeflectionTextureVFromESquareAndU(eSquare, u)
+  );
+  float texVApsis = getTextureCoordFromUnitRange(
+    1.0);
+  deflectionApsis = 
+}
+
+float TraceRay(
+  const float u,
+  const float uDot,
+  const float eSquare,
+  const float delta,
+  const float alpha,
+  const float uIc,
+  const float uOc,
+  out float u0,
+  out float phi0,
+  out float t0,
+  out float alpha0,
+  out float u1,
+  out float phi1,
+  out float t1,
+  out float alpha1
+) {
+  // Compute the ray deflection.
+  u0 = -1.0;
+  u1 = -1.0;
+
+  if (eSquare < kMu && u > 2.0 / 3.0) {
+    return -1.0;
   }
 }
 
@@ -48,6 +104,28 @@ vec3 render(vec3 rayOrigin, vec3 rayDirection) {
   float uDot = -u / tan(delta);
   float eSquare = uDot * uDot + u * u * (1.0 - u);
   float e = -sqrt(eSquare);
+
+  const float U_IC = 1.0 / INNER_RADIUS;
+  const float U_OC = 1.0 / OUTER_RADIUS;
+
+  float u0, phi0, t0, alpha0, u1, phi1, t1, alpha1;
+  float deflection = TraceRay(
+    u,
+    uDot,
+    eSquare,
+    delta,
+    alpha,
+    U_IC,
+    U_OC,
+    u0,
+    phi0,
+    t0,
+    alpha0,
+    u1,
+    phi1,
+    t1,
+    alpha1
+  );
 
   vec3 color = vec3(0.0);
   return rayDirection;
