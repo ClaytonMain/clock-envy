@@ -122,7 +122,23 @@ float traceRay(
   float phi = deflection.x + (s == 1.0 ? PI - delta : delta) + s * alpha;
   float phiApsis = deflectionApsis.x + PI / 2.0;
   phi0 = mod(phi, PI);
-  vec2 rayInverseRadius = lookupRayInverseRadius(eSquare, phi0);
+  vec2 ui0 = lookupRayInverseRadius(eSquare, phi0);
+  if (phi0 < phiApsis) {
+    float side = s * (ui0.x - u);
+    if (side > 1e-3 || (side > -1e-3 && alpha < delta)) {
+      u0 = ui0.x;
+      phi0 = alpha + phi - phi0;
+      t0 = s * (ui0.y - deflection.y);
+    }
+  }
+  phi = 2.0 * phiApsis - phi;
+  phi1 = mod(phi, PI);
+  vec2 ui1 = lookupRayInverseRadius(eSquare, phi1);
+  if (eSquare < kMu && s == 1.0 && phi1 < phiApsis) {
+    u1 = ui1.x;
+    phi1 = alpha + phi - phi1;
+    t1 = 2.0 * deflectionApsis.y - ui1.y - deflection.y;
+  }
 
   return rayDeflection;
 }
