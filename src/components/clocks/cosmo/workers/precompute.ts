@@ -12,7 +12,7 @@ function precomputeWorker() {
     const eSq = e * e;
     if (eSq < MU) {
       texelU = 1 / 2 - Math.sqrt(-Math.log(1 - eSq / MU) / 50);
-      texelV = 1 - Math.sqrt(1 - u / getUApsis(eSq));
+      texelV = 1 - Math.sqrt(Math.max(1 - u / getUApsis(eSq), 0));
     } else {
       texelU = 1 / 2 + Math.sqrt(-Math.log(1 - MU / eSq) / 50);
       texelV =
@@ -53,7 +53,9 @@ function precomputeWorker() {
       while (true) {
         if (u >= 1 || uDot < 0) {
           // Set texture using prevDelta and PrevT, then break.
-          const index = i * size + Math.floor(prevJ);
+          // const index = i * size + Math.floor(prevJ);
+          // const index = i * size + (size - 1);
+          const index = (size - 1) * size + i;
           data[index * 2 + 0] = prevDelta;
           data[index * 2 + 1] = prevT;
 
@@ -66,7 +68,7 @@ function precomputeWorker() {
         const k0 = Math.ceil(prevJ);
         const k1 = Math.ceil(j);
 
-        for (let k = k0; k <= k1; ++k) {
+        for (let k = k0; k < k1; ++k) {
           // I know this has something to do with interpolating between the values
           // needed for our deflection table at "j" and "prevJ", but I need to study
           // this more to understand it fully.
@@ -75,7 +77,7 @@ function precomputeWorker() {
           const lerpDelta = prevDelta * (1.0 - lerp) + delta * lerp;
           const lerpT = prevT * (1.0 - lerp) + t * lerp;
 
-          const index = i * size + k;
+          const index = k * size + i;
           data[index * 2 + 0] = lerpDelta;
           data[index * 2 + 1] = lerpT;
         }
@@ -154,12 +156,12 @@ function precomputeWorker() {
         const k0 = Math.ceil(prevJ);
         const k1 = Math.min(Math.ceil(j), size);
 
-        for (let k = k0; k <= k1; ++k) {
+        for (let k = k0; k < k1; ++k) {
           const lerp = (k - prevJ) / (j - prevJ);
           const lerpU = prevU * (1.0 - lerp) + u * lerp;
           const lerpT = prevT * (1.0 - lerp) + t * lerp;
 
-          const index = i * size + k;
+          const index = k * size + i;
           data[index * 2 + 0] = lerpU;
           data[index * 2 + 1] = lerpT;
         }

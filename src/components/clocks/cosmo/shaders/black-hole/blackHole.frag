@@ -7,11 +7,14 @@ uniform vec2 uResolution;
 uniform float uGlZ;
 uniform sampler2D uDeflectionTableTexture;
 uniform sampler2D uRayInverseRadiusTableTexture;
+uniform samplerCube uStarMapTexture;
 
 #define PI 3.14159265359
 
 // https://arxiv.org/pdf/2010.08735
 // https://ebruneton.github.io/black_hole_shader/black_hole/functions.glsl.html
+
+// https://science.nasa.gov/3d-resources/hipparcos-star-map/
 
 const float kMu = 4.0 / 27.0;
 const float INNER_RADIUS = 1.0;
@@ -20,9 +23,14 @@ const float OUTER_RADIUS = 3.0;
 const float TWO_THIRDS = 2.0 / 3.0;
 
 const int DEFLECTION_TABLE_SIZE = 512;
+const int RAY_INVERSE_RADIUS_TABLE_SIZE = 64;
 
-float getTextureCoordFromUnitRange(float u) {
-  return 0.5 / float(DEFLECTION_TABLE_SIZE) + u * (1.0 - 1.0 / float(DEFLECTION_TABLE_SIZE));
+const float STARS_CUBE_MAP_SIZE = 720.0;
+const float MAX_FOOTPRINT_SIZE = 8.0;
+const float MAX_FOOTPRINT_LOD = 4.0;
+
+float getTextureCoordFromUnitRange(float u, int size) {
+  return 0.5 / float(size) + u * (1.0 - 1.0 / float(size));
 }
 
 float getRayDeflectionTextureUFromESquare(float eSquare) {
@@ -52,11 +60,28 @@ vec2 lookupRayDeflection(
   const float u,
   out vec2 deflectionApsis
 ) {
-  float texU = getTextureCoordFromUnitRange(getRayDeflectionTextureUFromESquare(eSquare));
-  float texV = getTextureCoordFromUnitRange(getRayDeflectionTextureVFromESquareAndU(eSquare, u));
-  float texVApsis = getTextureCoordFromUnitRange(1.0);
+  float texU = getTextureCoordFromUnitRange(getRayDeflectionTextureUFromESquare(eSquare), DEFLECTION_TABLE_SIZE);
+  float texV = getTextureCoordFromUnitRange(getRayDeflectionTextureVFromESquareAndU(eSquare, u), DEFLECTION_TABLE_SIZE);
+  float texVApsis = getTextureCoordFromUnitRange(1.0, DEFLECTION_TABLE_SIZE);
   deflectionApsis = texture2D(uDeflectionTableTexture, vec2(texU, texVApsis)).xy;
   return texture2D(uDeflectionTableTexture, vec2(texU, texV)).xy;
+}
+
+float getRayInverseRadiusTextureUFromESquare(float eSquare) {
+  return 1.0 / (1.0 + 6.0 * eSquare);
+}
+
+float getPhiUbFromESquare(float eSquare) {
+  return (1.0 + eSquare) / (1.0 / 3.0 + 2.0 * eSquare * sqrt(eSquare));
+}
+
+vec2 lookupRayInverseRadius(
+  const float eSquare,
+  const float phi
+) {
+  float texU = getTextureCoordFromUnitRange(getRayInverseRadiusTextureUFromESquare(eSquare), RAY_INVERSE_RADIUS_TABLE_SIZE);
+  float texV = getTextureCoordFromUnitRange(phi / getPhiUbFromESquare(eSquare), RAY_INVERSE_RADIUS_TABLE_SIZE);
+  return texture2D(uRayInverseRadiusTableTexture, vec2(texU, texV)).xy;
 }
 
 float traceRay(
@@ -93,7 +118,116 @@ float traceRay(
     rayDeflection = eSquare < kMu ? 2.0 * deflectionApsis.x - rayDeflection : -1.0;
   }
 
+  float s = sign(uDot);
+  float phi = deflection.x + (s == 1.0 ? PI - delta : delta) + s * alpha;
+  float phiApsis = deflectionApsis.x + PI / 2.0;
+  phi0 = mod(phi, PI);
+  vec2 rayInverseRadius = lookupRayInverseRadius(eSquare, phi0);
+
   return rayDeflection;
+}
+
+vec3 galaxyColor(vec3 rayDirection) {
+  return textureCube(uStarMapTexture, rayDirection).rgb * 6.78494e-5;
+}
+
+vec3 starColor(vec3 rayDirection, float lensingAmplificationFactor) {
+  vec3 dxDir = dFdx(rayDirection);
+  vec3 dyDir = dFdy(rayDirection);
+
+  vec3 absDir = abs(rayDirection);
+  float maxAbsDirComp = max(absDir.x, max(absDir.y, absDir.z));
+  if (maxAbsDirComp == absDir.x) {
+    rayDirection = rayDirection.zyx;
+    dxDir = dxDir.zyx;
+    dyDir = dyDir.zyx;
+  } else if (maxAbsDirComp == absDir.y) {
+    rayDirection = rayDirection.xzy;
+    dxDir = dxDir.xzy;
+    dyDir = dyDir.xzy;
+  }
+
+  float invDirZ = 1.0 / rayDirection.z;
+  // vec2 uv = rayDirection.xy * invDirZ * 0.5 + 0.5;
+  vec2 uv = rayDirection.xy * invDirZ;
+  vec2 dxUv = (dxDir.xy - uv * dxDir.z) * invDirZ;
+  vec2 dyUv = (dyDir.xy - uv * dyDir.z) * invDirZ;
+
+  vec2 dUv = max(abs(dxUv + dyUv), abs(dxUv - dyUv));
+  vec2 fWidth = (0.5 * STARS_CUBE_MAP_SIZE / MAX_FOOTPRINT_SIZE) * dUv;
+  float lod = max(ceil(max(log2(fWidth.x), log2(fWidth.y))), 0.1);
+  float lodWidth = (0.5 * STARS_CUBE_MAP_SIZE) / pow(2.0, lod);
+  if (lod > MAX_FOOTPRINT_LOD) {
+    return textureCube(uStarMapTexture, rayDirection).xyz;
+  }
+
+  mat2 toScreenPixelCoords = inverse(mat2(dxUv, dyUv));
+  ivec2 ij0 = ivec2(floor((uv - dUv) * lodWidth));
+  ivec2 ij1 = ivec2(floor((uv + dUv) * lodWidth));
+  vec3 colorSum = vec3(0.0);
+  for (int j = ij0.y; j <= ij1.y; ++j) {
+    for (int i = ij0.x; i <= ij1.x; ++i) {
+      vec2 texelUv = (vec2(i, j) + vec2(0.5)) / lodWidth;
+      vec3 texelDir = vec3(texelUv * rayDirection.z, rayDirection.z);
+      if (maxAbsDirComp == absDir.x) {
+        texelDir = texelDir.zyx;
+      } else if (maxAbsDirComp == absDir.y) {
+        texelDir = texelDir.xzy;
+      }
+      vec2 deltaUv;
+      vec3 starColor = textureCube(uStarMapTexture, texelDir, lod).rgb;
+      // vec3 starColor = textureCube(uStarMapTexture, texelDir).rgb;
+      vec2 starUv = uv - texelUv + deltaUv / lodWidth;
+      vec2 starPixelCoords = toScreenPixelCoords * starUv;
+      vec2 overlap = max(vec2(1.0) - abs(starPixelCoords), 0.0);
+      colorSum += starColor * overlap.x * overlap.y;
+    }
+  }
+  return colorSum * lensingAmplificationFactor;
+}
+
+// (inverse max and min radius, initial azimuth angle, precession 'ratio')
+const vec4 DISC_PARTICLE_PARAMS[5] = vec4[](vec4(1.0000, 0.4747, 0.0010, 1.31), vec4(0.8289, 0.4170, 1.2694, 0.83), vec4(0.7071, 0.3536, 2.3562, 0.67), vec4(0.5773, 0.2887, 3.1416, 0.50), vec4(0.5000, 0.2500, 4.7124, 0.42));
+
+float random(vec2 st) {
+  return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
+}
+float valueNoise(vec2 st) {
+  vec2 i = floor(st);
+  vec2 f = fract(st);
+  float a = random(i);
+  float b = random(i + vec2(1.0, 0.0));
+  float c = random(i + vec2(0.0, 1.0));
+  float d = random(i + vec2(1.0, 1.0));
+  vec2 u = smoothstep(0.0, 1.0, f);
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
+vec4 getDiscColor(vec2 p, float pT, bool topSide, float DopplerFactor) {
+  float pR = length(p);
+  float pPhi = atan(p.y, p.x);
+
+  float density = 0.0;
+  for (int i = 0; i < 5; ++i) {
+    vec4 params = DISC_PARTICLE_PARAMS[i];
+    float u1 = params.x;
+    float u2 = params.y;
+    float phi0 = params.z;
+    float dThetaDPhi = params.w;
+    float uAvg = (u1 + u2) * 0.5;
+    float dPhiDt = uAvg * sqrt(0.5 * uAvg);
+    float phi = dPhiDt * pT + phi0;
+    float a = mod(pPhi - phi, 2.0 * PI);
+    float s = sin(dThetaDPhi * (a + phi));
+    float r = 1.0 / (u1 + (u2 - u1) * s * s);
+    vec2 d = vec2(a - PI, r - pR) * vec2(1.0 / PI, 0.5);
+    float noise = valueNoise(d * vec2(pR / OUTER_RADIUS, 1.0));
+    density += smoothstep(1.0, 0.0, length(d)) * noise;
+  }
+
+  vec3 color = max(density, 0.0) * vec3(1.0, 0.5, 0.2) * DopplerFactor;
+  float alpha = smoothstep(INNER_RADIUS, INNER_RADIUS * 1.2, pR) * smoothstep(OUTER_RADIUS, OUTER_RADIUS / 1.2, pR);
+  return vec4(color * alpha, alpha);
 }
 
 vec3 render(vec3 rayOrigin, vec3 rayDirection) {
@@ -134,7 +268,45 @@ vec3 render(vec3 rayOrigin, vec3 rayDirection) {
   float deltaPrime = delta + max(deflection, 0.0);
   vec3 dPrime = cos(deltaPrime) * eXPrime + sin(deltaPrime) * eYPrime;
 
-  vec3 color = vec3(dPrime);
+  // vec3 color = dPrime;
+  // vec3 color = textureCube(uStarMapTexture, dPrime).rgb;
+  vec3 color = vec3(0.0, 0.0, 0.0);
+
+  if (deflection >= 0.0) {
+    float gklSource = e;
+    float dopplerFactor = gklReceiver / gklSource;
+
+    float omega = length(cross(dFdx(rayDirection), dFdy(rayDirection)));
+    float omegaPrime = length(cross(dFdx(dPrime), dFdy(dPrime)));
+
+    float lensingAmplificationFactor = min(omega / omegaPrime, 1e6);
+
+    float pixelArea = max(omega * (360.0 * 360.0), 1.0);
+
+    // color += galaxyColor(dPrime);
+    // color += starColor(dPrime, lensingAmplificationFactor / pixelArea);
+    // color += smoothstep(0.0, 0.5, textureCube(uStarMapTexture, dPrime).rgb);
+    color += textureCube(uStarMapTexture, dPrime).rgb * smoothstep(0.0, 1.0, lensingAmplificationFactor / pixelArea);
+    // color = dPrime;
+  }
+
+  if (u1 >= 0.0 && alpha1 > 0.0) {
+    float gklSource = e * sqrt(2.0 / (2.0 - 3.0 * u1)) - u1 * sqrt(u1 / (2.0 - 3.0 * u1)) * dot(eZ, eZPrime);
+    float dopplerFactor = gklReceiver / gklSource;
+    bool topSide = (mod(abs(phi1 - alpha), 2.0 * PI) < 1e-3) == (eXPrime.z > 0.0);
+    vec3 i1 = (eXPrime * cos(phi1) + eYPrime * sin(phi1)) / u1;
+    vec4 discColor = getDiscColor(i1.xy, uCameraSchwarzschildP.x - t1, topSide, dopplerFactor);
+    color = color * (1.0 - discColor.a) + alpha1 * discColor.rgb;
+  }
+  if (u0 >= 0.0 && alpha0 > 0.0) {
+    float gklSource = e * sqrt(2.0 / (2.0 - 3.0 * u0)) - u0 * sqrt(u0 / (2.0 - 3.0 * u0)) * dot(eZ, eZPrime);
+    float dopplerFactor = gklReceiver / gklSource;
+    bool topSide = (mod(abs(phi0 - alpha), 2.0 * PI) < 1e-3) == (eXPrime.z > 0.0);
+    vec3 i0 = (eXPrime * cos(phi0) + eYPrime * sin(phi0)) / u0;
+    vec4 discColor0 = getDiscColor(i0.xy, uCameraSchwarzschildP.x - t0, topSide, dopplerFactor);
+    color = color * (1.0 - discColor0.a) + alpha0 * discColor0.rgb;
+  }
+
   return color;
   // return rayDirection;
 }

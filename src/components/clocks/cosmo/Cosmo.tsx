@@ -51,7 +51,7 @@ export default function CosmoScene() {
           {/* <Environment preset="lobby" resolution={2048} /> */}
           <BlackHoleComponent />
         </Suspense>
-        <OrbitControls makeDefault />
+        <OrbitControls makeDefault autoRotate autoRotateSpeed={-0.15} />
       </Canvas>
       <Loader />
     </>

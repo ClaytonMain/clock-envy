@@ -10,4 +10,5 @@ export type BlackHoleUniforms = {
   uGlZ: { value: number };
   uDeflectionTableTexture: { value: THREE.DataTexture };
   uRayInverseRadiusTableTexture: { value: THREE.DataTexture };
+  uStarMapTexture: { value: THREE.CubeTexture };
 };

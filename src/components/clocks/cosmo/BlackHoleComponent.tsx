@@ -4,9 +4,10 @@ import blackHoleFragmentShader from "./shaders/black-hole/blackHole.frag";
 import blackHoleVertexShader from "./shaders/black-hole/blackHole.vert";
 import type { BlackHoleUniforms } from "./types/types";
 // import type { MncaUniforms } from "./types/types";
-import { Html, Plane } from "@react-three/drei";
+import { Html, Plane, useCubeTexture } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 // import { saveAs } from "file-saver";
+import { FOV } from "./constants/constants.tsx";
 import precomputeWorker from "./workers/precompute.ts";
 
 // TODO: Credit properly https://github.com/ebruneton/black_hole_shader/blob/master/black_hole/preprocess/functions.cc#L114
@@ -29,14 +30,20 @@ const uniforms: BlackHoleUniforms = {
   uResolution: {
     value: new THREE.Vector2(window.innerWidth, window.innerHeight),
   },
-  uGlZ: { value: -1 / (2 * Math.tan(45 * (Math.PI / 180) * 0.5)) },
+  uGlZ: { value: -1 / (2 * Math.tan(FOV * (Math.PI / 180) * 0.5)) },
   uDeflectionTableTexture: { value: new THREE.DataTexture() },
   uRayInverseRadiusTableTexture: { value: new THREE.DataTexture() },
+  uStarMapTexture: { value: new THREE.CubeTexture() },
 };
 
 export default function BlackHoleComponent() {
   const deflectionTableDisplayPlaneRef = useRef<THREE.Mesh>(null);
   const rayInverseRadiusTableDisplayPlaneRef = useRef<THREE.Mesh>(null);
+
+  const starMap = useCubeTexture(
+    ["px.png", "nx.png", "py.png", "ny.png", "pz.png", "nz.png"],
+    { path: "images/" },
+  );
 
   const renderPlanePositions = useMemo(
     () =>
@@ -167,6 +174,11 @@ export default function BlackHoleComponent() {
           THREE.FloatType,
         );
 
+        deflectionTableTexture.magFilter = THREE.LinearFilter;
+        deflectionTableTexture.minFilter = THREE.LinearFilter;
+        rayInverseRadiusTableTexture.magFilter = THREE.LinearFilter;
+        rayInverseRadiusTableTexture.minFilter = THREE.LinearFilter;
+
         deflectionTableTexture.needsUpdate = true;
         rayInverseRadiusTableTexture.needsUpdate = true;
 
@@ -208,6 +220,13 @@ export default function BlackHoleComponent() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calculating]);
+
+  useEffect(() => {
+    console.log("Star map texture loaded:", starMap);
+    if (starMap) {
+      uniforms.uStarMapTexture.value = starMap;
+    }
+  }, [starMap]);
 
   const deltaRef = useRef(0);
   const uTimeRef = useRef(0);
