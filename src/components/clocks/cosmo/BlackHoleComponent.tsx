@@ -7,6 +7,7 @@ import type { BlackHoleUniforms } from "./types/types";
 import { Html, Plane, useCubeTexture } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 // import { saveAs } from "file-saver";
+import { useControls } from "leva";
 import { FOV } from "./constants/constants.tsx";
 import precomputeWorker from "./workers/precompute.ts";
 
@@ -34,11 +35,22 @@ const uniforms: BlackHoleUniforms = {
   uDeflectionTableTexture: { value: new THREE.DataTexture() },
   uRayInverseRadiusTableTexture: { value: new THREE.DataTexture() },
   uStarMapTexture: { value: new THREE.CubeTexture() },
+  uDiscParticleParam01: { value: 0.5 },
+  uDiscParticleParam02: { value: 0.5 },
+  uDiscParticleParam03: { value: 0.5 },
+  uDiscParticleParam04: { value: 0.5 },
 };
 
 export default function BlackHoleComponent() {
   const deflectionTableDisplayPlaneRef = useRef<THREE.Mesh>(null);
   const rayInverseRadiusTableDisplayPlaneRef = useRef<THREE.Mesh>(null);
+
+  const controls = useControls({
+    uDiscParticleParam01: { value: 0.5, min: 0.0, max: 3.0, step: 0.01 },
+    uDiscParticleParam02: { value: 0.5, min: 0.0, max: 3.0, step: 0.01 },
+    uDiscParticleParam03: { value: 0.5, min: 0.0, max: 3.0, step: 0.01 },
+    uDiscParticleParam04: { value: 0.5, min: 0.0, max: 3.0, step: 0.01 },
+  });
 
   const starMap = useCubeTexture(
     ["px.png", "nx.png", "py.png", "ny.png", "pz.png", "nz.png"],
@@ -243,6 +255,11 @@ export default function BlackHoleComponent() {
 
   useFrame(({ camera }, delta) => {
     if (calculating) return;
+
+    uniforms.uDiscParticleParam01.value = controls.uDiscParticleParam01;
+    uniforms.uDiscParticleParam02.value = controls.uDiscParticleParam02;
+    uniforms.uDiscParticleParam03.value = controls.uDiscParticleParam03;
+    uniforms.uDiscParticleParam04.value = controls.uDiscParticleParam04;
 
     deltaRef.current = Math.min(delta, 0.1);
     uTimeRef.current += deltaRef.current;

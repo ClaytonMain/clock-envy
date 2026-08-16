@@ -8,6 +8,10 @@ uniform float uGlZ;
 uniform sampler2D uDeflectionTableTexture;
 uniform sampler2D uRayInverseRadiusTableTexture;
 uniform samplerCube uStarMapTexture;
+uniform float uDiscParticleParam01;
+uniform float uDiscParticleParam02;
+uniform float uDiscParticleParam03;
+uniform float uDiscParticleParam04;
 
 #define PI 3.14159265359
 
@@ -17,8 +21,8 @@ uniform samplerCube uStarMapTexture;
 // https://science.nasa.gov/3d-resources/hipparcos-star-map/
 
 const float kMu = 4.0 / 27.0;
-const float INNER_RADIUS = 1.0;
-const float OUTER_RADIUS = 3.0;
+const float INNER_RADIUS = 3.0;
+const float OUTER_RADIUS = 8.0;
 
 const float TWO_THIRDS = 2.0 / 3.0;
 
@@ -84,6 +88,13 @@ vec2 lookupRayInverseRadius(
   return texture2D(uRayInverseRadiusTableTexture, vec2(texU, texV)).xy;
 }
 
+float filteredPulse(float edge0, float edge1, float x, float fw) {
+  fw = max(fw, 1e-6);
+  float x0 = x - fw * 0.5;
+  float x1 = x0 + fw;
+  return max(0.0, (min(x1, edge1) - max(x0, edge0)) / fw);
+}
+
 float traceRay(
   const float u,
   const float uDot,
@@ -138,6 +149,17 @@ float traceRay(
     u1 = ui1.x;
     phi1 = alpha + phi - phi1;
     t1 = 2.0 * deflectionApsis.y - ui1.y - deflection.y;
+  }
+
+  float fw0 = min(fwidth(ui0.x), fwidth(u0 == -1.0 ? u1 : u0));
+  float fw1 = min(fwidth(ui1.x), fwidth(u1 == -1.0 ? u0 : u1));
+  alpha0 = filteredPulse(uOc, uIc, u0, fw0);
+  alpha1 = filteredPulse(uOc, uIc, u1, fw1);
+  if (s == 1.0 && abs(eSquare - kMu) < min(fwidth(eSquare), kMu)) {
+    if (alpha0 < 0.99)
+      u0 = 2.0 / (1.0 / uIc + 1.0 / uOc);
+    if (alpha1 < 0.99)
+      u1 = 2.0 / (1.0 / uIc + 1.0 / uOc);
   }
 
   return rayDeflection;
@@ -203,7 +225,7 @@ vec3 starColor(vec3 rayDirection, float lensingAmplificationFactor) {
 }
 
 // (inverse max and min radius, initial azimuth angle, precession 'ratio')
-const vec4 DISC_PARTICLE_PARAMS[5] = vec4[](vec4(1.0000, 0.4747, 0.0010, 1.31), vec4(0.8289, 0.4170, 1.2694, 0.83), vec4(0.7071, 0.3536, 2.3562, 0.67), vec4(0.5773, 0.2887, 3.1416, 0.50), vec4(0.5000, 0.2500, 4.7124, 0.42));
+const vec4 DISC_PARTICLE_PARAMS[5] = vec4[](vec4(0.5000, 0.4747, 0.0010, 1.31), vec4(1.8289, 0.4170, 1.2694, 0.83), vec4(1.7071, 0.3536, 2.3562, 0.67), vec4(1.5773, 0.2887, 3.1416, 0.50), vec4(1.5000, 0.2500, 4.7124, 0.42));
 
 float random(vec2 st) {
   return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
@@ -225,7 +247,8 @@ vec4 getDiscColor(vec2 p, float pT, bool topSide, float DopplerFactor) {
 
   float density = 0.0;
   for (int i = 0; i < 5; ++i) {
-    vec4 params = DISC_PARTICLE_PARAMS[i];
+    // vec4 params = DISC_PARTICLE_PARAMS[i];
+    vec4 params = vec4(uDiscParticleParam01, uDiscParticleParam02, uDiscParticleParam03, uDiscParticleParam04);
     float u1 = params.x;
     float u2 = params.y;
     float phi0 = params.z;
@@ -237,13 +260,15 @@ vec4 getDiscColor(vec2 p, float pT, bool topSide, float DopplerFactor) {
     float s = sin(dThetaDPhi * (a + phi));
     float r = 1.0 / (u1 + (u2 - u1) * s * s);
     vec2 d = vec2(a - PI, r - pR) * vec2(1.0 / PI, 0.5);
-    float noise = valueNoise(d * vec2(pR / OUTER_RADIUS, 1.0));
+    // float noise = valueNoise(d * vec2(pR / OUTER_RADIUS, 1.0));
+    float noise = valueNoise(d * vec2(pR / OUTER_RADIUS, 1.0) * 20.0);
     density += smoothstep(1.0, 0.0, length(d)) * noise;
   }
 
-  vec3 color = max(density, 0.0) * vec3(1.0, 0.5, 0.2) * DopplerFactor;
+  vec3 color = max(density, 0.0) * vec3(1.0, 0.5, 0.2) * DopplerFactor * 2.0;
   float alpha = smoothstep(INNER_RADIUS, INNER_RADIUS * 1.2, pR) * smoothstep(OUTER_RADIUS, OUTER_RADIUS / 1.2, pR);
   return vec4(color * alpha, alpha);
+  // return vec4(vec3(1.0, 0.5, 0.2) * DopplerFactor, 1.0);
 }
 
 vec3 render(vec3 rayOrigin, vec3 rayDirection) {
@@ -254,9 +279,9 @@ vec3 render(vec3 rayOrigin, vec3 rayDirection) {
   vec3 eZPrime = normalize(cross(eXPrime, rayDirection));
   vec3 eYPrime = normalize(cross(eZPrime, eXPrime));
 
+  // const vec3 eZ = vec3(0.0, 0.0, 1.0);
   const vec3 eZ = vec3(0.0, 0.0, 1.0);
-  vec3 t = normalize(cross(eZ, eXPrime));
-
+  vec3 t = normalize(cross(eZ, eZPrime));
   // Why?
   if (dot(t, eYPrime) < 0.0) {
     t = -t;
@@ -308,6 +333,7 @@ vec3 render(vec3 rayOrigin, vec3 rayDirection) {
 
   if (u1 >= 0.0 && alpha1 > 0.0) {
     float gklSource = e * sqrt(2.0 / (2.0 - 3.0 * u1)) - u1 * sqrt(u1 / (2.0 - 3.0 * u1)) * dot(eZ, eZPrime);
+    // float gklSource = e * sqrt(2.0 / (2.0 - 3.0 * u1)) - u1 * sqrt(u1 / (2.0 - 3.0 * u1)) * dot(eY, eYPrime);
     float dopplerFactor = gklReceiver / gklSource;
     bool topSide = (mod(abs(phi1 - alpha), 2.0 * PI) < 1e-3) == (eXPrime.z > 0.0);
     vec3 i1 = (eXPrime * cos(phi1) + eYPrime * sin(phi1)) / u1;
@@ -316,6 +342,7 @@ vec3 render(vec3 rayOrigin, vec3 rayDirection) {
   }
   if (u0 >= 0.0 && alpha0 > 0.0) {
     float gklSource = e * sqrt(2.0 / (2.0 - 3.0 * u0)) - u0 * sqrt(u0 / (2.0 - 3.0 * u0)) * dot(eZ, eZPrime);
+    // float gklSource = e * sqrt(2.0 / (2.0 - 3.0 * u0)) - u0 * sqrt(u0 / (2.0 - 3.0 * u0)) * dot(eY, eYPrime);
     float dopplerFactor = gklReceiver / gklSource;
     bool topSide = (mod(abs(phi0 - alpha), 2.0 * PI) < 1e-3) == (eXPrime.z > 0.0);
     vec3 i0 = (eXPrime * cos(phi0) + eYPrime * sin(phi0)) / u0;
