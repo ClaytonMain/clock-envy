@@ -25,6 +25,14 @@ float getTextureCoordFromUnitRange(float u) {
   return 0.5 / float(DEFLECTION_TABLE_SIZE) + u * (1.0 - 1.0 / float(DEFLECTION_TABLE_SIZE));
 }
 
+float getRayDeflectionTextureUFromESquare(float eSquare) {
+  if (eSquare < kMu) {
+    return 0.5 - sqrt(-log(1.0 - eSquare / kMu) * (1.0 / 50.0));
+  } else {
+    return 0.5 + sqrt(-log(1.0 - kMu / eSquare) * (1.0 / 50.0));
+  }
+}
+
 float getUApsisFromESquare(float eSquare) {
   float x = (2.0 / kMu) * eSquare - 1.0;
   return 1.0 / 3.0 + TWO_THIRDS * sin(asin(x) * (1.0 - TWO_THIRDS));
@@ -39,23 +47,19 @@ float getRayDeflectionTextureVFromESquareAndU(float eSquare, float u) {
   }
 }
 
-vec2 LookupRayDeflection(
+vec2 lookupRayDeflection(
   const float eSquare,
   const float u,
   out vec2 deflectionApsis
 ) {
-  float texU = getTextureCoordFromUnitRange(
-    getRayDeflectionTextureUFromESquare(eSquare)
-  );
-  float texV = getTextureCoordFromUnitRange(
-    getRayDeflectionTextureVFromESquareAndU(eSquare, u)
-  );
-  float texVApsis = getTextureCoordFromUnitRange(
-    1.0);
-  deflectionApsis = 
+  float texU = getTextureCoordFromUnitRange(getRayDeflectionTextureUFromESquare(eSquare));
+  float texV = getTextureCoordFromUnitRange(getRayDeflectionTextureVFromESquareAndU(eSquare, u));
+  float texVApsis = getTextureCoordFromUnitRange(1.0);
+  deflectionApsis = texture2D(uDeflectionTableTexture, vec2(texU, texVApsis)).xy;
+  return texture2D(uDeflectionTableTexture, vec2(texU, texV)).xy;
 }
 
-float TraceRay(
+float traceRay(
   const float u,
   const float uDot,
   const float eSquare,
@@ -79,11 +83,22 @@ float TraceRay(
   if (eSquare < kMu && u > 2.0 / 3.0) {
     return -1.0;
   }
+
+  vec2 deflectionApsis;
+  vec2 deflection = lookupRayDeflection(eSquare, u, deflectionApsis);
+
+  float rayDeflection = deflection.x;
+
+  if (uDot > 0.0) {
+    rayDeflection = eSquare < kMu ? 2.0 * deflectionApsis.x - rayDeflection : -1.0;
+  }
+
+  return rayDeflection;
 }
 
 vec3 render(vec3 rayOrigin, vec3 rayDirection) {
   // I'm working under the assumption that my `rayDirection` matches their `d` and we're just
-  // going to ignore `e_tau`.
+  // going to set `eTau` to `vec3(0.0, 0.0, 0.0)`.
 
   vec3 eXPrime = normalize(uCameraPosition);
   vec3 eZPrime = normalize(cross(eXPrime, rayDirection));
@@ -109,26 +124,19 @@ vec3 render(vec3 rayOrigin, vec3 rayDirection) {
   const float U_OC = 1.0 / OUTER_RADIUS;
 
   float u0, phi0, t0, alpha0, u1, phi1, t1, alpha1;
-  float deflection = TraceRay(
-    u,
-    uDot,
-    eSquare,
-    delta,
-    alpha,
-    U_IC,
-    U_OC,
-    u0,
-    phi0,
-    t0,
-    alpha0,
-    u1,
-    phi1,
-    t1,
-    alpha1
-  );
+  float deflection = traceRay(u, uDot, eSquare, delta, alpha, U_IC, U_OC, u0, phi0, t0, alpha0, u1, phi1, t1, alpha1);
 
-  vec3 color = vec3(0.0);
-  return rayDirection;
+  vec4 kS = vec4(1.0, 0.0, 0.0, 0.0);
+  vec3 eTau = vec3(0.0, 0.0, 0.0);
+  vec4 l = vec4(e / (1.0 - u), -uDot, 0.0, u * u);
+  float gklReceiver = kS.x * l.x * (1.0 - u) - kS.y * l.y / (1.0 - u) - u * dot(eTau, eYPrime) * l.w / (u * u);
+
+  float deltaPrime = delta + max(deflection, 0.0);
+  vec3 dPrime = cos(deltaPrime) * eXPrime + sin(deltaPrime) * eYPrime;
+
+  vec3 color = vec3(dPrime);
+  return color;
+  // return rayDirection;
 }
 
 void main() {
