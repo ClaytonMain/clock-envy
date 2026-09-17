@@ -264,6 +264,8 @@ export default function BlackHoleComponent() {
     deltaRef.current = Math.min(delta, 0.1);
     uTimeRef.current += deltaRef.current;
 
+    camera.rotateZ(-0.28);
+
     uniforms.uTime.value = uTimeRef.current;
     uniforms.uTimeDelta.value = deltaRef.current;
 

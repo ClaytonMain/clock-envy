@@ -32,9 +32,10 @@ export default function CosmoScene() {
         ref={canvasRef}
         dpr={1}
         camera={{
-          position: [0.01, 0.5, 8],
+          position: [0.01, 18, 3.5],
           // position: [0, 0, 10],
           fov: FOV,
+          up: new THREE.Vector3(0, 0, 1),
         }}
         style={{
           touchAction: "none",
@@ -51,7 +52,7 @@ export default function CosmoScene() {
           {/* <Environment preset="lobby" resolution={2048} /> */}
           <BlackHoleComponent />
         </Suspense>
-        <OrbitControls makeDefault autoRotate autoRotateSpeed={-0.15} />
+        <OrbitControls makeDefault autoRotate autoRotateSpeed={0.15} />
       </Canvas>
       <Loader />
     </>

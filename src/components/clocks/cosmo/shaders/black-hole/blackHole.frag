@@ -267,7 +267,8 @@ vec4 getDiscColor(vec2 p, float pT, bool topSide, float DopplerFactor) {
 
   vec3 color = max(density, 0.0) * vec3(1.0, 0.5, 0.2) * DopplerFactor * 2.0;
   float alpha = smoothstep(INNER_RADIUS, INNER_RADIUS * 1.2, pR) * smoothstep(OUTER_RADIUS, OUTER_RADIUS / 1.2, pR);
-  return vec4(color * alpha, alpha);
+  return vec4(vec3(1.0, 0.5, 0.2) * mod(pR, 1.0), 1.0);
+  // return vec4(color * alpha, alpha);
   // return vec4(vec3(1.0, 0.5, 0.2) * DopplerFactor, 1.0);
 }
 
@@ -349,6 +350,10 @@ vec3 render(vec3 rayOrigin, vec3 rayDirection) {
     vec4 discColor0 = getDiscColor(i0.xy, uCameraSchwarzschildP.x - t0, topSide, dopplerFactor);
     color = color * (1.0 - discColor0.a) + alpha0 * discColor0.rgb;
   }
+
+  // if (deflection < 0.0) {
+  //   color = vec3(1.0, 0.0, 0.0);
+  // }
 
   return color;
   // return rayDirection;
