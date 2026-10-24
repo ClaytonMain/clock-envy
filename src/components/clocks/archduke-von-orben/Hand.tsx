@@ -1,4 +1,3 @@
-import { Sphere, Torus } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useSpring } from "motion/react";
 import { useMemo, useRef } from "react";
@@ -123,123 +122,123 @@ export default function Hand({
 
   return (
     <group position={position} rotation={rotation}>
-      <group ref={innerGroupRef}>
-        <Torus
-          args={[radius, tube, radialSegments, tubularSegments, arc]}
-          castShadow
-          receiveShadow
-          layers={handLayers}
-        >
-          <meshPhysicalMaterial
-            attach="material"
-            color={color}
-            {...materialProps}
-            onBeforeCompile={(shader) => {
-              shader.uniforms.uArcLengthPercent = uArcLengthPercentRef.current;
-              shader.vertexShader = shader.vertexShader.replace(
-                "#include <common>",
-                /* glsl */ `
-                #include <common>
-                uniform float uArcLengthPercent;
-
-                mat3 rotZ(float angle) {
-                  float s = sin(angle);
-                  float c = cos(angle);
-                  return mat3(
-                    c, -s, 0.0,
-                    s,  c, 0.0,
-                    0.0, 0.0, 1.0
-                  );
-                }
-                `,
-              );
-              shader.vertexShader = shader.vertexShader.replace(
-                "#include <beginnormal_vertex>",
-                /* glsl */ `
-                float baseAngle = atan(-position.y - 0.0001, -position.x - 0.0001) + PI;
-                float angle = baseAngle * (1.0 - uArcLengthPercent);
-                mat3 rotationMatrix = rotZ(angle);
-
-                vec3 objectNormal = vec3(rotationMatrix * normal);
-                #ifdef USE_TANGENT
-                  vec3 objectTangent = vec3(rotationMatrix * tangent.xyz);
-                #endif
-              `,
-              );
-              shader.vertexShader = shader.vertexShader.replace(
-                "#include <begin_vertex>",
-                /* glsl */ `
-                vec3 transformed = vec3(rotationMatrix * position);
-                #ifdef USE_ALPHAHASH
-                  vPosition = vec3(rotationMatrix * position);
-                #endif
-              `,
-              );
-            }}
-          />
-          <meshDepthMaterial
-            attach="customDepthMaterial"
-            depthPacking={THREE.RGBADepthPacking}
-            onBeforeCompile={(shader) => {
-              shader.uniforms.uArcLengthPercent = uArcLengthPercentRef.current;
-              shader.vertexShader = shader.vertexShader.replace(
-                "#include <common>",
-                /* glsl */ `
-                #include <common>
-                uniform float uArcLengthPercent;
-
-                mat3 rotZ(float angle) {
-                  float s = sin(angle);
-                  float c = cos(angle);
-                  return mat3(
-                    c, -s, 0.0,
-                    s,  c, 0.0,
-                    0.0, 0.0, 1.0
-                  );
-                }
-                `,
-              );
-              shader.vertexShader = shader.vertexShader.replace(
-                "#include <begin_vertex>",
-                /* glsl */ `
-                float baseAngle = atan(-position.y - 0.0001, -position.x - 0.0001) + PI;
-                float angle = baseAngle * (1.0 - uArcLengthPercent);
-                mat3 rotationMatrix = rotZ(angle);
-
-                vec3 transformed = vec3(rotationMatrix * position);
-                #ifdef USE_ALPHAHASH
-                  vPosition = vec3(rotationMatrix * position);
-                #endif
-              `,
-              );
-            }}
-          />
-        </Torus>
-        <Sphere
-          args={[tube, radialSegments, 8, 0, Math.PI * 2, 0, Math.PI / 2 + 0.1]}
-          position={[radius, 0, 0]}
-          rotation={[0, 0, Math.PI]}
-          castShadow
-          receiveShadow
-          layers={handLayers}
-        >
-          <meshPhysicalMaterial color={color} {...materialProps} />
-        </Sphere>
-        <Sphere
-          ref={movingOrbRef}
-          args={[tube, radialSegments, 8, 0, Math.PI * 2, 0, Math.PI / 2 + 0.1]}
-          position={[
-            Math.cos(timeLengthPercent.get() * arc) * radius,
-            Math.sin(timeLengthPercent.get() * arc) * radius,
-            0,
-          ]}
-          castShadow
-          receiveShadow
-          layers={handLayers}
-        >
-          <meshPhysicalMaterial color={color} {...materialProps} />
-        </Sphere>
-      </group>
+      <group ref={innerGroupRef}></group>
     </group>
   );
 }
+
+// {/* <Torus
+//           args={[radius, tube, radialSegments, tubularSegments, arc]}
+//           castShadow
+//           receiveShadow
+//           layers={handLayers}
+//         >
+//           <meshPhysicalMaterial
+//             attach="material"
+//             color={color}
+//             {...materialProps}
+//             onBeforeCompile={(shader) => {
+//               shader.uniforms.uArcLengthPercent = uArcLengthPercentRef.current;
+//               shader.vertexShader = shader.vertexShader.replace(
+//                 "#include <common>",
+//                 /* glsl */ `
+//                 #include <common>
+//                 uniform float uArcLengthPercent;
+
+//                 mat3 rotZ(float angle) {
+//                   float s = sin(angle);
+//                   float c = cos(angle);
+//                   return mat3(
+//                     c, -s, 0.0,
+//                     s,  c, 0.0,
+//                     0.0, 0.0, 1.0
+//                   );
+//                 }
+//                 `,
+//               );
+//               shader.vertexShader = shader.vertexShader.replace(
+//                 "#include <beginnormal_vertex>",
+//                 /* glsl */ `
+//                 float baseAngle = atan(-position.y - 0.0001, -position.x - 0.0001) + PI;
+//                 float angle = baseAngle * (1.0 - uArcLengthPercent);
+//                 mat3 rotationMatrix = rotZ(angle);
+
+//                 vec3 objectNormal = vec3(rotationMatrix * normal);
+//                 #ifdef USE_TANGENT
+//                   vec3 objectTangent = vec3(rotationMatrix * tangent.xyz);
+//                 #endif
+//               `,
+//               );
+//               shader.vertexShader = shader.vertexShader.replace(
+//                 "#include <begin_vertex>",
+//                 /* glsl */ `
+//                 vec3 transformed = vec3(rotationMatrix * position);
+//                 #ifdef USE_ALPHAHASH
+//                   vPosition = vec3(rotationMatrix * position);
+//                 #endif
+//               `,
+//               );
+//             }}
+//           />
+//           <meshDepthMaterial
+//             attach="customDepthMaterial"
+//             depthPacking={THREE.RGBADepthPacking}
+//             onBeforeCompile={(shader) => {
+//               shader.uniforms.uArcLengthPercent = uArcLengthPercentRef.current;
+//               shader.vertexShader = shader.vertexShader.replace(
+//                 "#include <common>",
+//                 /* glsl */ `
+//                 #include <common>
+//                 uniform float uArcLengthPercent;
+
+//                 mat3 rotZ(float angle) {
+//                   float s = sin(angle);
+//                   float c = cos(angle);
+//                   return mat3(
+//                     c, -s, 0.0,
+//                     s,  c, 0.0,
+//                     0.0, 0.0, 1.0
+//                   );
+//                 }
+//                 `,
+//               );
+//               shader.vertexShader = shader.vertexShader.replace(
+//                 "#include <begin_vertex>",
+//                 /* glsl */ `
+//                 float baseAngle = atan(-position.y - 0.0001, -position.x - 0.0001) + PI;
+//                 float angle = baseAngle * (1.0 - uArcLengthPercent);
+//                 mat3 rotationMatrix = rotZ(angle);
+
+//                 vec3 transformed = vec3(rotationMatrix * position);
+//                 #ifdef USE_ALPHAHASH
+//                   vPosition = vec3(rotationMatrix * position);
+//                 #endif
+//               `,
+//               );
+//             }}
+//           />
+//         </Torus>
+//         <Sphere
+//           args={[tube, radialSegments, 8, 0, Math.PI * 2, 0, Math.PI / 2 + 0.1]}
+//           position={[radius, 0, 0]}
+//           rotation={[0, 0, Math.PI]}
+//           castShadow
+//           receiveShadow
+//           layers={handLayers}
+//         >
+//           <meshPhysicalMaterial color={color} {...materialProps} />
+//         </Sphere>
+//         <Sphere
+//           ref={movingOrbRef}
+//           args={[tube, radialSegments, 8, 0, Math.PI * 2, 0, Math.PI / 2 + 0.1]}
+//           position={[
+//             Math.cos(timeLengthPercent.get() * arc) * radius,
+//             Math.sin(timeLengthPercent.get() * arc) * radius,
+//             0,
+//           ]}
+//           castShadow
+//           receiveShadow
+//           layers={handLayers}
+//         >
+//           <meshPhysicalMaterial color={color} {...materialProps} />
+//         </Sphere> */}

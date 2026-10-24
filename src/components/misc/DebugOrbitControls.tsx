@@ -1,4 +1,5 @@
 import { OrbitControls } from "@react-three/drei";
+import { useThree } from "@react-three/fiber";
 import { useEffect, useState } from "react";
 import useAppStore from "../../stores/useAppStore";
 
@@ -145,5 +146,9 @@ export default function DebugOrbitControls({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debug]);
 
-  return <OrbitControls {...orbitControlsProps} />;
+  const renderer = useThree((state) => state.renderer);
+
+  return (
+    <OrbitControls domElement={renderer.domElement} {...orbitControlsProps} />
+  );
 }

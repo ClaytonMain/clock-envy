@@ -42,7 +42,7 @@ export default function InfoAndAckModal() {
             <AnimatePresence>
               {active && (
                 <motion.div
-                  className="absolute top-1/2 left-1/2 w-11/12 -translate-x-1/2 -translate-y-1/2 rounded bg-zinc-900 p-6 text-zinc-200 md:w-1/2 md:max-w-[800px]"
+                  className="absolute top-1/2 left-1/2 w-11/12 -translate-x-1/2 -translate-y-1/2 rounded bg-zinc-900 p-6 text-zinc-200 md:w-1/2 md:max-w-200"
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}

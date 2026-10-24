@@ -1,6 +1,4 @@
-import { Loader, Plane, useFBO } from "@react-three/drei";
 import { Canvas, createPortal, useFrame } from "@react-three/fiber";
-import { useControls } from "leva";
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";

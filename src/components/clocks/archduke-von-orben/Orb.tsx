@@ -1,43 +1,44 @@
-import { useFrame } from "@react-three/fiber";
-import { monitor, useControls } from "leva";
+import { useFrame, useThree } from "@react-three/fiber";
+// import { monitor, useControls } from "leva";
 import { useSpring } from "motion/react";
 import { useEffect, useMemo, useRef } from "react";
-import * as THREE from "three";
-import CustomShaderMaterial from "three-custom-shader-material";
-import CSM from "three-custom-shader-material/vanilla";
+import * as THREE from "three/webgpu";
+// import CustomShaderMaterial from "three-custom-shader-material";
+// import CSM from "three-custom-shader-material/vanilla";
 import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
-import { Reflector } from "three/examples/jsm/objects/Reflector.js";
+// import { Reflector } from "three/examples/jsm/objects/Reflector.js";
 import useAppStore from "../../../stores/useAppStore";
 import useArchdukeVonOrbenStore from "../../../stores/useArchdukeVonOrbenStore";
 import { SPRING_CONFIGS } from "./constants/constants";
-import orbFragmentShader from "./shaders/orb/orb.frag";
-import orbVertexShader from "./shaders/orb/orb.vert";
+// import orbFragmentShader from "./shaders/orb/orb.frag";
+// import orbVertexShader from "./shaders/orb/orb.vert";
+import { useUniforms } from "@react-three/tsl";
 
-const uniforms = {
-  // Orb
-  orbMass: new THREE.Uniform(5000.0),
-  orbDecayFactor: new THREE.Uniform(0.08),
-  // Misc.
-  uTime: new THREE.Uniform(0.0),
-  uBasePosFreq: new THREE.Uniform(3.15),
-  uBaseTimeFreq: new THREE.Uniform(0.02),
-  uBaseStrength: new THREE.Uniform(0.06),
-  // Hour
-  uHTime: new THREE.Uniform(0.0),
-  uHBasePosFreq: new THREE.Uniform(0.48),
-  uHBaseTimeFreq: new THREE.Uniform(0.08),
-  uHBaseStrength: new THREE.Uniform(0.04),
-  // Minute
-  uMTime: new THREE.Uniform(0.0),
-  uMBasePosFreq: new THREE.Uniform(1.06),
-  uMBaseTimeFreq: new THREE.Uniform(0.08),
-  uMBaseStrength: new THREE.Uniform(0.04),
-  // Second
-  uSTime: new THREE.Uniform(0.0),
-  uSBasePosFreq: new THREE.Uniform(3.28),
-  uSBaseTimeFreq: new THREE.Uniform(0.08),
-  uSBaseStrength: new THREE.Uniform(0.04),
-};
+// const uniforms = {
+//   // Orb
+//   orbMass: new THREE.Uniform(5000.0),
+//   orbDecayFactor: new THREE.Uniform(0.08),
+//   // Misc.
+//   uTime: new THREE.Uniform(0.0),
+//   uBasePosFreq: new THREE.Uniform(3.15),
+//   uBaseTimeFreq: new THREE.Uniform(0.02),
+//   uBaseStrength: new THREE.Uniform(0.06),
+//   // Hour
+//   uHTime: new THREE.Uniform(0.0),
+//   uHBasePosFreq: new THREE.Uniform(0.48),
+//   uHBaseTimeFreq: new THREE.Uniform(0.08),
+//   uHBaseStrength: new THREE.Uniform(0.04),
+//   // Minute
+//   uMTime: new THREE.Uniform(0.0),
+//   uMBasePosFreq: new THREE.Uniform(1.06),
+//   uMBaseTimeFreq: new THREE.Uniform(0.08),
+//   uMBaseStrength: new THREE.Uniform(0.04),
+//   // Second
+//   uSTime: new THREE.Uniform(0.0),
+//   uSBasePosFreq: new THREE.Uniform(3.28),
+//   uSBaseTimeFreq: new THREE.Uniform(0.08),
+//   uSBaseStrength: new THREE.Uniform(0.04),
+// };
 
 export default function Orb({
   position = [0, 0, 0],
@@ -45,9 +46,9 @@ export default function Orb({
   position?: [number, number, number];
 }) {
   const formatHours24 = useAppStore((state) => state.formatHours24);
-  const reflectorRef = useRef<THREE.Mesh>(null!);
-  const csmRef = useRef<CSM<typeof THREE.MeshPhysicalMaterial>>(null!);
-  const csmDepthRef = useRef<CSM<typeof THREE.MeshDepthMaterial>>(null!);
+  // const reflectorRef = useRef<THREE.Mesh>(null!);
+  // const csmRef = useRef<CSM<typeof THREE.MeshPhysicalMaterial>>(null!);
+  // const csmDepthRef = useRef<CSM<typeof THREE.MeshDepthMaterial>>(null!);
   const orbRef = useRef<THREE.Mesh>(null!);
 
   const orbGeometry = useMemo(() => {
@@ -56,24 +57,87 @@ export default function Orb({
     return geometry;
   }, []);
 
-  const mirror = useMemo(() => {
-    const reflector = new Reflector(orbGeometry, {
-      textureWidth: 2048,
-      textureHeight: 2048,
-    });
-    reflector.forceUpdate = true;
-    return reflector;
-  }, [orbGeometry]);
+  const uniforms = useUniforms({
+    // Orb
+    orbMass: 5000.0,
+    orbDecayFactor: 0.08,
+    // Misc.
+    uTime: 0.0,
+    uBasePosFreq: 3.15,
+    uBaseTimeFreq: 0.02,
+    uBaseStrength: 0.06,
+    // Hour
+    uHTime: 0.0,
+    uHBasePosFreq: 0.48,
+    uHBaseTimeFreq: 0.08,
+    uHBaseStrength: 0.04,
+    // Minute
+    uMTime: 0.0,
+    uMBasePosFreq: 1.06,
+    uMBaseTimeFreq: 0.08,
+    uMBaseStrength: 0.04,
+    // Second
+    uSTime: 0.0,
+    uSBasePosFreq: 3.28,
+    uSBaseTimeFreq: 0.08,
+    uSBaseStrength: 0.04,
+  });
+
+  const renderer = useThree((state) => state.renderer);
+
+  useEffect(() => {
+    const gui = renderer.inspector?.createParameters("Orb");
+    gui.add(uniforms.orbMass, "value", 0, 10000, 1).name("orbMass");
+    gui
+      .add(uniforms.orbDecayFactor, "value", 0, 1, 0.001)
+      .name("orbDecayFactor");
+    gui.add(uniforms.uBasePosFreq, "value", 0, 5, 0.01).name("uBasePosFreq");
+    gui.add(uniforms.uBaseTimeFreq, "value", 0, 5, 0.01).name("uBaseTimeFreq");
+    gui.add(uniforms.uBaseStrength, "value", 0, 5, 0.01).name("uBaseStrength");
+    gui.add(uniforms.uHBasePosFreq, "value", 0, 5, 0.01).name("uHBasePosFreq");
+    gui
+      .add(uniforms.uHBaseTimeFreq, "value", 0, 5, 0.01)
+      .name("uHBaseTimeFreq");
+    gui
+      .add(uniforms.uHBaseStrength, "value", 0, 5, 0.01)
+      .name("uHBaseStrength");
+    gui.add(uniforms.uMBasePosFreq, "value", 0, 5, 0.01).name("uMBasePosFreq");
+    gui
+      .add(uniforms.uMBaseTimeFreq, "value", 0, 5, 0.01)
+      .name("uMBaseTimeFreq");
+    gui
+      .add(uniforms.uMBaseStrength, "value", 0, 5, 0.01)
+      .name("uMBaseStrength");
+    gui.add(uniforms.uSBasePosFreq, "value", 0, 5, 0.01).name("uSBasePosFreq");
+    gui
+      .add(uniforms.uSBaseTimeFreq, "value", 0, 5, 0.01)
+      .name("uSBaseTimeFreq");
+    gui
+      .add(uniforms.uSBaseStrength, "value", 0, 5, 0.01)
+      .name("uSBaseStrength");
+
+    return () => gui.destroy?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renderer]);
+
+  // const mirror = useMemo(() => {
+  //   const reflector = new Reflector(orbGeometry, {
+  //     textureWidth: 2048,
+  //     textureHeight: 2048,
+  //   });
+  //   reflector.forceUpdate = true;
+  //   return reflector;
+  // }, [orbGeometry]);
 
   const orbLayers = useMemo(() => {
     const layers = new THREE.Layers();
     layers.set(1);
     return layers;
   }, []);
-  const reflectorLayers = useMemo(() => {
-    const layers = new THREE.Layers();
-    return layers;
-  }, []);
+  // const reflectorLayers = useMemo(() => {
+  //   const layers = new THREE.Layers();
+  //   return layers;
+  // }, []);
 
   // Sort of mimicking the Hand spring velocities, but without the large
   // jumps when going from full hand length to zero. Helps achieve the
@@ -139,202 +203,215 @@ export default function Orb({
     };
   }, [formatHours24, hSpringLocal, mSpringLocal, sSpringLocal]);
 
-  const controlValues = useControls({
-    // Orb
-    orbMass: {
-      value: 5000,
-      min: 0,
-      max: 10000,
-      step: 1,
-    },
-    orbDecayFactor: {
-      value: 0.08,
-      min: 0,
-      max: 1,
-      step: 0.001,
-    },
-    // Time
-    uBasePosFreq: {
-      value: uniforms.uBasePosFreq.value,
-      min: 0,
-      max: 5,
-      step: 0.01,
-    },
-    uBaseTimeFreq: {
-      value: uniforms.uBaseTimeFreq.value,
-      min: 0,
-      max: 5,
-      step: 0.01,
-    },
-    uBaseStrength: {
-      value: uniforms.uBaseStrength.value,
-      min: 0,
-      max: 5,
-      step: 0.01,
-    },
-    // Hour
-    uHBasePosFreq: {
-      value: uniforms.uHBasePosFreq.value,
-      min: 0,
-      max: 5,
-      step: 0.01,
-    },
-    uHBaseTimeFreq: {
-      value: uniforms.uHBaseTimeFreq.value,
-      min: 0,
-      max: 5,
-      step: 0.01,
-    },
-    uHBaseStrength: {
-      value: uniforms.uHBaseStrength.value,
-      min: 0,
-      max: 5,
-      step: 0.01,
-    },
-    // Minute
-    uMBasePosFreq: {
-      value: uniforms.uMBasePosFreq.value,
-      min: 0,
-      max: 5,
-      step: 0.01,
-    },
-    uMBaseTimeFreq: {
-      value: uniforms.uMBaseTimeFreq.value,
-      min: 0,
-      max: 5,
-      step: 0.01,
-    },
-    uMBaseStrength: {
-      value: uniforms.uMBaseStrength.value,
-      min: 0,
-      max: 5,
-      step: 0.01,
-    },
-    // Second
-    uSBasePosFreq: {
-      value: uniforms.uSBasePosFreq.value,
-      min: 0,
-      max: 5,
-      step: 0.01,
-    },
-    uSBaseTimeFreq: {
-      value: uniforms.uSBaseTimeFreq.value,
-      min: 0,
-      max: 5,
-      step: 0.01,
-    },
-    uSBaseStrength: {
-      value: uniforms.uSBaseStrength.value,
-      min: 0,
-      max: 5,
-      step: 0.01,
-    },
-    velocityRef: monitor(() => velocityRef.current, {
-      graph: true,
-      interval: 300,
-    }),
-    sVelocityRef: monitor(() => uSSpringVelocityDeltaRef.current, {
-      graph: true,
-      interval: 30,
-    }),
-  });
+  // const controlValues = {
+  //   orbMass: 5000,
+  //   orbDecayFactor: 0.08,
+  //   uBasePosFreq: uniforms.uBasePosFreq.value,
+  //   uBaseTimeFreq: uniforms.uBaseTimeFreq.value,
+  //   uBaseStrength: uniforms.uBaseStrength.value,
+  //   uHBasePosFreq: uniforms.uHBasePosFreq.value,
+  //   uHBaseTimeFreq: uniforms.uHBaseTimeFreq.value,
+  //   uHBaseStrength: uniforms.uHBaseStrength.value,
+  //   uMBasePosFreq: uniforms.uMBasePosFreq.value,
+  //   uMBaseTimeFreq: uniforms.uMBaseTimeFreq.value,
+  //   uMBaseStrength: uniforms.uMBaseStrength.value,
+  //   uSBasePosFreq: uniforms.uSBasePosFreq.value,
+  //   uSBaseTimeFreq: uniforms.uSBaseTimeFreq.value,
+  //   uSBaseStrength: uniforms.uSBaseStrength.value,
+  // };
+
+  // const controlValues = useControls({
+  //   // Orb
+  //   orbMass: {
+  //     value: 5000,
+  //     min: 0,
+  //     max: 10000,
+  //     step: 1,
+  //   },
+  //   orbDecayFactor: {
+  //     value: 0.08,
+  //     min: 0,
+  //     max: 1,
+  //     step: 0.001,
+  //   },
+  //   // Time
+  //   uBasePosFreq: {
+  //     value: uniforms.uBasePosFreq.value,
+  //     min: 0,
+  //     max: 5,
+  //     step: 0.01,
+  //   },
+  //   uBaseTimeFreq: {
+  //     value: uniforms.uBaseTimeFreq.value,
+  //     min: 0,
+  //     max: 5,
+  //     step: 0.01,
+  //   },
+  //   uBaseStrength: {
+  //     value: uniforms.uBaseStrength.value,
+  //     min: 0,
+  //     max: 5,
+  //     step: 0.01,
+  //   },
+  //   // Hour
+  //   uHBasePosFreq: {
+  //     value: uniforms.uHBasePosFreq.value,
+  //     min: 0,
+  //     max: 5,
+  //     step: 0.01,
+  //   },
+  //   uHBaseTimeFreq: {
+  //     value: uniforms.uHBaseTimeFreq.value,
+  //     min: 0,
+  //     max: 5,
+  //     step: 0.01,
+  //   },
+  //   uHBaseStrength: {
+  //     value: uniforms.uHBaseStrength.value,
+  //     min: 0,
+  //     max: 5,
+  //     step: 0.01,
+  //   },
+  //   // Minute
+  //   uMBasePosFreq: {
+  //     value: uniforms.uMBasePosFreq.value,
+  //     min: 0,
+  //     max: 5,
+  //     step: 0.01,
+  //   },
+  //   uMBaseTimeFreq: {
+  //     value: uniforms.uMBaseTimeFreq.value,
+  //     min: 0,
+  //     max: 5,
+  //     step: 0.01,
+  //   },
+  //   uMBaseStrength: {
+  //     value: uniforms.uMBaseStrength.value,
+  //     min: 0,
+  //     max: 5,
+  //     step: 0.01,
+  //   },
+  //   // Second
+  //   uSBasePosFreq: {
+  //     value: uniforms.uSBasePosFreq.value,
+  //     min: 0,
+  //     max: 5,
+  //     step: 0.01,
+  //   },
+  //   uSBaseTimeFreq: {
+  //     value: uniforms.uSBaseTimeFreq.value,
+  //     min: 0,
+  //     max: 5,
+  //     step: 0.01,
+  //   },
+  //   uSBaseStrength: {
+  //     value: uniforms.uSBaseStrength.value,
+  //     min: 0,
+  //     max: 5,
+  //     step: 0.01,
+  //   },
+  //   velocityRef: monitor(() => velocityRef.current, {
+  //     graph: true,
+  //     interval: 300,
+  //   }),
+  //   sVelocityRef: monitor(() => uSSpringVelocityDeltaRef.current, {
+  //     graph: true,
+  //     interval: 30,
+  //   }),
+  // });
 
   const deltaRef = useRef(0);
-  const uTimeRef = useRef(0);
-  const uHTimeRef = useRef(0);
-  const uMTimeRef = useRef(0);
-  const uSTimeRef = useRef(0);
 
   const velocityRef = useRef(0.1);
 
-  useFrame(({ gl, camera, scene }, delta) => {
-    // General.
-    deltaRef.current = Math.max(delta, 0.016);
+  // useFrame(({ renderer, camera, scene }, delta) => {
+  //   // General.
+  //   deltaRef.current = Math.max(delta, 0.016);
 
-    const hForce =
-      (SPRING_CONFIGS.h.mass *
-        2 *
-        Math.max(
-          Math.abs(uHSpringVelocityDeltaRef.current) - velocityRef.current,
-          0,
-        )) /
-      deltaRef.current;
-    const mForce =
-      (SPRING_CONFIGS.m.mass *
-        2 *
-        Math.max(
-          Math.abs(uMSpringVelocityDeltaRef.current) - velocityRef.current,
-          0,
-        )) /
-      deltaRef.current;
-    const sForce =
-      (SPRING_CONFIGS.s.mass *
-        2 *
-        Math.max(
-          Math.abs(uSSpringVelocityDeltaRef.current) - velocityRef.current,
-          0,
-        )) /
-      deltaRef.current;
+  //   const hForce =
+  //     (SPRING_CONFIGS.h.mass *
+  //       2 *
+  //       Math.max(
+  //         Math.abs(uHSpringVelocityDeltaRef.current) - velocityRef.current,
+  //         0,
+  //       )) /
+  //     deltaRef.current;
+  //   const mForce =
+  //     (SPRING_CONFIGS.m.mass *
+  //       2 *
+  //       Math.max(
+  //         Math.abs(uMSpringVelocityDeltaRef.current) - velocityRef.current,
+  //         0,
+  //       )) /
+  //     deltaRef.current;
+  //   const sForce =
+  //     (SPRING_CONFIGS.s.mass *
+  //       2 *
+  //       Math.max(
+  //         Math.abs(uSSpringVelocityDeltaRef.current) - velocityRef.current,
+  //         0,
+  //       )) /
+  //     deltaRef.current;
 
-    velocityRef.current += (hForce + mForce + sForce) / controlValues.orbMass;
-    velocityRef.current = Math.max(
-      0,
-      velocityRef.current *
-        (1 - controlValues.orbDecayFactor * deltaRef.current),
-    );
+  //   velocityRef.current += (hForce + mForce + sForce) / uniforms.orbMass.value;
+  //   velocityRef.current = Math.max(
+  //     0,
+  //     velocityRef.current *
+  //       (1 - uniforms.orbDecayFactor.value * deltaRef.current),
+  //   );
 
-    uTimeRef.current += velocityRef.current;
-    uHTimeRef.current += deltaRef.current + hSpringLocal.getVelocity();
-    uMTimeRef.current += deltaRef.current + mSpringLocal.getVelocity();
-    uSTimeRef.current += deltaRef.current + sSpringLocal.getVelocity();
+  //   // uTimeRef.current += velocityRef.current;
+  //   // uHTimeRef.current += deltaRef.current + hSpringLocal.getVelocity();
+  //   // uMTimeRef.current += deltaRef.current + mSpringLocal.getVelocity();
+  //   // uSTimeRef.current += deltaRef.current + sSpringLocal.getVelocity();
 
-    uniforms.uTime.value = uTimeRef.current;
-    uniforms.uBasePosFreq.value = controlValues.uBasePosFreq;
-    uniforms.uBaseTimeFreq.value = controlValues.uBaseTimeFreq;
-    uniforms.uBaseStrength.value = controlValues.uBaseStrength;
+  //   // uniforms.uTime.value = uTimeRef.current;
+  //   // uniforms.uBasePosFreq.value = controlValues.uBasePosFreq;
+  //   // uniforms.uBaseTimeFreq.value = controlValues.uBaseTimeFreq;
+  //   // uniforms.uBaseStrength.value = controlValues.uBaseStrength;
 
-    uniforms.uHTime.value = uHTimeRef.current;
-    uniforms.uHBasePosFreq.value = controlValues.uHBasePosFreq;
-    uniforms.uHBaseTimeFreq.value = controlValues.uHBaseTimeFreq;
-    uniforms.uHBaseStrength.value = controlValues.uHBaseStrength;
+  //   // uniforms.uHTime.value = uHTimeRef.current;
+  //   // uniforms.uHBasePosFreq.value = controlValues.uHBasePosFreq;
+  //   // uniforms.uHBaseTimeFreq.value = controlValues.uHBaseTimeFreq;
+  //   // uniforms.uHBaseStrength.value = controlValues.uHBaseStrength;
 
-    uniforms.uMTime.value = uMTimeRef.current;
-    uniforms.uMBasePosFreq.value = controlValues.uMBasePosFreq;
-    uniforms.uMBaseTimeFreq.value = controlValues.uMBaseTimeFreq;
-    uniforms.uMBaseStrength.value = controlValues.uMBaseStrength;
+  //   // uniforms.uMTime.value = uMTimeRef.current;
+  //   // uniforms.uMBasePosFreq.value = controlValues.uMBasePosFreq;
+  //   // uniforms.uMBaseTimeFreq.value = controlValues.uMBaseTimeFreq;
+  //   // uniforms.uMBaseStrength.value = controlValues.uMBaseStrength;
 
-    uniforms.uSTime.value = uSTimeRef.current;
-    uniforms.uSBasePosFreq.value = controlValues.uSBasePosFreq;
-    uniforms.uSBaseTimeFreq.value = controlValues.uSBaseTimeFreq;
-    uniforms.uSBaseStrength.value = controlValues.uSBaseStrength;
+  //   // uniforms.uSTime.value = uSTimeRef.current;
+  //   // uniforms.uSBasePosFreq.value = controlValues.uSBasePosFreq;
+  //   // uniforms.uSBaseTimeFreq.value = controlValues.uSBaseTimeFreq;
+  //   // uniforms.uSBaseStrength.value = controlValues.uSBaseStrength;
 
-    // Rendering logic.
-    camera.layers = reflectorLayers;
-    gl.render(scene, camera);
+  //   // Rendering logic.
+  //   // camera.layers = reflectorLayers;
+  //   // renderer.render(scene, camera);
 
-    if (reflectorRef.current && csmRef.current) {
-      csmRef.current.uniforms.uTextureMatrix.value =
-        // @ts-expect-error It's fine, don't worry about it.
-        reflectorRef.current.material.uniforms["textureMatrix"].value;
-      csmRef.current.uniforms.uTDiffuse.value =
-        // @ts-expect-error It's fine, don't worry about it.
-        reflectorRef.current.material.uniforms["tDiffuse"].value;
-    } else {
-      console.log("no reflectorRef or csmRef");
-    }
+  //   // if (reflectorRef.current && csmRef.current) {
+  //   //   csmRef.current.uniforms.uTextureMatrix.value =
+  //   //     // @ts-expect-error It's fine, don't worry about it.
+  //   //     reflectorRef.current.material.uniforms["textureMatrix"].value;
+  //   //   csmRef.current.uniforms.uTDiffuse.value =
+  //   //     // @ts-expect-error It's fine, don't worry about it.
+  //   //     reflectorRef.current.material.uniforms["tDiffuse"].value;
+  //   // } else {
+  //   //   console.log("no reflectorRef or csmRef");
+  //   // }
 
-    camera.layers = orbLayers;
-    gl.render(scene, camera);
-  });
+  //   // camera.layers = orbLayers;
+  //   // renderer.render(scene, camera);
+  // });
 
   return (
     <>
       <group position={position}>
-        <primitive
+        {/* <primitive
           ref={reflectorRef}
           object={mirror}
           layers={reflectorLayers}
-        />
+        /> */}
         <mesh
           ref={orbRef}
           geometry={orbGeometry}
@@ -342,7 +419,8 @@ export default function Orb({
           receiveShadow
           layers={orbLayers}
         >
-          <CustomShaderMaterial
+          <meshBasicNodeMaterial color={"#f00"} wireframe />
+          {/* <CustomShaderMaterial
             attach="material"
             ref={csmRef}
             baseMaterial={THREE.MeshPhysicalMaterial}
@@ -371,7 +449,7 @@ export default function Orb({
             baseMaterial={THREE.MeshDepthMaterial}
             vertexShader={orbVertexShader}
             depthPacking={THREE.RGBADepthPacking}
-          />
+          /> */}
         </mesh>
       </group>
     </>

@@ -1,16 +1,14 @@
 import tailwindcss from "@tailwindcss/vite";
-import react from "@vitejs/plugin-react-swc";
+import basicSsl from "@vitejs/plugin-basic-ssl";
+import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import glsl from "vite-plugin-glsl";
-import restart from "vite-plugin-restart";
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
+    basicSsl(),
     react(),
-    restart({
-      restart: ["src/**/shaders/**/*"],
-    }),
     tailwindcss(),
     glsl({
       watch: true,

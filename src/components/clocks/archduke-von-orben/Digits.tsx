@@ -1,4 +1,3 @@
-import { Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useSpring } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -196,7 +195,7 @@ function Char({
   });
   return (
     <group position={groupPosition}>
-      <Text
+      {/* <Text
         ref={text00Ref}
         font={FONT_URL}
         characters={CHARACTERS}
@@ -225,7 +224,7 @@ function Char({
           emissiveIntensity={0.5}
           side={THREE.BackSide}
         />
-      </Text>
+      </Text> */}
     </group>
   );
 }

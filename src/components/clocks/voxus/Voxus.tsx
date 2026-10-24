@@ -1,6 +1,6 @@
-import { Box, Loader } from "@react-three/drei";
+// import { Box, Loader } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useControls } from "leva";
+// import { useControls } from "leva";
 import { useMotionValue, useSpring } from "motion/react";
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
@@ -548,14 +548,14 @@ function Digit({
       >
         {/* <Box args={[0.5, 0.5, 0.5]} visible={false} /> */}
         <group ref={innerGroupRef}>
-          <Box
+          {/* <Box
             args={[
               SEGMENT_X_OFFSET * 2 + SEGMENT_THICKNESS,
               SEGMENT_Y_OFFSET * 2 + SEGMENT_THICKNESS,
               SEGMENT_THICKNESS,
             ]}
             visible={false}
-          />
+          /> */}
           {Array.from({ length: 7 }, (_, segmentIndex) => (
             <DigitSegmentObjects
               key={segmentIndex}
@@ -671,122 +671,122 @@ function Voxus() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useControls({
-    lightColor01: {
-      value: "#ffa3a3",
-      onChange: (value) => {
-        uniforms.uLightColor01.value = new THREE.Color(value);
-      },
-    },
-    lightColor02: {
-      value: "#ffc99d",
-      onChange: (value) => {
-        uniforms.uLightColor02.value = new THREE.Color(value);
-      },
-    },
-    materialColor: {
-      value: "#ffffff",
-      onChange: (value) => {
-        uniforms.uMaterialColor.value = new THREE.Color(value);
-      },
-    },
-    materialSubsurfaceColor: {
-      value: "#f20512",
-      onChange: (value) => {
-        uniforms.uMaterialSubsurfaceColor.value = new THREE.Color(value);
-      },
-    },
-    subsurfaceRadius: {
-      value: 1.72,
-      min: 0,
-      max: 10,
-      step: 0.01,
-      onChange: (value) => {
-        uniforms.uSubsurfaceRadius.value = value;
-      },
-    },
-    roughness: {
-      value: 0.0,
-      min: 0,
-      max: 1,
-      step: 0.01,
-      onChange: (value) => {
-        uniforms.uRoughness.value = value;
-      },
-    },
-    refractionIndex: {
-      value: 2.17,
-      min: 1,
-      max: 3,
-      step: 0.01,
-      onChange: (value) => {
-        uniforms.uRefractionIndex.value = value;
-      },
-    },
-    normalMix: {
-      value: 0.84,
-      min: 0,
-      max: 1,
-      step: 0.01,
-      onChange: (value) => {
-        uniforms.uNormalMix.value = value;
-      },
-    },
-    fogColor: {
-      value: "#c76b80",
-      onChange: (value) => {
-        uniforms.uFogColor.value = new THREE.Color(value);
-      },
-    },
-    skyLowColor: {
-      value: "#f20512",
-      onChange: (value) => {
-        uniforms.uSkyLowColor.value = new THREE.Color(value);
-      },
-    },
-    skyHighColor: {
-      value: "#f20512",
-      onChange: (value) => {
-        uniforms.uSkyHighColor.value = new THREE.Color(value);
-      },
-    },
-    platformColor: {
-      value: "#be0225",
-      onChange: (value) => {
-        uniforms.uPlatformColor.value = new THREE.Color(value);
-      },
-    },
-    seaLowColor: {
-      value: "#c73e4e",
-      onChange: (value) => {
-        uniforms.uSeaLowColor.value = new THREE.Color(value);
-      },
-    },
-    seaHighColor: {
-      value: "#02153b",
-      onChange: (value) => {
-        uniforms.uSeaHighColor.value = new THREE.Color(value);
-      },
-    },
-    skyRangeMin: {
-      value: 0.0,
-      min: 0,
-      max: 5,
-      step: 0.01,
-      onChange: (value) => {
-        uniforms.uSkyRangeMin.value = value;
-      },
-    },
-    skyRangeMax: {
-      value: 0.2,
-      min: 0,
-      max: 5,
-      step: 0.01,
-      onChange: (value) => {
-        uniforms.uSkyRangeMax.value = value;
-      },
-    },
-  });
+  // useControls({
+  //   lightColor01: {
+  //     value: "#ffa3a3",
+  //     onChange: (value) => {
+  //       uniforms.uLightColor01.value = new THREE.Color(value);
+  //     },
+  //   },
+  //   lightColor02: {
+  //     value: "#ffc99d",
+  //     onChange: (value) => {
+  //       uniforms.uLightColor02.value = new THREE.Color(value);
+  //     },
+  //   },
+  //   materialColor: {
+  //     value: "#ffffff",
+  //     onChange: (value) => {
+  //       uniforms.uMaterialColor.value = new THREE.Color(value);
+  //     },
+  //   },
+  //   materialSubsurfaceColor: {
+  //     value: "#f20512",
+  //     onChange: (value) => {
+  //       uniforms.uMaterialSubsurfaceColor.value = new THREE.Color(value);
+  //     },
+  //   },
+  //   subsurfaceRadius: {
+  //     value: 1.72,
+  //     min: 0,
+  //     max: 10,
+  //     step: 0.01,
+  //     onChange: (value) => {
+  //       uniforms.uSubsurfaceRadius.value = value;
+  //     },
+  //   },
+  //   roughness: {
+  //     value: 0.0,
+  //     min: 0,
+  //     max: 1,
+  //     step: 0.01,
+  //     onChange: (value) => {
+  //       uniforms.uRoughness.value = value;
+  //     },
+  //   },
+  //   refractionIndex: {
+  //     value: 2.17,
+  //     min: 1,
+  //     max: 3,
+  //     step: 0.01,
+  //     onChange: (value) => {
+  //       uniforms.uRefractionIndex.value = value;
+  //     },
+  //   },
+  //   normalMix: {
+  //     value: 0.84,
+  //     min: 0,
+  //     max: 1,
+  //     step: 0.01,
+  //     onChange: (value) => {
+  //       uniforms.uNormalMix.value = value;
+  //     },
+  //   },
+  //   fogColor: {
+  //     value: "#c76b80",
+  //     onChange: (value) => {
+  //       uniforms.uFogColor.value = new THREE.Color(value);
+  //     },
+  //   },
+  //   skyLowColor: {
+  //     value: "#f20512",
+  //     onChange: (value) => {
+  //       uniforms.uSkyLowColor.value = new THREE.Color(value);
+  //     },
+  //   },
+  //   skyHighColor: {
+  //     value: "#f20512",
+  //     onChange: (value) => {
+  //       uniforms.uSkyHighColor.value = new THREE.Color(value);
+  //     },
+  //   },
+  //   platformColor: {
+  //     value: "#be0225",
+  //     onChange: (value) => {
+  //       uniforms.uPlatformColor.value = new THREE.Color(value);
+  //     },
+  //   },
+  //   seaLowColor: {
+  //     value: "#c73e4e",
+  //     onChange: (value) => {
+  //       uniforms.uSeaLowColor.value = new THREE.Color(value);
+  //     },
+  //   },
+  //   seaHighColor: {
+  //     value: "#02153b",
+  //     onChange: (value) => {
+  //       uniforms.uSeaHighColor.value = new THREE.Color(value);
+  //     },
+  //   },
+  //   skyRangeMin: {
+  //     value: 0.0,
+  //     min: 0,
+  //     max: 5,
+  //     step: 0.01,
+  //     onChange: (value) => {
+  //       uniforms.uSkyRangeMin.value = value;
+  //     },
+  //   },
+  //   skyRangeMax: {
+  //     value: 0.2,
+  //     min: 0,
+  //     max: 5,
+  //     step: 0.01,
+  //     onChange: (value) => {
+  //       uniforms.uSkyRangeMax.value = value;
+  //     },
+  //   },
+  // });
 
   const cameraPosition = new THREE.Vector3();
   const uDeltaRef = useRef(0);
@@ -921,8 +921,8 @@ export default function VoxusScene() {
           toneMapping: THREE.LinearToneMapping,
           outputColorSpace: THREE.LinearSRGBColorSpace,
         }}
-        linear
-        flat
+        // linear
+        // flat
       >
         <CustomStatsComponent />
         <Suspense fallback={null}>
@@ -941,7 +941,7 @@ export default function VoxusScene() {
           ]}
         />
       </Canvas>
-      <Loader />
+      {/* <Loader /> */}
     </>
   );
 }
