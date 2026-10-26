@@ -12,7 +12,44 @@ import useArchdukeVonOrbenStore from "../../../stores/useArchdukeVonOrbenStore";
 import { SPRING_CONFIGS } from "./constants/constants";
 // import orbFragmentShader from "./shaders/orb/orb.frag";
 // import orbVertexShader from "./shaders/orb/orb.vert";
-import { useUniforms } from "@react-three/tsl";
+import { useLocalNodes, useNodes, useUniforms } from "@react-three/tsl";
+import {
+  Fn,
+  mx_noise_float,
+  normalLocal,
+  positionLocal,
+  time,
+  vec3,
+} from "three/tsl";
+
+function GlobalEffects() {
+  useNodes(({ uniforms }) => ({
+    getWobble: Fn(
+      ({
+        pos,
+        steppedToCameraAmount,
+      }: {
+        pos: THREE.Node<"vec3">;
+        steppedToCameraAmount: THREE.Node<"float">;
+      }) => {
+        const adjustedPos = pos.add(vec3(0, 0, time.mul(0.015)));
+        const wobble = mx_noise_float(
+          adjustedPos.mul(uniforms.uBasePosFreq),
+          time.mul(uniforms.uBaseTimeFreq),
+        ).mul(uniforms.uBaseStrength);
+        wobble.mulAssign(steppedToCameraAmount.mul(0.5));
+        wobble.addAssign(0.5);
+        return wobble;
+      },
+      {
+        pos: "vec3",
+        steppedToCameraAmount: "float",
+        return: "float",
+      },
+    ),
+  }));
+  return null;
+}
 
 // const uniforms = {
 //   // Orb
@@ -86,6 +123,7 @@ export default function Orb({
   const renderer = useThree((state) => state.renderer);
 
   useEffect(() => {
+    // @ts-expect-error `createParameters` does exist.
     const gui = renderer.inspector?.createParameters("Orb");
     gui.add(uniforms.orbMass, "value", 0, 10000, 1).name("orbMass");
     gui
@@ -320,9 +358,9 @@ export default function Orb({
   //   }),
   // });
 
-  const deltaRef = useRef(0);
+  // const deltaRef = useRef(0);
 
-  const velocityRef = useRef(0.1);
+  // const velocityRef = useRef(0.1);
 
   // useFrame(({ renderer, camera, scene }, delta) => {
   //   // General.
@@ -404,6 +442,12 @@ export default function Orb({
   //   // renderer.render(scene, camera);
   // });
 
+  const { positionNode } = useLocalNodes(({ nodes }) => ({
+    positionNode: positionLocal.add(
+      normalLocal.mul(nodes.getWobble(positionLocal, 1)),
+    ),
+  }));
+
   return (
     <>
       <group position={position}>
@@ -419,7 +463,7 @@ export default function Orb({
           receiveShadow
           layers={orbLayers}
         >
-          <meshBasicNodeMaterial color={"#f00"} wireframe />
+          <meshPhysicalNodeMaterial positionNode={positionNode} />
           {/* <CustomShaderMaterial
             attach="material"
             ref={csmRef}
